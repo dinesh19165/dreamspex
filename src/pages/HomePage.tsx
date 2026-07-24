@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useForm } from 'react-hook-form';
-import { ArrowRight, BadgeCheck, Camera, Sparkles, ShieldCheck, Truck, Zap, Play, Crown, Gem, Star, ScanLine } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Camera, Sparkles, ShieldCheck, Truck, Zap, Play, Pause, Volume2, VolumeX, Crown, Gem, Star, ScanLine } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
@@ -17,6 +17,7 @@ import SectionTitle from '../components/ui/SectionTitle';
 import ProductCard from '../components/ui/ProductCard';
 import CountdownTimer from '../components/ui/CountdownTimer';
 import { categories, membershipPlans, products, reviews } from '../data/mockData';
+import { HERO_VIDEO_URL, HERO_IMAGE_URL, HERO_MOBILE_IMAGE_URL } from '../config/siteMedia';
 
 type NewsletterForm = { email: string };
 
@@ -40,6 +41,7 @@ const storySections = [
   { title: 'UV400 Technology', copy: 'All-day sun protection and visual comfort designed for modern lifestyles.', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=1200&q=80' },
 ];
 
+
 const testimonials = [
   { name: 'Mina R.', city: 'Dubai', quote: 'The craftsmanship feels extraordinary — like a piece of art for everyday life.', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=700&q=80' },
   { name: 'Julian T.', city: 'London', quote: 'The fit, finish, and service made the whole experience feel effortless.', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=700&q=80' },
@@ -58,6 +60,13 @@ export default function HomePage() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<NewsletterForm>();
   const [submitted, setSubmitted] = useState(false);
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
+  const [videoReady, setVideoReady] = useState(false);
+  const [videoPlaying, setVideoPlaying] = useState(true);
+  const [muted, setMuted] = useState(true);
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [videoError, setVideoError] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' ? window.matchMedia('(min-width: 1024px)').matches : false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const onSubmit = () => {
     setSubmitted(true);
@@ -71,7 +80,87 @@ export default function HomePage() {
     setParallax({ x: x * 8, y: y * 8 });
   };
 
-  const particles = [0, 1, 2, 3];
+  const particles = [0, 1, 2, 3, 4, 5, 6, 7];
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const updateDesktop = (event: MediaQueryList | MediaQueryListEvent) => setIsDesktop(event.matches);
+
+    updateDesktop(mediaQuery);
+
+    const handleMediaChange = (event: MediaQueryListEvent) => updateDesktop(event);
+
+    if ('addEventListener' in mediaQuery) {
+      mediaQuery.addEventListener('change', handleMediaChange);
+      return () => mediaQuery.removeEventListener('change', handleMediaChange);
+    }
+
+    // Fallback for older browser APIs
+    if ('addListener' in mediaQuery) {
+      (mediaQuery as unknown as MediaQueryList).addListener(handleMediaChange);
+      return () => (mediaQuery as unknown as MediaQueryList).removeListener(handleMediaChange);
+    }
+
+    return undefined;
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleLoaded = () => {
+      setVideoReady(true);
+      setVideoLoading(false);
+
+      if (videoPlaying) {
+        video.play().catch((error) => {
+          console.error('Hero video autoplay prevented:', error);
+          setVideoPlaying(false);
+        });
+      }
+    };
+
+    const handleError = (event: Event) => {
+      console.error('Hero video failed to load:', event);
+      setVideoError(true);
+      setVideoLoading(false);
+    };
+
+    video.addEventListener('canplay', handleLoaded);
+    video.addEventListener('loadeddata', handleLoaded);
+    video.addEventListener('error', handleError);
+
+    return () => {
+      video.removeEventListener('canplay', handleLoaded);
+      video.removeEventListener('loadeddata', handleLoaded);
+      video.removeEventListener('error', handleError);
+    };
+  }, [videoPlaying]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = muted;
+  }, [muted]);
+
+  const togglePlayback = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (videoPlaying) {
+      video.pause();
+      setVideoPlaying(false);
+    } else {
+      video.play().catch(() => {
+        setVideoPlaying(false);
+      });
+      setVideoPlaying(true);
+    }
+  };
+
+  const toggleMute = () => setMuted((current) => !current);
 
   return (
     <div className="min-h-screen bg-[#050816] text-slate-100">
@@ -85,10 +174,37 @@ export default function HomePage() {
           {particles.map((index) => (
             <span key={index} className="luxury-float pointer-events-none absolute h-2 w-2 rounded-full bg-cyan-300/70" style={{ left: `${12 + index * 20}%`, top: `${18 + (index % 3) * 22}%`, animationDelay: `${index * 0.7}s` }} />
           ))}
-          <video autoPlay muted loop playsInline className="absolute inset-0 h-full w-full object-cover opacity-30">
-            <source src="https://cdn.coverr.co/videos/coverr-woman-wearing-sunglasses-1560355565544/1080p.mp4" type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,212,255,0.25),_transparent_30%),linear-gradient(135deg,_rgba(5,8,22,0.95)_0%,_rgba(5,8,22,0.8)_100%)]" />
+          {/* Desktop: lazy-loaded background video with blurred image placeholder */}
+          <img
+            alt="Premium eyewear showcase"
+            src={isDesktop ? HERO_IMAGE_URL : HERO_MOBILE_IMAGE_URL}
+            style={{ objectPosition: isDesktop ? 'center center' : 'center 80%' }}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${videoReady ? 'opacity-0' : 'opacity-100'}`}
+          />
+          {isDesktop && !videoError && (
+            <video
+              ref={videoRef}
+              autoPlay
+              muted={muted}
+              loop
+              playsInline
+              preload="metadata"
+              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${videoReady ? 'opacity-100' : 'opacity-0'}`}
+            >
+              <source src={HERO_VIDEO_URL} type="video/mp4" />
+            </video>
+          )}
+          {isDesktop && videoLoading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40">
+              <div className="flex flex-col items-center gap-4 rounded-full border border-white/10 bg-white/5 px-8 py-8 text-center backdrop-blur-xl">
+                <div className="hero-loader" />
+                <p className="text-sm uppercase tracking-[0.35em] text-slate-300">Loading cinematic preview</p>
+              </div>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(0,212,255,0.22),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(14,166,232,0.12),_transparent_24%)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+          <div className="absolute inset-0 bg-black/10" />
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-24 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-32">
             <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative z-10 max-w-2xl">
               <p className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm font-medium text-cyan-300">
@@ -111,6 +227,39 @@ export default function HomePage() {
               <div className="mt-10 flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300 backdrop-blur-xl">
                 <Play className="h-4 w-4 text-cyan-300" /> Watch our craftsmanship film
               </div>
+              <div className="mt-10 rounded-[32px] border border-white/10 bg-slate-950/80 p-6 backdrop-blur-xl">
+                <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-center">
+                  <div className="space-y-4">
+                    <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">3D animated eyewear</p>
+                    <h2 className="text-2xl font-semibold text-white">See frames in motion with depth and clarity.</h2>
+                    <p className="text-sm leading-7 text-slate-400">A dynamic preview explains lens shape, frame form and premium craftsmanship in a natural, easy-to-understand way.</p>
+                    <ul className="space-y-3 text-sm text-slate-300">
+                      <li className="flex items-start gap-3"><span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400" /> Animated frame rotation</li>
+                      <li className="flex items-start gap-3"><span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400" /> Clear visual depth cues</li>
+                      <li className="flex items-start gap-3"><span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-cyan-400" /> Easy style guidance for buyers</li>
+                    </ul>
+                  </div>
+                  <div className="three-d-preview rounded-[28px] border border-white/10 bg-[#051024] p-5 shadow-[0_20px_80px_-40px_rgba(0,212,255,0.45)]">
+                    <div className="three-d-glasses mx-auto flex h-44 w-full max-w-[340px] items-center justify-center overflow-hidden rounded-[28px] bg-[#081127] p-4 shadow-[0_30px_80px_-45px_rgba(0,212,255,0.25)]">
+                      <div className="three-d-frame relative flex h-24 w-full max-w-[260px] items-center justify-between px-6">
+                        <div className="three-d-lens left" />
+                        <div className="three-d-bridge" />
+                        <div className="three-d-lens right" />
+                        <div className="three-d-glare left" />
+                        <div className="three-d-glare right" />
+                      </div>
+                    </div>
+                    <div className="mt-6 rounded-[24px] border border-white/10 bg-[#081228] p-4 text-sm text-slate-300">
+                      <p className="font-semibold text-white">How it helps</p>
+                      <ol className="mt-3 space-y-2 pl-4 text-slate-400">
+                        <li>1. Preview the frame silhouette</li>
+                        <li>2. Understand width, depth, and curve</li>
+                        <li>3. Choose your perfect fit</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="relative z-10">
@@ -129,6 +278,16 @@ export default function HomePage() {
               </motion.div>
             </motion.div>
           </div>
+          {isDesktop && (
+            <div className="absolute right-6 top-6 z-20 flex items-center gap-3 rounded-full border border-white/10 bg-black/40 p-3 backdrop-blur-xl">
+              <button onClick={togglePlayback} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" aria-label={videoPlaying ? 'Pause preview' : 'Play preview'}>
+                {videoPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+              </button>
+              <button onClick={toggleMute} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10" aria-label={muted ? 'Unmute preview' : 'Mute preview'}>
+                {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </button>
+            </div>
+          )}
           <div className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-center text-sm text-slate-300">
             <div className="flex flex-col items-center gap-2">
               <span className="text-[10px] uppercase tracking-[0.35em] text-slate-400">Scroll</span>

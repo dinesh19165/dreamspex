@@ -33,7 +33,7 @@ export default function ShopPage() {
   return (
     <div className="min-h-screen bg-[#050816] text-slate-100">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-16 pb-32 sm:px-6 lg:px-8 lg:pb-16">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <SectionTitle eyebrow="Shop" title="Discover refined eyewear" description="Handpicked frames, lenses, and accessories crafted for modern living." />
           <div className="flex flex-wrap gap-3">
@@ -61,7 +61,7 @@ export default function ShopPage() {
         </motion.div>
 
         <div className={`mt-10 grid gap-8 ${cartQuantity > 0 ? 'lg:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[260px_1fr]'}`}>
-          <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="sticky top-24 self-start rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+          <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="lg:sticky lg:top-24 self-start rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
             <h3 className="text-lg font-semibold text-white">Browse by category</h3>
             <ul className="mt-5 space-y-3 text-sm text-slate-400">
               {categories.map((category) => <li key={category.id} className="rounded-full border border-white/10 bg-slate-950/50 px-4 py-2">{category.name}</li>)}
@@ -71,35 +71,6 @@ export default function ShopPage() {
               <p className="mt-2 text-slate-300">Members receive private previews and first-ship privileges.</p>
             </div>
           </motion.aside>
-          {cartQuantity > 0 ? (
-            <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 p-5 text-slate-100 lg:hidden">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Order preview</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{cartQuantity} items</p>
-                </div>
-                <ShoppingCart className="h-6 w-6 text-cyan-300" />
-              </div>
-              <div className="mt-4 space-y-3 text-sm text-slate-300">
-                {cart.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-[#050816] p-3">
-                    <img src={item.image} alt={item.name} className="h-12 w-12 rounded-[14px] object-cover" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">{item.name}</p>
-                      <p className="text-xs text-slate-400">{item.quantity} × ${item.price.toFixed(2)}</p>
-                    </div>
-                  </div>
-                ))}
-                {cart.length > 3 ? <p className="text-xs text-slate-400">+{cart.length - 3} more items</p> : null}
-              </div>
-              <div className="mt-4 rounded-[20px] border border-white/10 bg-[#050816] p-4 text-sm text-slate-300">
-                <div className="flex items-center justify-between"><span>Subtotal</span><span className="font-semibold text-white">${subtotal.toFixed(2)}</span></div>
-              </div>
-              <Link to="/checkout" className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110">
-                Checkout
-              </Link>
-            </div>
-          ) : null}
           <div>
             <div className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
               {pagedProducts.map((product, index) => (
@@ -108,6 +79,36 @@ export default function ShopPage() {
                 </motion.div>
               ))}
             </div>
+
+            {cartQuantity > 0 && (
+              <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 p-5 text-slate-100 lg:hidden">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Order preview</p>
+                    <p className="mt-2 text-lg font-semibold text-white">{cartQuantity} items</p>
+                  </div>
+                  <ShoppingCart className="h-6 w-6 text-cyan-300" />
+                </div>
+                <div className="mt-4 space-y-3 text-sm text-slate-300">
+                  {cart.slice(0, 3).map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-[#050816] p-3">
+                      <img src={item.image} alt={item.name} className="h-12 w-12 rounded-[14px] object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-white">{item.name}</p>
+                        <p className="text-xs text-slate-400">{item.quantity} × ${item.price.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {cart.length > 3 ? <p className="text-xs text-slate-400">+{cart.length - 3} more items</p> : null}
+                </div>
+                <div className="mt-4 rounded-[20px] border border-white/10 bg-[#050816] p-4 text-sm text-slate-300">
+                  <div className="flex items-center justify-between"><span>Subtotal</span><span className="font-semibold text-white">${subtotal.toFixed(2)}</span></div>
+                </div>
+                <Link to="/checkout" className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110">
+                  Checkout
+                </Link>
+              </div>
+            )}
 
             <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 backdrop-blur-xl">
               <p className="text-sm text-slate-400">Showing {pagedProducts.length} of {filteredProducts.length} pieces</p>

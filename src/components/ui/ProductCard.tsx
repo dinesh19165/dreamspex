@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Eye, Heart, ShoppingCart, Star } from 'lucide-react';
+import { ArrowRight, Eye, FileText, Glasses, Heart, ShoppingCart, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import type { Product } from '../../types';
@@ -14,6 +14,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { toggleWishlist, addToCart, isInWishlist, isInCart } = useShop();
   const [open, setOpen] = useState(false);
   const [added, setAdded] = useState(false);
+  const supportsPrescription = product.category !== 'Contact Lenses';
 
   const handleAddToCart = () => {
     addToCart(product);
@@ -52,6 +53,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </Link>
           <p className="mt-2 text-sm leading-6 text-slate-400">{product.description}</p>
+          {supportsPrescription ? <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold"><span className="inline-flex items-center gap-1 text-[#9ACD32]"><FileText className="h-3.5 w-3.5" /> Prescription Available</span><Link to={`/virtual-try-on?productId=${product.id}`} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200"><Glasses className="h-3.5 w-3.5" /> Virtual Try-On</Link></div> : null}
           <div className="mt-5 flex items-center justify-between">
             <div>
               <p className="text-lg font-semibold text-white">${product.price}</p>

@@ -3,6 +3,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
+import BrandLogo from '../components/ui/BrandLogo';
 
 const policyPages = [
   { title: 'FAQ', description: 'Find answers to common questions about fit, delivery, and services.' },
@@ -153,15 +154,16 @@ export default function OtherPages() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-[#0B0D18] text-slate-100">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-16 lg:px-8">
+        {(pathname === '/login' || pathname === '/register' || pathname === '/forgot-password') ? <div className="mb-10 flex justify-center"><BrandLogo /></div> : null}
         <SectionTitle eyebrow="Additional pages" title="The full static storefront experience" description="These sections are ready for expansion and future API hookup." />
         <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {policyPages.map((page) => (
-            <div key={page.title} className="rounded-[24px] border border-slate-200 bg-white p-8 shadow-sm">
-              <h3 className="text-xl font-semibold text-slate-900">{page.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{page.description}</p>
+            <div key={page.title} className="rounded-[24px] border border-white/10 bg-[#151823] p-8 shadow-sm">
+              <h3 className="text-xl font-semibold text-white">{page.title}</h3>
+              <p className="mt-3 text-sm leading-7 text-slate-400">{page.description}</p>
             </div>
           ))}
         </div>

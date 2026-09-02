@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Eye, Heart, ShieldCheck, Star, Truck, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ArrowRight, Eye, Glasses, Heart, ShieldCheck, Star, Truck, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
 import Button from '../components/ui/Button';
 import { useShop } from '../context/ShopContext';
 import { products } from '../data/mockData';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const galleryImages = [
   'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80',
@@ -16,17 +17,20 @@ const galleryImages = [
 ];
 
 export default function ProductDetailPage() {
-  const { toggleWishlist, addToCart, isInWishlist } = useShop();
-  const product = products[0];
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { toggleWishlist, isInWishlist } = useShop();
+  const product = products.find((item) => item.id === Number(id)) ?? products[0];
+  const supportsPrescription = product.category !== 'Contact Lenses';
   const [activeImage, setActiveImage] = useState(0);
   const [showPurchaseForm, setShowPurchaseForm] = useState(false);
   const [purchaseComplete, setPurchaseComplete] = useState(false);
 
   const handleBuyNow = () => {
-    addToCart(product);
-    setPurchaseComplete(false);
-    setShowPurchaseForm(true);
+    navigate(`/prescription/${product.id}`);
   };
+
+  const handleAddToCart = () => navigate(`/prescription/${product.id}`);
 
   const handleSubmitPurchase = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -78,6 +82,11 @@ export default function ProductDetailPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
+              {supportsPrescription ? <>
+                <Button variant="secondary" onClick={() => navigate(`/virtual-try-on?productId=${product.id}`)}><Glasses className="mr-2 h-4 w-4" />Virtual Try-On</Button>
+                <Button variant="secondary" onClick={() => navigate(`/prescription/${product.id}`)}>Add Prescription &amp; Choose Lenses</Button>
+              </> : null}
+              <Button onClick={handleAddToCart}>Add to Cart</Button>
               <Button onClick={handleBuyNow}>Buy now</Button>
               <Button variant="ghost" onClick={() => toggleWishlist(product)}><Heart className={`mr-2 h-4 w-4 ${isInWishlist(product.id) ? 'fill-current text-cyan-300' : ''}`} /> {isInWishlist(product.id) ? 'Saved to wishlist' : 'Add to wishlist'}</Button>
             </div>

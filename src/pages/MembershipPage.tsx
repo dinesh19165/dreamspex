@@ -12,7 +12,7 @@ export default function MembershipPage() {
         <SectionTitle eyebrow="Membership" title="Elevated perks for every member" description="Designed to offer premium support, savings, and priority access." />
         <div className="mt-10 grid gap-6 lg:grid-cols-3">
           {membershipPlans.map((plan) => (
-            <div key={plan.id} className={`rounded-[24px] border p-8 backdrop-blur-xl ${plan.featured ? 'border-cyan-400/30 bg-cyan-400/10' : 'border-white/10 bg-white/5'}`}>
+            <div key={plan.id} className={`rounded-[24px] border p-8 backdrop-blur-xl ${plan.featured ? 'border-cyan-400/30 bg-[#17300d]' : 'border-white/10 bg-[#151823]'}`}>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{plan.name}</p>
               <p className="mt-4 text-4xl font-semibold text-white">${plan.price}<span className="text-base text-slate-400">/mo</span></p>
               <p className="mt-4 text-sm leading-7 text-slate-400">{plan.description}</p>

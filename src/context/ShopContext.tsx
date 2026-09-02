@@ -1,8 +1,8 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Product } from '../types';
+import type { LensSelection, Prescription, Product } from '../types';
 
-type CartItem = Product & { quantity: number };
+export type CartItem = Product & { quantity: number; configuredId?: string; prescription?: Prescription; lensSelection?: LensSelection };
 
 type ShopContextValue = {
   wishlist: Product[];
@@ -11,6 +11,7 @@ type ShopContextValue = {
   isInCart: (productId: number) => boolean;
   toggleWishlist: (product: Product) => void;
   addToCart: (product: Product) => void;
+  addConfiguredToCart: (product: Product, prescription: Prescription, lensSelection: LensSelection) => void;
   removeFromWishlist: (productId: number) => void;
   removeFromCart: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
@@ -20,8 +21,28 @@ type ShopContextValue = {
 const ShopContext = createContext<ShopContextValue | undefined>(undefined);
 
 export function ShopProvider({ children }: { children: ReactNode }) {
-  const [wishlist, setWishlist] = useState<Product[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [wishlist, setWishlist] = useState<Product[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('dream-spex-wishlist') ?? '[]') as Product[];
+    } catch {
+      return [];
+    }
+  });
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('dream-spex-cart') ?? '[]') as CartItem[];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('dream-spex-wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  useEffect(() => {
+    localStorage.setItem('dream-spex-cart', JSON.stringify(cart));
+  }, [cart]);
 
   const toggleWishlist = (product: Product) => {
     setWishlist((current) => {
@@ -37,6 +58,15 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         return current.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
       }
       return [...current, { ...product, quantity: 1 }];
+    });
+  };
+
+  const addConfiguredToCart = (product: Product, prescription: Prescription, lensSelection: LensSelection) => {
+    const configuredId = `${product.id}-${lensSelection.type}-${lensSelection.material}-${lensSelection.coatings.join('-')}`;
+    setCart((current) => {
+      const existing = current.find((item) => item.id === product.id && item.lensSelection && JSON.stringify(item.lensSelection) === JSON.stringify(lensSelection));
+      if (existing) return current.map((item) => (item === existing ? { ...item, quantity: item.quantity + 1 } : item));
+      return [...current, { ...product, id: product.id, quantity: 1, prescription, lensSelection, configuredId }];
     });
   };
 
@@ -69,6 +99,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       isInCart: (productId: number) => cart.some((item) => item.id === productId),
       toggleWishlist,
       addToCart,
+      addConfiguredToCart,
       removeFromWishlist,
       removeFromCart,
       updateQuantity,

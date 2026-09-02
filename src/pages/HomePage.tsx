@@ -3,7 +3,7 @@ import type { MouseEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useForm } from 'react-hook-form';
-import { ArrowRight, BadgeCheck, Camera, Sparkles, ShieldCheck, Truck, Zap, Play, Pause, Volume2, VolumeX, Crown, Gem, Star, ScanLine } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Camera, FileText, Glasses, Sparkles, ShieldCheck, Truck, Zap, Play, Pause, Volume2, VolumeX, Crown, Gem, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
@@ -351,8 +351,12 @@ export default function HomePage() {
           <div className="grid gap-8 rounded-[32px] border border-white/10 bg-gradient-to-br from-[#0d1530] to-[#060b17] p-8 lg:grid-cols-[0.9fr_1.1fr] lg:p-12">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Virtual try-on</p>
-              <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">Preview your signature look in seconds.</h2>
-              <p className="mt-4 text-base leading-7 text-slate-400">Use our immersive preview and styling assistant to try different shapes, colors, and materials before you decide.</p>
+              <h2 className="mt-4 text-3xl font-semibold text-white sm:text-4xl">See how your frames look on you</h2>
+              <p className="mt-4 text-base leading-7 text-slate-400">Try selected frames virtually before choosing your perfect pair.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link to="/virtual-try-on"><Button><Glasses className="mr-2 h-4 w-4" />Try Frames Virtually</Button></Link>
+                <Link to="/shop"><Button variant="ghost">Explore Frames <ArrowRight className="ml-2 h-4 w-4" /></Button></Link>
+              </div>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
               <div className="flex items-center justify-between">
@@ -374,17 +378,19 @@ export default function HomePage() {
         <section className="mx-auto max-w-7xl px-4 py-24 lg:px-8">
           <div className="grid gap-8 rounded-[32px] border border-white/10 bg-gradient-to-br from-[#0f1b37] to-[#060b17] p-8 lg:grid-cols-[0.95fr_1.05fr] lg:p-12">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Virtual try-on</p>
-              <h2 className="mt-4 text-3xl font-semibold text-white">AI powered virtual try-on</h2>
-              <p className="mt-4 text-base leading-7 text-slate-400">Preview your next signature frame with an immersive, future-ready fit experience that blends style with guidance.</p>
-              <div className="mt-6 flex items-center gap-3 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-300">Coming soon</div>
+              <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400"><FileText className="h-4 w-4" />Prescription lenses</p>
+              <h2 className="mt-4 text-3xl font-semibold text-white">Your prescription. Your perfect lenses.</h2>
+              <p className="mt-4 text-base leading-7 text-slate-400">Upload your prescription or enter your lens power details and choose the right lenses for your frame.</p>
+              <p className="mt-4 text-sm text-slate-400">Choose a frame first, then add your prescription and lens configuration.</p>
+              <Link to="/products" state={{ prescriptionNotice: true }} className="mt-6 inline-flex"><Button><FileText className="mr-2 h-4 w-4" />Add Prescription</Button></Link>
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/10 p-8 text-center backdrop-blur-xl">
-              <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-cyan-400/30 bg-cyan-400/10 text-cyan-300">
-                <ScanLine className="h-10 w-10" />
+              <div className="flex items-center gap-4"><div className="rounded-full bg-cyan-400/10 p-3 text-cyan-300"><FileText className="h-6 w-6" /></div><div><p className="text-sm text-slate-400">Personalised lens journey</p><p className="mt-1 text-xl font-semibold text-white">From upload to clarity</p></div></div>
+              <div className="mt-6 space-y-3 text-sm text-slate-300">
+                <div className="flex gap-2"><BadgeCheck className="h-4 w-4 text-cyan-400" /> Upload or enter your prescription</div>
+                <div className="flex gap-2"><BadgeCheck className="h-4 w-4 text-cyan-400" /> Review details and choose lenses</div>
+                <div className="flex gap-2"><BadgeCheck className="h-4 w-4 text-cyan-400" /> Add your configured frame to cart</div>
               </div>
-              <p className="mt-6 text-xl font-semibold text-white">Face scan preview</p>
-              <p className="mt-3 text-sm leading-7 text-slate-400">Luxury fit intelligence, frame matching, and a seamless style preview are on the way.</p>
             </div>
           </div>
         </section>

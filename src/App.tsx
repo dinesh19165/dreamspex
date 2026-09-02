@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUp, MessageCircle } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import LuxuryLoader from './components/ui/LuxuryLoader';
 import HomePage from './pages/HomePage';
 import ShopPage from './pages/ShopPage';
@@ -19,6 +19,10 @@ import CheckoutPage from './pages/CheckoutPage';
 import CartPage from './pages/CartPage';
 import OtherPages from './pages/OtherPages';
 import ScrollProgressBar from './components/ui/ScrollProgressBar';
+import WhatsAppSupport from './components/ui/WhatsAppSupport';
+import { AfterSalesPage, OrderConfirmationPage, OrderTrackingPage, PaymentPage } from './pages/CustomerFlowPages';
+import VirtualTryOnPage from './pages/VirtualTryOnPage';
+import PrescriptionPage from './pages/PrescriptionPage';
 
 function App() {
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -59,20 +63,13 @@ function App() {
               </motion.button>
             ) : null}
           </AnimatePresence>
-          <a
-            href="https://wa.me/9949735181"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="fixed bottom-20 right-6 z-[120] inline-flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-green-500/20 transition hover:brightness-110"
-            aria-label="Chat on WhatsApp"
-          >
-            <MessageCircle className="h-4 w-4" />
-            WhatsApp
-          </a>
+          <WhatsAppSupport className="fixed bottom-20 right-6 z-[120] shadow-lg shadow-green-500/20" />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/shop" element={<ShopPage />} />
+            <Route path="/products" element={<ShopPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
+            <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/membership" element={<MembershipPage />} />
             <Route path="/offers" element={<OffersPage />} />
@@ -92,8 +89,15 @@ function App() {
             <Route path="/wishlist" element={<OtherPages />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/order-success" element={<OtherPages />} />
-            <Route path="/order-tracking" element={<OtherPages />} />
+            <Route path="/payment" element={<PaymentPage />} />
+            <Route path="/virtual-try-on" element={<VirtualTryOnPage />} />
+            <Route path="/prescription/:productId" element={<PrescriptionPage />} />
+            <Route path="/order-success" element={<OrderConfirmationPage />} />
+            <Route path="/orders/success" element={<OrderConfirmationPage />} />
+            <Route path="/order-tracking" element={<OrderTrackingPage />} />
+            <Route path="/orders/:id" element={<OrderTrackingPage />} />
+            <Route path="/after-sales" element={<AfterSalesPage />} />
+            <Route path="/orders" element={<OrderTrackingPage />} />
             <Route path="/my-orders" element={<OtherPages />} />
             <Route path="/profile" element={<OtherPages />} />
             <Route path="*" element={<OtherPages />} />

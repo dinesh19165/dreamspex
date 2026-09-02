@@ -3,9 +3,12 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, Search, ShoppingBag, Heart, MoonStar, UserRound, X, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
+import WhatsAppSupport from '../ui/WhatsAppSupport';
+import BrandLogo from '../ui/BrandLogo';
 
 const navItems = [
   { label: 'Shop', path: '/shop' },
+  { label: 'Virtual Try-On', path: '/virtual-try-on' },
   { label: 'Categories', path: '/categories' },
   { label: 'Membership', path: '/membership' },
   { label: 'Offers', path: '/offers' },
@@ -28,15 +31,9 @@ export default function Navbar() {
 
   return (
     <>
-      <header className={`sticky top-0 z-50 border-b border-white/10 transition-all duration-300 ${scrolled ? 'bg-[#050816]/85 backdrop-blur-2xl' : 'bg-transparent'}`}>
+      <header className={`sticky top-0 z-50 border-b border-white/10 bg-[#0B0D18]/95 transition-all duration-300 ${scrolled ? 'backdrop-blur-2xl' : ''}`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 lg:px-8">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-700 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20">DS</div>
-            <div>
-              <p className="text-lg font-semibold tracking-[0.24em] text-white">DREAM SPEX</p>
-              <p className="text-xs tracking-[0.2em] text-slate-400">Luxury Eyewear</p>
-            </div>
-          </Link>
+          <BrandLogo compact />
 
           <nav className="hidden items-center gap-6 text-sm font-medium text-slate-300 lg:flex">
             {navItems.map((item) => (
@@ -72,6 +69,7 @@ export default function Navbar() {
             <Link to="/login" className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10">
               <UserRound className="h-4 w-4" />
             </Link>
+            <WhatsAppSupport label="" className="h-10 w-10 p-0" />
             <button className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10 lg:hidden" aria-label="Open menu" onClick={() => setOpen(true)}>
               <Menu className="h-4 w-4" />
             </button>

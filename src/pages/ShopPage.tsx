@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Filter, SlidersHorizontal, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Filter, FileText, SlidersHorizontal, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
@@ -12,6 +12,8 @@ import { useShop } from '../context/ShopContext';
 const PAGE_SIZE = 3;
 
 export default function ShopPage() {
+  const location = useLocation();
+  const prescriptionNotice = (location.state as { prescriptionNotice?: boolean } | null)?.prescriptionNotice;
   const [query, setQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
@@ -41,6 +43,7 @@ export default function ShopPage() {
             <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200"><Filter className="h-4 w-4" /> Categories</button>
           </div>
         </div>
+        {prescriptionNotice ? <div className="mt-6 flex items-center gap-3 rounded-[20px] border border-[#7CBF00]/30 bg-[#7CBF00]/10 px-4 py-3 text-sm text-[#C7F36A]">Select a frame first to add your prescription.</div> : null}
 
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mt-8 rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -58,6 +61,7 @@ export default function ShopPage() {
               <button key={suggestion} onClick={() => setQuery(suggestion)} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-400">{suggestion}</button>
             ))}
           </div>
+          <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#9ACD32]"><FileText className="h-4 w-4" /> Prescription Available on selected eyewear</div>
         </motion.div>
 
         <div className={`mt-10 grid gap-8 ${cartQuantity > 0 ? 'lg:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[260px_1fr]'}`}>

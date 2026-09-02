@@ -7,7 +7,7 @@ import { useShop } from '../context/ShopContext';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity } = useShop();
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cart.reduce((sum, item) => sum + (item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity, 0);
 
   return (
     <div className="min-h-screen bg-[#050816] text-slate-100">
@@ -32,6 +32,7 @@ export default function CartPage() {
                       <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{item.category}</p>
                       <h3 className="mt-2 text-xl font-semibold text-white">{item.name}</h3>
                       <p className="mt-2 text-sm leading-6 text-slate-400">{item.description}</p>
+                      {item.lensSelection ? <p className="mt-3 text-sm text-cyan-200">{item.lensSelection.type} · {item.lensSelection.coatings.length ? item.lensSelection.coatings.join(', ') : 'No coating selected'}</p> : null}
                     </div>
                     <button onClick={() => removeFromCart(item.id)} className="rounded-full border border-white/10 bg-slate-950/60 p-3 text-slate-300 transition hover:bg-white/10">
                       <Trash2 className="h-4 w-4" />
@@ -43,7 +44,7 @@ export default function CartPage() {
                       <span className="min-w-[2rem] text-center font-semibold text-white">{item.quantity}</span>
                       <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">+</button>
                     </div>
-                    <span className="text-lg font-semibold text-white">${item.price * item.quantity}</span>
+                    <span className="text-lg font-semibold text-white">${(item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity}</span>
                   </div>
                 </div>
               ))}

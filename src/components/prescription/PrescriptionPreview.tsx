@@ -1,0 +1,7 @@
+import { FileText, X } from 'lucide-react';
+
+type PrescriptionPreviewProps = { file: File; previewUrl?: string; onRemove: () => void; onReplace: () => void };
+
+export default function PrescriptionPreview({ file, previewUrl, onRemove, onReplace }: PrescriptionPreviewProps) {
+  return <div className="rounded-[24px] border border-cyan-400/30 bg-cyan-400/10 p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-[#1B1F2B]">{previewUrl ? <img src={previewUrl} alt="Prescription preview" className="h-full w-full object-cover" /> : <FileText className="h-6 w-6 text-cyan-300" />}</div><div><p className="font-semibold text-white">{file.name}</p><p className="mt-1 text-xs text-slate-400">{file.type || 'Document'} · {(file.size / 1024 / 1024).toFixed(2)} MB</p></div></div><button onClick={onRemove} className="rounded-full border border-white/10 p-2 text-slate-300" aria-label="Remove prescription"><X className="h-4 w-4" /></button></div><p className="mt-4 text-sm text-cyan-200">Prescription uploaded successfully. Please review the details below.</p><div className="mt-4 flex gap-3"><button onClick={onReplace} className="rounded-full border border-cyan-400/50 px-4 py-2 text-sm font-semibold text-cyan-200">Replace</button><button onClick={onRemove} className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300">Remove</button></div></div>;
+}

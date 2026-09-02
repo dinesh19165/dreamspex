@@ -1,19 +1,17 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CheckCircle, ShieldCheck } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShieldCheck } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
 
 export default function CheckoutPage() {
-  const { cart, clearCart } = useShop();
-  const [submitted, setSubmitted] = useState(false);
+  const { cart } = useShop();
+  const navigate = useNavigate();
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitted(true);
-    clearCart();
+    navigate('/payment');
   };
 
   return (
@@ -82,10 +80,11 @@ export default function CheckoutPage() {
                     <img src={item.image} alt={item.name} className="h-20 w-20 rounded-[20px] object-cover" />
                     <div>
                       <p className="font-semibold text-white">{item.name}</p>
-                      <p className="text-sm text-slate-400">{item.quantity} × ${item.price}</p>
+                      <p className="text-sm text-slate-400">{item.quantity} × ${item.price + (item.lensSelection?.additionalPrice ?? 0)}</p>
                       <p className="mt-3 text-sm text-slate-300">{item.category}</p>
+                      {item.lensSelection ? <p className="mt-2 text-xs text-cyan-200">{item.lensSelection.type} · Prescription attached</p> : null}
                     </div>
-                    <span className="self-center justify-self-end text-lg font-semibold text-white">${item.price * item.quantity}</span>
+                    <span className="self-center justify-self-end text-lg font-semibold text-white">${(item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity}</span>
                   </div>
                 ))}
               </div>
@@ -114,13 +113,6 @@ export default function CheckoutPage() {
                 </div>
               </div>
               <button type="submit" form="checkout-form" className="mt-4 w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-4 text-sm font-semibold text-white transition hover:brightness-110">Confirm & pay</button>
-              {submitted ? (
-                <div className="mt-6 rounded-[20px] border border-emerald-400/20 bg-emerald-400/10 p-5 text-center text-emerald-200">
-                  <CheckCircle className="mx-auto h-8 w-8" />
-                  <p className="mt-3 font-semibold">Order confirmed</p>
-                  <p className="text-sm text-slate-300">Your purchase has been completed successfully.</p>
-                </div>
-              ) : null}
             </div>
           </div>
         )}

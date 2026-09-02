@@ -53,3 +53,30 @@ export interface NavItem {
   label: string;
   path: string;
 }
+
+export interface PrescriptionEye {
+  sph: string;
+  cyl: string;
+  axis: string;
+  add: string;
+  pd?: string;
+  prism?: string;
+  base?: string;
+}
+
+export interface Prescription {
+  rightEye: PrescriptionEye;
+  leftEye: PrescriptionEye;
+  pd: string;
+  rightPd?: string;
+  leftPd?: string;
+  patientName?: string;
+  prescriptionDate?: string;
+}
+
+export interface LensSelection {
+  type: string;
+  material: string;
+  coatings: string[];
+  additionalPrice: number;
+}

@@ -1,12 +1,13 @@
 import { ArrowRight, MessageCircle, Send, Globe2, MapPin, Smartphone, CreditCard, Truck, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import BrandLogo from '../ui/BrandLogo';
 
 export default function Footer() {
   return (
     <footer className="border-t border-white/10 bg-[#03050c] text-slate-300">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
         <div>
-          <p className="text-lg font-semibold tracking-[0.24em] text-white">DREAM SPEX</p>
+          <BrandLogo />
           <p className="mt-4 text-sm leading-7 text-slate-400">Crafted for modern connoisseurs who value clarity, craftsmanship, and cinematic luxury.</p>
           <div className="mt-6 rounded-[20px] border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
             <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-cyan-400" /> Store locator: Dubai, London, New York</div>

@@ -23,6 +23,7 @@ import WhatsAppSupport from './components/ui/WhatsAppSupport';
 import { AfterSalesPage, OrderConfirmationPage, OrderTrackingPage, PaymentPage } from './pages/CustomerFlowPages';
 import VirtualTryOnPage from './pages/VirtualTryOnPage';
 import PrescriptionPage from './pages/PrescriptionPage';
+import AuthPage from './pages/AuthPage';
 
 function App() {
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -83,9 +84,9 @@ function App() {
             <Route path="/terms" element={<OtherPages />} />
             <Route path="/shipping-policy" element={<OtherPages />} />
             <Route path="/return-policy" element={<OtherPages />} />
-            <Route path="/login" element={<OtherPages />} />
-            <Route path="/register" element={<OtherPages />} />
-            <Route path="/forgot-password" element={<OtherPages />} />
+            <Route path="/login" element={<AuthPage mode="login" />} />
+            <Route path="/register" element={<AuthPage mode="register" />} />
+            <Route path="/forgot-password" element={<AuthPage mode="forgot" />} />
             <Route path="/wishlist" element={<OtherPages />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />

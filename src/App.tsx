@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUp } from 'lucide-react';
@@ -9,6 +9,7 @@ import ShopPage from './pages/ShopPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CategoriesPage from './pages/CategoriesPage';
 import MembershipPage from './pages/MembershipPage';
+import MembershipCheckoutPage from './pages/MembershipCheckoutPage';
 import OffersPage from './pages/OffersPage';
 import ReferralPage from './pages/ReferralPage';
 import FranchisePage from './pages/FranchisePage';
@@ -19,11 +20,29 @@ import CheckoutPage from './pages/CheckoutPage';
 import CartPage from './pages/CartPage';
 import OtherPages from './pages/OtherPages';
 import ScrollProgressBar from './components/ui/ScrollProgressBar';
+import ScrollToTop from './components/ui/ScrollToTop';
 import WhatsAppSupport from './components/ui/WhatsAppSupport';
 import { AfterSalesPage, OrderConfirmationPage, OrderTrackingPage, PaymentPage } from './pages/CustomerFlowPages';
 import VirtualTryOnPage from './pages/VirtualTryOnPage';
 import PrescriptionPage from './pages/PrescriptionPage';
 import AuthPage from './pages/AuthPage';
+import { useAuth } from './context/useAuth';
+import { AccountPage, DashboardPage, OrdersPage, WalletPage, WishlistPage } from './pages/AccountPages';
+
+function RootEntry() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <HomePage /> : <AuthPage mode="login" />;
+}
+
+function LoginEntry() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <Navigate to="/" replace /> : <AuthPage mode="login" />;
+}
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
 
 function App() {
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -47,6 +66,7 @@ function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <div className="relative">
           <AnimatePresence>{loading ? <LuxuryLoader /> : null}</AnimatePresence>
           <ScrollProgressBar />
@@ -66,13 +86,14 @@ function App() {
           </AnimatePresence>
           <WhatsAppSupport className="fixed bottom-20 right-6 z-[120] shadow-lg shadow-green-500/20" />
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<RootEntry />} />
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/products" element={<ShopPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/membership" element={<MembershipPage />} />
+            <Route path="/membership/checkout" element={<MembershipCheckoutPage />} />
             <Route path="/offers" element={<OffersPage />} />
             <Route path="/referral" element={<ReferralPage />} />
             <Route path="/franchise" element={<FranchisePage />} />
@@ -84,10 +105,9 @@ function App() {
             <Route path="/terms" element={<OtherPages />} />
             <Route path="/shipping-policy" element={<OtherPages />} />
             <Route path="/return-policy" element={<OtherPages />} />
-            <Route path="/login" element={<AuthPage mode="login" />} />
+            <Route path="/login" element={<LoginEntry />} />
             <Route path="/register" element={<AuthPage mode="register" />} />
             <Route path="/forgot-password" element={<AuthPage mode="forgot" />} />
-            <Route path="/wishlist" element={<OtherPages />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/payment" element={<PaymentPage />} />
@@ -98,9 +118,13 @@ function App() {
             <Route path="/order-tracking" element={<OrderTrackingPage />} />
             <Route path="/orders/:id" element={<OrderTrackingPage />} />
             <Route path="/after-sales" element={<AfterSalesPage />} />
-            <Route path="/orders" element={<OrderTrackingPage />} />
-            <Route path="/my-orders" element={<OtherPages />} />
-            <Route path="/profile" element={<OtherPages />} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+            <Route path="/wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+            <Route path="/my-orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+            <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+            <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
             <Route path="*" element={<OtherPages />} />
           </Routes>
         </div>

@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { LensSelection, Prescription, Product } from '../types';
+import { calculateCoupon, findCoupon, type CouponResult } from '../services/couponService';
 
 export type CartItem = Product & { quantity: number; configuredId?: string; prescription?: Prescription; lensSelection?: LensSelection };
 
@@ -16,6 +17,12 @@ type ShopContextValue = {
   removeFromCart: (productId: number) => void;
   updateQuantity: (productId: number, quantity: number) => void;
   clearCart: () => void;
+  appliedCoupon: CouponResult | null;
+  applyCoupon: (code: string) => CouponResult | null;
+  removeCoupon: () => void;
+  subtotal: number;
+  discount: number;
+  total: number;
 };
 
 const ShopContext = createContext<ShopContextValue | undefined>(undefined);
@@ -35,6 +42,19 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       return [];
     }
   });
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(() => {
+    try {
+      const savedCode = localStorage.getItem('dream-spex-coupon');
+      return savedCode ? calculateCoupon(savedCode, 0) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const subtotal = cart.reduce((sum, item) => sum + (item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity, 0);
+  const recalculatedCoupon = appliedCoupon ? calculateCoupon(appliedCoupon.code, subtotal) : null;
+  const discount = recalculatedCoupon?.discountAmount ?? 0;
+  const total = subtotal - discount;
 
   useEffect(() => {
     localStorage.setItem('dream-spex-wishlist', JSON.stringify(wishlist));
@@ -43,6 +63,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('dream-spex-cart', JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    if (appliedCoupon) localStorage.setItem('dream-spex-coupon', appliedCoupon.code);
+    else localStorage.removeItem('dream-spex-coupon');
+  }, [appliedCoupon]);
 
   const toggleWishlist = (product: Product) => {
     setWishlist((current) => {
@@ -90,6 +115,12 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   };
 
   const clearCart = () => setCart([]);
+  const applyCoupon = useCallback((code: string) => {
+    const result = findCoupon(code) ? calculateCoupon(code, subtotal) : null;
+    if (result) setAppliedCoupon(result);
+    return result;
+  }, [subtotal]);
+  const removeCoupon = () => setAppliedCoupon(null);
 
   const value = useMemo<ShopContextValue>(
     () => ({
@@ -104,8 +135,14 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       removeFromCart,
       updateQuantity,
       clearCart,
+      appliedCoupon: recalculatedCoupon,
+      applyCoupon,
+      removeCoupon,
+      subtotal,
+      discount,
+      total,
     }),
-    [wishlist, cart]
+    [wishlist, cart, recalculatedCoupon, subtotal, discount, total, applyCoupon]
   );
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

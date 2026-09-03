@@ -1,12 +1,12 @@
 import type { Category, Coupon, MembershipPlan, Product, Review } from '../types';
 
 export const categories: Category[] = [
-  { id: 1, name: 'Frames', slug: 'frames', image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=80', description: 'Timeless silhouettes for every moment.' },
-  { id: 2, name: 'Sunglasses', slug: 'sunglasses', image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=900&q=80', description: 'Luxury tint and sculpted comfort.' },
-  { id: 3, name: 'UV Glasses', slug: 'uv-glasses', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=80', description: 'High clarity for daily protection.' },
-  { id: 4, name: 'Contact Lenses', slug: 'contact-lenses', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80', description: 'Precision lenses with all-day comfort.' },
-  { id: 5, name: 'Kids Collection', slug: 'kids-collection', image: 'https://images.unsplash.com/photo-1487412912498-0447578fcca8?auto=format&fit=crop&w=900&q=80', description: 'Playful yet polished eyewear.' },
-  { id: 6, name: 'Computer Glasses', slug: 'computer-glasses', image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=900&q=80', description: 'Blue light protection with style.' },
+  { id: 1, name: 'Frames', slug: 'frames', image: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=900&q=90', description: 'Timeless silhouettes for every moment.' },
+  { id: 2, name: 'Sunglasses', slug: 'sunglasses', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=90', description: 'Luxury tint and sculpted comfort.' },
+  { id: 3, name: 'UV Glasses', slug: 'uv-glasses', image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=900&q=90', description: 'High clarity for daily protection.' },
+  { id: 4, name: 'Contact Lenses', slug: 'contact-lenses', image: 'https://images.unsplash.com/photo-1616422285623-13ff0162193c?auto=format&fit=crop&w=900&q=90', description: 'Precision lenses with all-day comfort.' },
+  { id: 5, name: 'Kids Collection', slug: 'kids-collection', image: 'https://images.unsplash.com/photo-1582142407894-ec85a126f7d3?auto=format&fit=crop&w=900&q=90', description: 'Playful yet polished eyewear.' },
+  { id: 6, name: 'Computer Glasses', slug: 'computer-glasses', image: 'https://images.unsplash.com/photo-1556306535-38febf6782e7?auto=format&fit=crop&w=900&q=90', description: 'Blue light protection with style.' },
 ];
 
 export const products: Product[] = [
@@ -16,7 +16,7 @@ export const products: Product[] = [
     category: 'Frames',
     price: 189,
     oldPrice: 240,
-    image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=900&q=90',
     badge: 'New',
     rating: 4.8,
     reviews: 124,
@@ -33,7 +33,7 @@ export const products: Product[] = [
     category: 'Sunglasses',
     price: 289,
     oldPrice: 340,
-    image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=90',
     badge: 'Bestseller',
     rating: 4.9,
     reviews: 312,
@@ -50,7 +50,7 @@ export const products: Product[] = [
     category: 'Computer Glasses',
     price: 159,
     oldPrice: 199,
-    image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1556306535-38febf6782e7?auto=format&fit=crop&w=900&q=90',
     badge: '20% Off',
     rating: 4.7,
     reviews: 88,
@@ -67,7 +67,7 @@ export const products: Product[] = [
     category: 'Luxury Collection',
     price: 349,
     oldPrice: 420,
-    image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=80',
+    image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=900&q=90',
     badge: 'Limited',
     rating: 5,
     reviews: 56,

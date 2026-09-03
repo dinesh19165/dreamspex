@@ -3,8 +3,11 @@ import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import Button from '../components/ui/Button';
 import { membershipPlans } from '../data/mockData';
+import { useNavigate } from 'react-router-dom';
 
 export default function MembershipPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-[#050816] text-slate-100">
       <Navbar />
@@ -19,7 +22,7 @@ export default function MembershipPage() {
               <ul className="mt-6 space-y-3 text-sm text-slate-300">
                 {plan.perks.map((perk) => <li key={perk}>{perk}</li>)}
               </ul>
-              <Button fullWidth className="mt-8">Join {plan.name}</Button>
+              <Button fullWidth className="mt-8" onClick={() => navigate(`/membership/checkout?plan=${plan.name.toLowerCase()}`)}>Join {plan.name}</Button>
             </div>
           ))}
         </div>

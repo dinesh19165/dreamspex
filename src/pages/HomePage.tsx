@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { useForm } from 'react-hook-form';
 import { ArrowRight, BadgeCheck, Camera, FileText, Glasses, Sparkles, ShieldCheck, Truck, Zap, Play, Pause, Volume2, VolumeX, Crown, Gem, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade } from 'swiper/modules';
 import 'swiper/css';
@@ -22,9 +22,9 @@ import { HERO_VIDEO_URL, HERO_IMAGE_URL, HERO_MOBILE_IMAGE_URL } from '../config
 type NewsletterForm = { email: string };
 
 const featureSlides = [
-  { title: 'Auric Titanium', subtitle: 'Sculptural precision', image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1000&q=80' },
-  { title: 'Solar Noir', subtitle: 'Luxury sunwear', image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=1000&q=80' },
-  { title: 'Lumen Lens', subtitle: 'Modern clarity', image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1000&q=80' },
+  { title: 'Auric Titanium', subtitle: 'Sculptural precision', image: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=1000&q=90' },
+  { title: 'Solar Noir', subtitle: 'Luxury sunwear', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=1000&q=90' },
+  { title: 'Lumen Lens', subtitle: 'Modern clarity', image: 'https://images.unsplash.com/photo-1556306535-38febf6782e7?auto=format&fit=crop&w=1000&q=90' },
 ];
 
 const blogPosts = [
@@ -35,10 +35,10 @@ const blogPosts = [
 const brandNames = ['Ray-Ban', 'Oakley', 'Tom Ford', 'Prada', 'Gucci', 'Cartier', 'Titan Eye+'];
 
 const storySections = [
-  { title: 'Handcrafted Frames', copy: 'Every silhouette is hand-finished to balance precision, comfort, and sculptural elegance.', image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80' },
-  { title: 'Premium Materials', copy: 'Titanium, acetates, and carbon-composite construction create lightweight luxury for daily wear.', image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=1200&q=80' },
-  { title: 'Blue Light Protection', copy: 'Advanced lens technology reduces screen strain without compromising clarity or style.', image: 'https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1200&q=80' },
-  { title: 'UV400 Technology', copy: 'All-day sun protection and visual comfort designed for modern lifestyles.', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=1200&q=80' },
+  { title: 'Handcrafted Frames', copy: 'Every silhouette is hand-finished to balance precision, comfort, and sculptural elegance.', image: 'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=1200&q=90' },
+  { title: 'Premium Materials', copy: 'Titanium, acetates, and carbon-composite construction create lightweight luxury for daily wear.', image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=1200&q=90' },
+  { title: 'Blue Light Protection', copy: 'Advanced lens technology reduces screen strain without compromising clarity or style.', image: 'https://images.unsplash.com/photo-1556306535-38febf6782e7?auto=format&fit=crop&w=1200&q=90' },
+  { title: 'UV400 Technology', copy: 'All-day sun protection and visual comfort designed for modern lifestyles.', image: 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=1200&q=90' },
 ];
 
 
@@ -48,15 +48,16 @@ const testimonials = [
 ];
 
 const instagramImages = [
-  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1487412912498-0447578fcca8?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=900&q=90',
+  'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=900&q=90',
+  'https://images.unsplash.com/photo-1556306535-38febf6782e7?auto=format&fit=crop&w=900&q=90',
+  'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=900&q=90',
+  'https://images.unsplash.com/photo-1591076482161-42ce6da69f67?auto=format&fit=crop&w=900&q=90',
+  'https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=900&q=90',
 ];
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<NewsletterForm>();
   const [submitted, setSubmitted] = useState(false);
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
@@ -264,7 +265,7 @@ export default function HomePage() {
 
             <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7 }} className="relative z-10">
               <motion.div onMouseMove={handleParallax} onMouseLeave={() => setParallax({ x: 0, y: 0 })} animate={{ y: [0, -8, 0], rotate: [0, -1, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} className="overflow-hidden rounded-[32px] border border-white/10 bg-white/10 p-4 shadow-[0_25px_100px_-30px_rgba(0,212,255,0.45)] backdrop-blur-xl" style={{ transform: `translate3d(${parallax.x}px, ${parallax.y}px, 0)` }}>
-                <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80" alt="Premium eyewear editorial" className="h-[min(500px,60vh)] w-full rounded-[24px] object-cover" />
+                <img src="https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=1200&q=90" alt="Premium eyewear editorial" className="h-[min(500px,60vh)] w-full rounded-[24px] object-cover" />
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[20px] border border-white/10 bg-slate-950/70 p-4">
                     <p className="text-xs uppercase tracking-[0.32em] text-cyan-300">Signature</p>
@@ -410,7 +411,7 @@ export default function HomePage() {
                 <ul className="mt-6 space-y-3 text-sm text-slate-300">
                   {plan.perks.map((perk) => <li key={perk} className="flex gap-2"><BadgeCheck className="h-4 w-4 text-cyan-400" /> {perk}</li>)}
                 </ul>
-                <Button fullWidth className="mt-8">Join {plan.name}</Button>
+                <Button fullWidth className="mt-8" onClick={() => navigate(`/membership/checkout?plan=${plan.name.toLowerCase()}`)}>Join {plan.name}</Button>
               </motion.article>
             ))}
             </div>
@@ -447,7 +448,7 @@ export default function HomePage() {
                   <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Crafted detail</p>
                   <h3 className="mt-3 text-2xl font-semibold text-white">{section.title}</h3>
                   <p className="mt-4 text-base leading-8 text-slate-400">{section.copy}</p>
-                  <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-cyan-300">Explore innovation <ArrowRight className="h-4 w-4" /></div>
+                  <Link to="/services" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-cyan-300">Explore innovation <ArrowRight className="h-4 w-4" /></Link>
                 </div>
                 <img src={section.image} alt={section.title} loading="lazy" className="h-72 w-full object-cover lg:h-full" />
               </motion.div>
@@ -482,7 +483,7 @@ export default function HomePage() {
           <div className="mt-10 columns-1 gap-4 sm:columns-2 lg:columns-3">
             {instagramImages.map((image, index) => (
               <motion.div key={`${image}-${index}`} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-4 overflow-hidden rounded-[24px] border border-white/10 bg-white/5">
-                <img src={image} alt={`Luxury lifestyle ${index + 1}`} loading="lazy" className="w-full object-cover transition duration-500 hover:scale-105" />
+                <img src={image} alt={`Dream Spex eyewear ${index + 1}`} loading="lazy" className="w-full object-cover transition duration-500 hover:scale-105" />
               </motion.div>
             ))}
           </div>

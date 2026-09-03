@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ShoppingCart, Trash2 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
@@ -6,8 +7,11 @@ import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity } = useShop();
-  const subtotal = cart.reduce((sum, item) => sum + (item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity, 0);
+  const { cart, removeFromCart, updateQuantity, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total } = useShop();
+  const [couponCode, setCouponCode] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const handleApplyCoupon = async () => { setCouponLoading(true); setCouponError(''); await new Promise((resolve) => window.setTimeout(resolve, 350)); if (!applyCoupon(couponCode)) setCouponError('Invalid coupon code.'); setCouponLoading(false); };
 
   return (
     <div className="min-h-screen bg-[#050816] text-slate-100">
@@ -68,6 +72,14 @@ export default function CartPage() {
                   <p className="text-sm text-slate-400">Subtotal</p>
                   <p className="mt-2 text-lg font-semibold text-white">${subtotal}</p>
                 </div>
+                <div className="rounded-[20px] border border-white/10 bg-white/10 p-4">
+                  <label htmlFor="cart-coupon" className="text-sm text-slate-300">Have a coupon code?</label>
+                  <div className="mt-3 flex gap-2"><input id="cart-coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Enter coupon code" className="min-w-0 flex-1 rounded-full border border-white/10 bg-[#050816] px-4 py-3 text-sm text-white outline-none" /><button type="button" disabled={couponLoading || !couponCode.trim()} onClick={handleApplyCoupon} className="rounded-full bg-[#7CBF00] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{couponLoading ? 'Applying...' : 'Apply'}</button></div>
+                  {couponError ? <p className="mt-2 text-xs text-rose-300" role="alert">{couponError}</p> : null}
+                  {appliedCoupon ? <div className="mt-3 flex items-center justify-between gap-3 text-xs text-cyan-200"><span>✓ Coupon {appliedCoupon.code} applied · You saved ${discount}</span><button type="button" onClick={removeCoupon} className="text-cyan-300 underline">Remove</button></div> : null}
+                </div>
+                {appliedCoupon ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon.code} ({appliedCoupon.discountPercent}% OFF)</span><span>-${discount}</span></div> : null}
+                <div className="flex items-center justify-between border-t border-white/10 pt-4 text-base font-semibold text-white"><span>Total</span><span>${total}</span></div>
                 <div className="grid gap-3 rounded-[20px] border border-white/10 bg-white/10 p-4">
                   <label className="text-sm text-slate-300">
                     <span className="block text-xs uppercase tracking-[0.3em] text-slate-400">Shipping option</span>

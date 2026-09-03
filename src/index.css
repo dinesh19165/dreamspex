@@ -35,6 +35,40 @@
 .bg-slate-50 { background-color: var(--bg-primary) !important; }
 .text-slate-800 { color: var(--text-primary) !important; }
 
+:root[data-theme='light'] {
+  --bg-primary: #f4f7f1;
+  --bg-secondary: #e9eee4;
+  --bg-card: #ffffff;
+  --text-primary: #172015;
+  --text-secondary: #5f6b62;
+  --border-subtle: rgba(20, 42, 20, 0.14);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+:root[data-theme='light'] body { background: var(--bg-primary); color: var(--text-primary); }
+:root[data-theme='light'] .text-white, :root[data-theme='light'] .text-slate-100, :root[data-theme='light'] .text-slate-200 { color: #172015 !important; }
+:root[data-theme='light'] .text-slate-300, :root[data-theme='light'] .text-slate-400 { color: #5f6b62 !important; }
+:root[data-theme='light'] .text-slate-500, :root[data-theme='light'] .text-slate-600 { color: #738078 !important; }
+:root[data-theme='light'] [class~="bg-[#050816]"], :root[data-theme='light'] [class~="bg-[#060b17]"], :root[data-theme='light'] [class~="bg-[#07101f]/95"] { background-color: #f4f7f1 !important; }
+:root[data-theme='light'] [class~="bg-[#0B0D18]"], :root[data-theme='light'] [class~="bg-[#0b0d18]"], :root[data-theme='light'] [class~="bg-[#151823]"], :root[data-theme='light'] [class~="bg-[#1B1F2B]"] { background-color: #ffffff !important; }
+:root[data-theme='light'] [class~="bg-white/5"], :root[data-theme='light'] [class~="bg-white/10"], :root[data-theme='light'] [class~="bg-white/15"] { background-color: rgba(255,255,255,.72) !important; }
+:root[data-theme='light'] [class~="bg-slate-950/50"], :root[data-theme='light'] [class~="bg-slate-950/60"], :root[data-theme='light'] [class~="bg-slate-950/70"] { background-color: #eef3ea !important; }
+:root[data-theme='light'] [class~="border-white/10"] { border-color: rgba(20,42,20,.14) !important; }
+:root[data-theme='light'] input, :root[data-theme='light'] textarea, :root[data-theme='light'] select { color: #172015 !important; }
+:root[data-theme='light'] input::placeholder, :root[data-theme='light'] textarea::placeholder { color: #8a958d !important; }
+:root[data-theme='light'] .glass-panel { background: rgba(255,255,255,.72); }
+:root[data-theme='light'] [class*="bg-[#03050c]"], :root[data-theme='light'] [class*="bg-[#060b17]"], :root[data-theme='light'] [class*="bg-[#07101f]"], :root[data-theme='light'] [class*="bg-[#0f1b37]"], :root[data-theme='light'] [class*="bg-[#051024]"], :root[data-theme='light'] [class*="bg-[#081127]"], :root[data-theme='light'] [class*="bg-[#081228]"], :root[data-theme='light'] [class*="bg-[#0a1022]"], :root[data-theme='light'] [class*="bg-[#17300d]"] { background-color: #ffffff !important; }
+:root[data-theme='light'] [class*="bg-[#050816]"], :root[data-theme='light'] [class*="bg-[#0B0D18]"], :root[data-theme='light'] [class*="bg-[#0b0d18]"], :root[data-theme='light'] [class*="bg-[#151823]"], :root[data-theme='light'] [class*="bg-[#1B1F2B]"] { background-color: #ffffff !important; }
+:root[data-theme='light'] [class*="bg-slate-950"], :root[data-theme='light'] [class*="bg-slate-900"], :root[data-theme='light'] [class*="bg-slate-800"] { background-color: #eef3ea !important; }
+:root[data-theme='light'] [class*="bg-black"] { background-color: rgba(30,36,27,.12) !important; }
+:root[data-theme='light'] [class*="from-[#"], :root[data-theme='light'] [class*="to-[#"] { --tw-gradient-from: #ffffff !important; --tw-gradient-to: #eef3ea !important; }
+:root[data-theme='light'] [class*="shadow-black"] { --tw-shadow-color: rgba(27,45,24,.14) !important; }
+:root[data-theme='light'] [class*="border-white"] { border-color: rgba(20,42,20,.14) !important; }
+:root[data-theme='light'] [class*="text-white"], :root[data-theme='light'] [class*="text-slate-"] { color: #172015 !important; }
+:root[data-theme='light'] [class*="bg-[#7CBF00]"].text-white, :root[data-theme='light'] [class*="bg-cyan-500"].text-white, :root[data-theme='light'] [class*="from-cyan-400"].text-white { color: #ffffff !important; }
+:root[data-theme='light'] .luxury-loader, :root[data-theme='light'] [class*="bg-[#03050c]"] { color: #172015; }
+
 html {
   scroll-behavior: smooth;
 }

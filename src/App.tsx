@@ -30,8 +30,7 @@ import { useAuth } from './context/useAuth';
 import { AccountPage, DashboardPage, OrdersPage, WalletPage, WishlistPage } from './pages/AccountPages';
 
 function RootEntry() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <HomePage /> : <AuthPage mode="login" />;
+  return <HomePage />;
 }
 
 function LoginEntry() {

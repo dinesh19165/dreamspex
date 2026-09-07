@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Filter, FileText, SlidersHorizontal, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
@@ -13,15 +13,18 @@ const PAGE_SIZE = 3;
 
 export default function ShopPage() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const prescriptionNotice = (location.state as { prescriptionNotice?: boolean } | null)?.prescriptionNotice;
-  const [query, setQuery] = useState('');
+  const categoryFilter = searchParams.get('category') ?? '';
+  const shapeFilter = searchParams.get('shape') ?? '';
+  const [query, setQuery] = useState(categoryFilter || shapeFilter);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
 
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
-    return products.filter((product) => `${product.name} ${product.category} ${product.description}`.toLowerCase().includes(q));
+    return products.filter((product) => `${product.name} ${product.category} ${product.description} ${product.material} ${product.colors.join(' ')}`.toLowerCase().includes(q));
   }, [query]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));

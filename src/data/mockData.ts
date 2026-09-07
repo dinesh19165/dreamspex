@@ -7,6 +7,8 @@ export const categories: Category[] = [
   { id: 4, name: 'Contact Lenses', slug: 'contact-lenses', image: 'https://images.unsplash.com/photo-1616422285623-13ff0162193c?auto=format&fit=crop&w=900&q=90', description: 'Precision lenses with all-day comfort.' },
   { id: 5, name: 'Kids Collection', slug: 'kids-collection', image: 'https://images.unsplash.com/photo-1582142407894-ec85a126f7d3?auto=format&fit=crop&w=900&q=90', description: 'Playful yet polished eyewear.' },
   { id: 6, name: 'Computer Glasses', slug: 'computer-glasses', image: 'https://images.unsplash.com/photo-1556306535-38febf6782e7?auto=format&fit=crop&w=900&q=90', description: 'Blue light protection with style.' },
+  { id: 7, name: 'Blue Light Glasses', slug: 'blue-light-glasses', image: 'https://images.unsplash.com/photo-1574258495973-f010dfbb6c8b?auto=format&fit=crop&w=900&q=90', description: 'Screen-friendly clarity for focused days.' },
+  { id: 8, name: 'Reading Glasses', slug: 'reading-glasses', image: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=90', description: 'Easy, elegant clarity for close-up moments.' },
 ];
 
 export const products: Product[] = [

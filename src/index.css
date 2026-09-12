@@ -14,6 +14,8 @@
   --text-primary: #ffffff;
   --text-secondary: #94a3b8;
   --border-subtle: rgba(255, 255, 255, 0.1);
+  --text-on-dark: #f8fafc;
+  --text-on-dark-muted: #cbd5e1;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -42,6 +44,8 @@
   --text-primary: #172015;
   --text-secondary: #5f6b62;
   --border-subtle: rgba(20, 42, 20, 0.14);
+  --text-on-dark: #f8fafc;
+  --text-on-dark-muted: #cbd5e1;
   color: var(--text-primary);
   background-color: var(--bg-primary);
 }
@@ -65,9 +69,44 @@
 :root[data-theme='light'] [class*="from-[#"], :root[data-theme='light'] [class*="to-[#"] { --tw-gradient-from: #ffffff !important; --tw-gradient-to: #eef3ea !important; }
 :root[data-theme='light'] [class*="shadow-black"] { --tw-shadow-color: rgba(27,45,24,.14) !important; }
 :root[data-theme='light'] [class*="border-white"] { border-color: rgba(20,42,20,.14) !important; }
-:root[data-theme='light'] [class*="text-white"], :root[data-theme='light'] [class*="text-slate-"] { color: #172015 !important; }
 :root[data-theme='light'] [class*="bg-[#7CBF00]"].text-white, :root[data-theme='light'] [class*="bg-cyan-500"].text-white, :root[data-theme='light'] [class*="from-cyan-400"].text-white { color: #ffffff !important; }
 :root[data-theme='light'] .luxury-loader, :root[data-theme='light'] [class*="bg-[#03050c]"] { color: #172015; }
+
+/* Intentional dark bands keep their own light foreground in both themes. */
+.dark-surface { color: var(--text-on-dark); }
+.dark-surface .text-white,
+.dark-surface .text-slate-100,
+.dark-surface .text-slate-200 { color: var(--text-on-dark) !important; }
+.dark-surface .text-slate-300,
+.dark-surface .text-slate-400,
+.dark-surface .text-slate-500 { color: var(--text-on-dark-muted) !important; }
+
+/* Keep legacy dark bands compatible while their markup is progressively migrated. */
+:root[data-theme='light'] [class*="bg-[#182218]"],
+:root[data-theme='light'] [class*="bg-[#03050c]"] {
+  color: var(--text-on-dark);
+}
+
+:root[data-theme='light'] .dark-surface[class*="bg-[#03050c]"] {
+  background-color: #03050c !important;
+}
+
+:root[data-theme='light'] [class*="bg-[#182218]"].text-white,
+:root[data-theme='light'] [class*="bg-[#03050c]"].text-slate-300,
+:root[data-theme='light'] [class*="bg-[#03050c]"] .text-white,
+:root[data-theme='light'] [class*="bg-[#03050c]"] .text-slate-300,
+:root[data-theme='light'] [class*="bg-[#03050c]"] .text-slate-400 {
+  color: var(--text-on-dark) !important;
+}
+
+:root[data-theme='light'] [class*="bg-[#182218]"] .text-slate-300,
+:root[data-theme='light'] [class*="bg-[#182218]"] .text-slate-400,
+:root[data-theme='light'] [class*="bg-[#182218]"] .text-slate-500,
+:root[data-theme='light'] [class*="bg-[#182218]"] .text-white\/50,
+:root[data-theme='light'] [class*="bg-[#182218]"] .text-white\/60,
+:root[data-theme='light'] [class*="bg-[#182218]"] .text-white\/65 {
+  color: var(--text-on-dark-muted) !important;
+}
 
 html {
   scroll-behavior: smooth;

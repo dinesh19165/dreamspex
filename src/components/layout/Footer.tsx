@@ -4,7 +4,7 @@ import BrandLogo from '../ui/BrandLogo';
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-[#03050c] text-slate-300">
+    <footer className="dark-surface border-t border-white/10 bg-[#03050c] text-slate-300">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
         <div>
           <BrandLogo />
@@ -41,15 +41,15 @@ export default function Footer() {
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-white">Stay inspired</h3>
           <div className="mt-4 flex gap-3">
-            {[MessageCircle, Send, Globe2].map((Icon, index) => (
-              <a key={index} href="#" className="rounded-full border border-white/10 bg-white/5 p-2.5 transition hover:border-cyan-400 hover:text-cyan-400">
+            {[['https://wa.me/9949735181', MessageCircle], ['mailto:hello@dreamspex.com', Send], ['/about', Globe2]].map(([href, Icon]) => (
+              <a key={href as string} href={href as string} target={(href as string).startsWith('http') ? '_blank' : undefined} rel={(href as string).startsWith('http') ? 'noreferrer noopener' : undefined} className="rounded-full border border-white/10 bg-white/5 p-2.5 transition hover:border-cyan-400 hover:text-cyan-400">
                 <Icon className="h-4 w-4" />
               </a>
             ))}
           </div>
-          <a href="#" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-white">
+          <Link to="/contact" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-white">
             Join newsletter <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
           <div className="mt-6 text-sm text-slate-400">Download app • Payment methods • Shipping partners</div>
         </div>
       </div>

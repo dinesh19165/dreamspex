@@ -10,13 +10,13 @@ import BrandLogo from '../ui/BrandLogo';
 import { products } from '../../data/mockData';
 
 const navItems = [
-  { label: 'Shop', path: '/shop' },
-  { label: 'Virtual Try-On', path: '/virtual-try-on' },
-  { label: 'Categories', path: '/categories' },
-  { label: 'Membership', path: '/membership' },
+  { label: 'Eyeglasses', path: '/shop?category=frames' },
+  { label: 'Sunglasses', path: '/shop?category=sunglasses' },
+  { label: 'Blue Light', path: '/shop?category=blue-light-glasses' },
+  { label: 'Kids', path: '/shop?category=kids-collection' },
+  { label: 'Collections', path: '/categories' },
   { label: 'Offers', path: '/offers' },
-  { label: 'About', path: '/about' },
-  { label: 'Contact', path: '/contact' },
+  { label: 'Services', path: '/services' },
 ];
 
 export default function Navbar() {
@@ -39,6 +39,12 @@ export default function Navbar() {
   const openSearch = () => setSearchOpen(true);
   const closeSearch = () => { setSearchOpen(false); setSearchQuery(''); };
   const openProduct = (productId: number) => { closeSearch(); navigate(`/product/${productId}`); };
+  const submitSearch = () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+    closeSearch();
+    navigate(`/shop?search=${encodeURIComponent(query)}`);
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -64,11 +70,11 @@ export default function Navbar() {
 
   return (
     <>
-      <header className={`sticky top-0 z-50 border-b border-white/10 bg-[#0B0D18]/95 transition-all duration-300 ${scrolled ? 'backdrop-blur-2xl' : ''}`}>
+      <header className={`sticky top-0 z-50 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/95 transition-all duration-300 ${scrolled ? 'backdrop-blur-2xl' : ''}`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 lg:px-8">
           <BrandLogo compact />
 
-          <nav className="hidden items-center gap-6 text-sm font-medium text-slate-300 lg:flex">
+          <nav className="hidden items-center gap-5 text-sm font-medium text-[var(--text-secondary)] xl:flex">
             {navItems.map((item) => (
               <Link key={item.path} to={item.path} className="group relative transition hover:text-cyan-300">
                 {item.label}
@@ -77,25 +83,25 @@ export default function Navbar() {
             ))}
           </nav>
 
-          <div className="hidden flex-1 items-center justify-center lg:flex">
-            <button onClick={openSearch} className="flex w-full max-w-xl items-center justify-between rounded-full border border-white/10 bg-white/10 px-4 py-3 text-sm text-slate-300 shadow-inner shadow-black/20 backdrop-blur-xl">
+          <div className="hidden flex-1 items-center justify-center px-5 lg:flex xl:px-10">
+            <button onClick={openSearch} className="flex w-full max-w-xl items-center justify-between rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 py-3 text-sm text-[var(--text-secondary)] shadow-inner shadow-black/10">
               <span className="flex items-center gap-2"><Search className="h-4 w-4 text-slate-400" /> Search frames, styles, offers</span>
               <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">⌘ K</span>
             </button>
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={toggleTheme} className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
+            <button onClick={toggleTheme} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5 text-[var(--text-primary)] transition hover:border-cyan-400/50" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
               {theme === 'dark' ? <MoonStar className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>
-            <button onClick={openSearch} className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10 lg:hidden" aria-label="Search">
+            <button onClick={openSearch} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5 text-[var(--text-primary)] transition hover:border-cyan-400/50 lg:hidden" aria-label="Search">
               <Search className="h-4 w-4" />
             </button>
-            <Link to="/wishlist" className="relative rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10">
+            <Link to="/wishlist" className="relative rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5 text-[var(--text-primary)] transition hover:border-cyan-400/50">
               <Heart className="h-4 w-4" />
               <span className="absolute -right-1 -top-1 rounded-full bg-cyan-400 px-1.5 py-0.5 text-[10px] font-semibold text-slate-950">{wishlist.length}</span>
             </Link>
-            <Link to="/cart" className="relative rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10">
+            <Link to="/cart" className="relative rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5 text-[var(--text-primary)] transition hover:border-cyan-400/50">
               <ShoppingBag className="h-4 w-4" />
               <span className="absolute -right-1 -top-1 rounded-full bg-cyan-400 px-1.5 py-0.5 text-[10px] font-semibold text-slate-950">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
             </Link>
@@ -114,12 +120,12 @@ export default function Navbar() {
             <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="w-full max-w-2xl rounded-[28px] border border-white/10 bg-[#07101f]/95 p-6 shadow-2xl">
               <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/10 px-4 py-3">
                 <Search className="h-4 w-4 text-slate-400" />
-                <input autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && searchResults[0]) openProduct(searchResults[0].id); if (event.key === 'Escape') closeSearch(); }} className="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500" placeholder="Search your next frame" aria-label="Search products" />
+                <input autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') submitSearch(); if (event.key === 'Escape') closeSearch(); }} className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]" placeholder="Search your next frame" aria-label="Search products" />
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {searchResults.length ? searchResults.map((product) => (
                   <button type="button" key={product.id} onClick={() => openProduct(product.id)} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-slate-300 transition hover:border-cyan-400/40 hover:bg-white/10 hover:text-white">{product.name}<span className="mt-1 block text-xs text-slate-500">{product.category}</span></button>
-                )) : <p className="sm:col-span-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-center text-sm text-slate-400">No products found</p>}
+                )) : <div className="sm:col-span-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-center text-sm text-slate-400"><p>Sorry, we couldn't find that frame.</p><button type="button" onClick={submitSearch} className="mt-3 font-semibold text-cyan-300">Search the full collection</button></div>}
               </div>
               <button className="mt-6 text-sm font-semibold text-cyan-300" onClick={closeSearch}>Close search</button>
             </motion.div>

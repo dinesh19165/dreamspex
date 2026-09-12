@@ -17,14 +17,15 @@ export default function ShopPage() {
   const prescriptionNotice = (location.state as { prescriptionNotice?: boolean } | null)?.prescriptionNotice;
   const categoryFilter = searchParams.get('category') ?? '';
   const shapeFilter = searchParams.get('shape') ?? '';
-  const [query, setQuery] = useState(categoryFilter || shapeFilter);
+  const searchFilter = searchParams.get('search') ?? '';
+  const [query, setQuery] = useState(searchFilter || categoryFilter || shapeFilter);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
 
   const filteredProducts = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim().toLowerCase().replaceAll('-', ' ');
     if (!q) return products;
-    return products.filter((product) => `${product.name} ${product.category} ${product.description} ${product.material} ${product.colors.join(' ')}`.toLowerCase().includes(q));
+    return products.filter((product) => `${product.name} ${product.category} ${product.description} ${product.material} ${product.brand} ${product.colors.join(' ')}`.toLowerCase().replaceAll('-', ' ').includes(q));
   }, [query]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
@@ -71,7 +72,7 @@ export default function ShopPage() {
           <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="lg:sticky lg:top-24 self-start rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
             <h3 className="text-lg font-semibold text-white">Browse by category</h3>
             <ul className="mt-5 space-y-3 text-sm text-slate-400">
-              {categories.map((category) => <li key={category.id} className="rounded-full border border-white/10 bg-slate-950/50 px-4 py-2">{category.name}</li>)}
+              {categories.map((category) => <li key={category.id}><Link to={`/shop?category=${category.slug}`} onClick={() => { setQuery(category.slug); setPage(1); }} className="block rounded-full border border-white/10 bg-slate-950/50 px-4 py-2 transition hover:border-cyan-400/50 hover:text-cyan-300">{category.name}</Link></li>)}
             </ul>
             <div className="mt-6 rounded-[20px] border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-200">
               <p className="font-semibold">Priority access</p>
@@ -85,6 +86,7 @@ export default function ShopPage() {
                   <ProductCard product={product} />
                 </motion.div>
               ))}
+              {!pagedProducts.length ? <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-center md:col-span-2 xl:col-span-3"><p className="font-serif text-2xl text-[var(--text-primary)]">Sorry, we couldn't find that frame.</p><p className="mt-2 text-sm text-[var(--text-secondary)]">Try a popular category or browse our bestsellers.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><Link to="/shop" className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-[#172015]">View bestsellers</Link><Link to="/categories" className="rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold">Popular categories</Link></div></div> : null}
             </div>
 
             {cartQuantity > 0 && (

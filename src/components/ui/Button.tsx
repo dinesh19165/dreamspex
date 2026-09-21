@@ -34,9 +34,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({ vari
 
   const base = 'relative inline-flex items-center justify-center overflow-hidden rounded-full px-5 py-3 text-sm font-semibold transition duration-200';
   const variants = {
-    primary: 'bg-[#7CBF00] text-white shadow-lg shadow-black/20 hover:bg-[#3F7000]',
-    secondary: 'border border-[#7CBF00]/60 bg-[#7CBF00]/10 text-[#9ACD32] hover:bg-[#7CBF00]/20',
-    ghost: 'border border-white/10 bg-white/10 text-slate-200 hover:border-[#7CBF00]/50 hover:bg-white/15',
+    primary: 'bg-[var(--brand-green)] text-[#172015] shadow-lg shadow-black/20 hover:bg-[var(--brand-green-light)]',
+    secondary: 'border border-[var(--brand-green)]/60 bg-[var(--control-surface)] text-[var(--text-primary)] hover:bg-[var(--control-surface-hover)]',
+    ghost: 'border border-[var(--border-subtle)] bg-[var(--control-surface)] text-[var(--text-primary)] hover:border-[var(--brand-green)]/60 hover:bg-[var(--control-surface-hover)]',
   };
 
   return (

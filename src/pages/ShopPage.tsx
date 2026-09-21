@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Filter, FileText, SlidersHorizontal, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight } from 'lucide-react';
+import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
@@ -22,6 +22,11 @@ export default function ShopPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
 
+  useEffect(() => {
+    setQuery(searchFilter || categoryFilter || shapeFilter);
+    setPage(1);
+  }, [categoryFilter, searchFilter, shapeFilter]);
+
   const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase().replaceAll('-', ' ');
     if (!q) return products;
@@ -42,10 +47,7 @@ export default function ShopPage() {
       <main className="mx-auto max-w-7xl px-4 py-16 pb-32 sm:px-6 lg:px-8 lg:pb-16">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <SectionTitle eyebrow="Shop" title="Discover refined eyewear" description="Handpicked frames, lenses, and accessories crafted for modern living." />
-          <div className="flex flex-wrap gap-3">
-            <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200"><SlidersHorizontal className="h-4 w-4" /> Filters</button>
-            <button className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200"><Filter className="h-4 w-4" /> Categories</button>
-          </div>
+          <p className="text-sm text-[var(--text-secondary)]">{filteredProducts.length} pieces to explore</p>
         </div>
         {prescriptionNotice ? <div className="mt-6 flex items-center gap-3 rounded-[20px] border border-[#7CBF00]/30 bg-[#7CBF00]/10 px-4 py-3 text-sm text-[#C7F36A]">Select a frame first to add your prescription.</div> : null}
 

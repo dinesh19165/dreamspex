@@ -7,7 +7,7 @@ import ProductCard from '../components/ui/ProductCard';
 import Button from '../components/ui/Button';
 import { useShop } from '../context/ShopContext';
 import { products } from '../data/mockData';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 const galleryImages = [
   'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=1200&q=90',
@@ -150,7 +150,7 @@ export default function ProductDetailPage() {
         <div className="mt-16">
           <div className="flex items-end justify-between gap-4">
             <h2 className="text-2xl font-semibold text-white">Related products</h2>
-            <button className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300">Discover more <ArrowRight className="h-4 w-4" /></button>
+            <Link to="/shop" className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition hover:text-cyan-200">Discover more <ArrowRight className="h-4 w-4" /></Link>
           </div>
           <div className="mt-8 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
             {products.slice(1).map((item) => <ProductCard key={item.id} product={item} />)}

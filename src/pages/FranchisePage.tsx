@@ -2,6 +2,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import Button from '../components/ui/Button';
+import { Link } from 'react-router-dom';
 
 export default function FranchisePage() {
   return (
@@ -17,7 +18,7 @@ export default function FranchisePage() {
               <li>• Full merchandising and training support</li>
               <li>• Strong margins and recurring membership revenue</li>
             </ul>
-            <Button className="mt-8">Apply now</Button>
+            <Link to="/contact" className="mt-8 inline-flex"><Button>Apply now</Button></Link>
           </div>
           <div className="rounded-[24px] border border-white/10 bg-[#1B1F2B] p-8 text-white shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Investment</p>

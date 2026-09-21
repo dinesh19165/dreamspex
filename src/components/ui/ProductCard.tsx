@@ -24,7 +24,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <>
-      <motion.article whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 220, damping: 18 }} className="group overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_24px_70px_-42px_rgba(2,6,23,0.8)]">
+      <motion.article whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 220, damping: 18 }} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_24px_70px_-42px_rgba(2,6,23,0.8)]">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-t from-[#02050d] via-transparent to-transparent opacity-70" />
           <img src={product.image} alt={product.name} loading="lazy" className="h-72 w-full object-cover transition duration-700 group-hover:scale-110" />
@@ -33,16 +33,16 @@ export default function ProductCard({ product }: ProductCardProps) {
             <Heart className={`h-4 w-4 ${isInWishlist(product.id) ? 'fill-current' : ''}`} />
           </button>
           <div className="absolute inset-x-4 bottom-4 flex gap-2 opacity-0 transition duration-300 group-hover:opacity-100">
-            <button className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white/90 px-3 py-2 text-sm font-semibold text-slate-900" onClick={() => setOpen(true)}>
+            <button type="button" aria-label={`Quick view ${product.name}`} className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white/90 px-3 py-2 text-sm font-semibold text-slate-900" onClick={() => setOpen(true)}>
               <Eye className="h-4 w-4" /> Quick view
             </button>
-            <button onClick={handleAddToCart} className="rounded-full bg-cyan-500/90 p-2.5 text-white">
+            <button type="button" onClick={handleAddToCart} aria-label={`Add ${product.name} to cart`} className="rounded-full bg-cyan-500/90 p-2.5 text-white">
               <ShoppingCart className="h-4 w-4" />
             </button>
           </div>
           {added ? <div className="absolute inset-x-4 bottom-20 rounded-full border border-cyan-400/30 bg-slate-950/85 px-3 py-2 text-center text-sm text-cyan-300">Added to bag</div> : null}
         </div>
-        <div className="p-5 sm:p-6">
+        <div className="flex flex-1 flex-col p-5 sm:p-6">
           <div className="flex items-center justify-between">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">{product.category}</p>
             <div className="flex items-center gap-1 text-sm text-[#D4AF37]">
@@ -55,7 +55,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <p className="mt-1 text-xs text-[var(--text-secondary)]">{product.brand} · {product.reviews} reviews</p>
           <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--text-secondary)]">{product.description}</p>
           {supportsPrescription ? <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold"><span className="inline-flex items-center gap-1 text-[#9ACD32]"><FileText className="h-3.5 w-3.5" /> Prescription Available</span><Link to={`/virtual-try-on?productId=${product.id}`} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200"><Glasses className="h-3.5 w-3.5" /> Virtual Try-On</Link></div> : null}
-          <div className="mt-5 flex items-center justify-between">
+          <div className="mt-auto flex items-center justify-between pt-5">
             <div>
               <p className="text-lg font-semibold text-[var(--text-primary)]">${product.price}</p>
               {product.oldPrice ? <p className="text-sm text-[var(--text-secondary)] line-through">${product.oldPrice} <span className="ml-1 no-underline text-cyan-600">{Math.round((1 - product.price / product.oldPrice) * 100)}% off</span></p> : null}

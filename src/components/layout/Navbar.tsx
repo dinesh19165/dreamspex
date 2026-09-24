@@ -7,6 +7,7 @@ import { useTheme } from '../../context/useTheme';
 import { useAuth } from '../../context/useAuth';
 import WhatsAppSupport from '../ui/WhatsAppSupport';
 import BrandLogo from '../ui/BrandLogo';
+import LocationSelector from '../ui/LocationSelector';
 import { products } from '../../data/mockData';
 
 const navItems = [
@@ -153,13 +154,14 @@ export default function Navbar() {
           </nav>
 
           <div className="hidden h-10 flex-1 items-center justify-center px-5 lg:flex xl:px-10">
-            <button onClick={openSearch} className="flex h-10 w-full max-w-xl items-center justify-between rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-sm leading-none text-[var(--text-secondary)] shadow-inner shadow-black/10">
-              <span className="flex items-center gap-2"><Search className="h-4 w-4 text-slate-400" /> Search frames, styles, offers</span>
+            <button onClick={openSearch} className="flex h-10 min-w-[220px] w-full max-w-xl items-center justify-between rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-sm leading-none text-[var(--text-secondary)] shadow-inner shadow-black/10">
+              <span className="flex shrink-0 items-center gap-2 whitespace-nowrap"><Search className="h-4 w-4 shrink-0 text-slate-400" /> Search frames, styles, offers</span>
               <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">⌘ K</span>
             </button>
           </div>
 
           <div className="flex items-center gap-2">
+            <LocationSelector />
             <button onClick={toggleTheme} className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
               {theme === 'dark' ? <MoonStar className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>

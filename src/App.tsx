@@ -28,19 +28,55 @@ import PrescriptionPage from './pages/PrescriptionPage';
 import AuthPage from './pages/AuthPage';
 import { useAuth } from './context/useAuth';
 import { AccountPage, DashboardPage, OrdersPage, WalletPage, WishlistPage } from './pages/AccountPages';
+import { AdminLoginPage, CustomerLoginPage, FranchiseLoginPage } from './pages/RoleLoginPages';
+import {
+  AddFranchisePage,
+  AddFranchiseProductPage,
+  FranchiseDashboardPage,
+  FranchiseDetailPage,
+  FranchiseManagementPage,
+  FranchiseOrderDetailPage,
+  FranchiseOrdersPage,
+  FranchiseProductsPage,
+  FranchiseUsersPage,
+  FranchiseCustomersPage,
+  FranchiseInventoryPage,
+  FranchiseProfilePage,
+  SuperAdminInventoryPage,
+  SuperAdminProfilePage,
+  SuperAdminUsersPage,
+  ReportsPage,
+  StoresPage,
+  SuperAdminDashboardPage,
+  SuperAdminOrdersPage,
+  SuperAdminProductsPage,
+  SuperAdminCustomersPage,
+  SuperAdminSettingsPage,
+} from './pages/FranchiseSystemPages';
 
 function RootEntry() {
   return <HomePage />;
 }
 
-function LoginEntry() {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <Navigate to="/" replace /> : <AuthPage mode="login" />;
+function CustomerRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, role } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (role !== 'CUSTOMER') return <Navigate to={role === 'FRANCHISE_ADMIN' ? '/franchise/dashboard' : role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/login'} replace />;
+  return <>{children}</>;
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+function FranchiseRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, role } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/franchise/login" replace />;
+  if (role !== 'FRANCHISE_ADMIN') return <Navigate to={role === 'CUSTOMER' ? '/' : role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/franchise/login'} replace />;
+  return <>{children}</>;
+}
+
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, role } = useAuth();
+  if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
+  if (role !== 'SUPER_ADMIN') return <Navigate to={role === 'CUSTOMER' ? '/' : role === 'FRANCHISE_ADMIN' ? '/franchise/dashboard' : '/admin/login'} replace />;
+  return <>{children}</>;
 }
 
 function App() {
@@ -104,7 +140,7 @@ function App() {
             <Route path="/terms" element={<OtherPages />} />
             <Route path="/shipping-policy" element={<OtherPages />} />
             <Route path="/return-policy" element={<OtherPages />} />
-            <Route path="/login" element={<LoginEntry />} />
+            <Route path="/login" element={<CustomerLoginPage />} />
             <Route path="/register" element={<AuthPage mode="register" />} />
             <Route path="/forgot-password" element={<AuthPage mode="forgot" />} />
             <Route path="/cart" element={<CartPage />} />
@@ -117,13 +153,38 @@ function App() {
             <Route path="/order-tracking" element={<OrderTrackingPage />} />
             <Route path="/orders/:id" element={<OrderTrackingPage />} />
             <Route path="/after-sales" element={<AfterSalesPage />} />
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-            <Route path="/wallet" element={<ProtectedRoute><WalletPage /></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
-            <Route path="/my-orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
-            <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
-            <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<CustomerRoute><DashboardPage /></CustomerRoute>} />
+            <Route path="/wallet" element={<CustomerRoute><WalletPage /></CustomerRoute>} />
+            <Route path="/orders" element={<CustomerRoute><OrdersPage /></CustomerRoute>} />
+            <Route path="/my-orders" element={<CustomerRoute><OrdersPage /></CustomerRoute>} />
+            <Route path="/wishlist" element={<CustomerRoute><WishlistPage /></CustomerRoute>} />
+            <Route path="/account" element={<CustomerRoute><AccountPage /></CustomerRoute>} />
+            <Route path="/profile" element={<CustomerRoute><AccountPage /></CustomerRoute>} />
+            <Route path="/franchise/login" element={<FranchiseLoginPage />} />
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route path="/admin/dashboard" element={<SuperAdminRoute><SuperAdminDashboardPage /></SuperAdminRoute>} />
+            <Route path="/admin/franchises" element={<SuperAdminRoute><FranchiseManagementPage /></SuperAdminRoute>} />
+            <Route path="/admin/franchises/new" element={<SuperAdminRoute><AddFranchisePage /></SuperAdminRoute>} />
+            <Route path="/admin/franchises/:id" element={<SuperAdminRoute><FranchiseDetailPage /></SuperAdminRoute>} />
+            <Route path="/admin/franchises/:id/users" element={<SuperAdminRoute><FranchiseUsersPage /></SuperAdminRoute>} />
+            <Route path="/admin/inventory" element={<SuperAdminRoute><SuperAdminInventoryPage /></SuperAdminRoute>} />
+            <Route path="/admin/orders" element={<SuperAdminRoute><SuperAdminOrdersPage /></SuperAdminRoute>} />
+            <Route path="/admin/products" element={<SuperAdminRoute><SuperAdminProductsPage /></SuperAdminRoute>} />
+            <Route path="/admin/customers" element={<SuperAdminRoute><SuperAdminCustomersPage /></SuperAdminRoute>} />
+            <Route path="/admin/reports" element={<SuperAdminRoute><ReportsPage scope="super-admin" /></SuperAdminRoute>} />
+            <Route path="/admin/users" element={<SuperAdminRoute><SuperAdminUsersPage /></SuperAdminRoute>} />
+            <Route path="/admin/profile" element={<SuperAdminRoute><SuperAdminProfilePage /></SuperAdminRoute>} />
+            <Route path="/admin/settings" element={<SuperAdminRoute><SuperAdminSettingsPage /></SuperAdminRoute>} />
+            <Route path="/franchise/dashboard" element={<FranchiseRoute><FranchiseDashboardPage /></FranchiseRoute>} />
+            <Route path="/franchise/products" element={<FranchiseRoute><FranchiseProductsPage /></FranchiseRoute>} />
+            <Route path="/franchise/products/new" element={<FranchiseRoute><AddFranchiseProductPage /></FranchiseRoute>} />
+            <Route path="/franchise/orders" element={<FranchiseRoute><FranchiseOrdersPage /></FranchiseRoute>} />
+            <Route path="/franchise/orders/:id" element={<FranchiseRoute><FranchiseOrderDetailPage /></FranchiseRoute>} />
+            <Route path="/franchise/customers" element={<FranchiseRoute><FranchiseCustomersPage /></FranchiseRoute>} />
+            <Route path="/franchise/inventory" element={<FranchiseRoute><FranchiseInventoryPage /></FranchiseRoute>} />
+            <Route path="/franchise/reports" element={<FranchiseRoute><ReportsPage scope="franchise-admin" /></FranchiseRoute>} />
+            <Route path="/franchise/profile" element={<FranchiseRoute><FranchiseProfilePage /></FranchiseRoute>} />
+            <Route path="/stores" element={<StoresPage />} />
             <Route path="*" element={<OtherPages />} />
           </Routes>
         </div>

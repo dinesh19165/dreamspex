@@ -1,24 +1,20 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Glasses, Heart, ShieldCheck, Star, Truck, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, Glasses, Heart, ShieldCheck, Truck } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
 import Button from '../components/ui/Button';
 import { useShop } from '../context/ShopContext';
 import { products } from '../data/mockData';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toggleWishlist, isInWishlist } = useShop();
-  const product = products.find((item) => item.id === Number(id)) ?? products[0];
-  const galleryImages = [product.image];
+  const product = products.find((item) => item.id === Number(id));
+  if (!product) return <Navigate to="/shop" replace />;
   const supportsPrescription = product.category !== 'Contact Lenses';
-  const [activeImage, setActiveImage] = useState(0);
-  const [showPurchaseForm, setShowPurchaseForm] = useState(false);
-  const [purchaseComplete, setPurchaseComplete] = useState(false);
 
   const handleBuyNow = () => {
     navigate(`/prescription/${product.id}`);
@@ -26,25 +22,13 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => navigate(`/prescription/${product.id}`);
 
-  const handleSubmitPurchase = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setPurchaseComplete(true);
-  };
-
   return (
     <div className="min-h-screen bg-[#050816] text-slate-100">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-10 grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[32px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-            <img src={galleryImages[activeImage]} alt={product.name} loading="lazy" className="h-[min(560px,60vh)] w-full rounded-[24px] object-cover" />
-            <div className="mt-4 flex items-center gap-3 overflow-x-auto pb-1">
-              {galleryImages.map((image, index) => (
-                <button key={image} onClick={() => setActiveImage(index)} className={`h-20 w-20 shrink-0 overflow-hidden rounded-[16px] border ${activeImage === index ? 'border-cyan-400/40' : 'border-white/10'}`}>
-                  <img src={image} alt={`${product.name} view ${index + 1}`} className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
+            <img src={product.image} alt={product.name} loading="lazy" className="h-[min(560px,60vh)] w-full rounded-[24px] object-cover" />
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
@@ -54,12 +38,11 @@ export default function ProductDetailPage() {
               <p className="mt-4 text-base leading-8 text-slate-400">{product.description}</p>
             </div>
             <div className="flex items-center gap-4 rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-              <div className="flex items-center gap-1 text-[#D4AF37]"><Star className="h-4 w-4 fill-current" /> {product.rating}</div>
-              <div className="text-sm text-slate-400">{product.reviews} reviews</div>
-              <div className="ml-auto text-3xl font-semibold text-white">${product.price}</div>
+              <div><p className="text-xs uppercase tracking-[0.2em] text-slate-400">Price</p><p className="mt-1 text-3xl font-semibold text-white">${product.price}</p></div>
+              {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-slate-400">List price</p><p className="mt-1 text-lg text-slate-400 line-through">${product.oldPrice}</p></div> : null}
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-              <h2 className="text-lg font-semibold text-white">Select your fit</h2>
+              <h2 className="text-lg font-semibold text-white">Available options</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
                   <p className="text-sm font-semibold text-slate-300">Frame color</p>
@@ -115,27 +98,6 @@ export default function ProductDetailPage() {
             <h2 className="mt-3 text-2xl font-semibold text-white">Make it yours</h2>
             <p className="mt-3 text-sm leading-7 text-slate-400">Review the available lens options and enter your prescription in the guided order flow.</p>
             {supportsPrescription ? <Link to={`/prescription/${product.id}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-slate-300">Lens selection is not available for this item.</p>}
-            <div className="mt-6 flex items-center justify-between">
-              <button className="rounded-full border border-white/10 p-2.5 text-slate-200"><ChevronLeft className="h-4 w-4" /></button>
-              <p className="text-sm text-slate-400">Preview ready</p>
-              <button className="rounded-full border border-white/10 p-2.5 text-slate-200"><ChevronRight className="h-4 w-4" /></button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-16 rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-2xl font-semibold text-white">Reviews</h2>
-            <div className="flex items-center gap-2 text-[#D4AF37]"><Star className="h-4 w-4 fill-current" /> <span className="text-sm text-slate-300">4.8 · 124 reviews</span></div>
-          </div>
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {products.slice(0, 2).map((item) => (
-              <div key={item.id} className="rounded-[20px] border border-white/10 bg-slate-950/50 p-5">
-                <div className="flex items-center gap-2 text-[#D4AF37]"><Star className="h-4 w-4 fill-current" /> <span className="text-sm text-slate-300">{item.rating}</span></div>
-                <p className="mt-3 text-white">{item.name} feels exceptional for daily wear.</p>
-                <p className="mt-2 text-sm text-slate-400">“The balance of comfort and sculptural design is remarkable.”</p>
-              </div>
-            ))}
           </div>
         </div>
 
@@ -149,58 +111,6 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </main>
-      <AnimatePresence>
-        {showPurchaseForm ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center bg-[#03050c]/85 px-4 py-8 backdrop-blur-xl">
-            <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} className="w-full max-w-2xl rounded-[32px] border border-white/10 bg-[#07101f] p-6 shadow-2xl">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Checkout</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">Complete your purchase</h2>
-                </div>
-                <button onClick={() => setShowPurchaseForm(false)} className="rounded-full border border-white/10 p-2 text-slate-200" aria-label="Close checkout">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {purchaseComplete ? (
-                <div className="mt-8 rounded-[24px] border border-emerald-400/20 bg-emerald-400/10 p-6 text-center">
-                  <p className="text-lg font-semibold text-emerald-300">Order placed successfully</p>
-                  <p className="mt-3 text-sm leading-7 text-slate-300">Your luxury eyewear order for {product.name} is confirmed. A concierge will reach out shortly.</p>
-                  <button onClick={() => setShowPurchaseForm(false)} className="mt-6 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-white">Close</button>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmitPurchase} className="mt-8 grid gap-6 grid-cols-1 lg:grid-cols-[0.95fr_1.05fr]">
-                  <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                    <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Selected frame</p>
-                    <h3 className="mt-3 text-xl font-semibold text-white">{product.name}</h3>
-                    <p className="mt-3 text-sm leading-7 text-slate-400">{product.description}</p>
-                    <div className="mt-6 flex items-center justify-between rounded-[16px] border border-white/10 bg-slate-950/70 px-4 py-3 text-sm">
-                      <span className="text-slate-300">Price</span>
-                      <span className="font-semibold text-white">${product.price}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-slate-300">Full name</label>
-                      <input required className="mt-2 w-full rounded-full border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none" placeholder="Alicia V." />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-300">Email</label>
-                      <input type="email" required className="mt-2 w-full rounded-full border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none" placeholder="you@example.com" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-slate-300">Shipping address</label>
-                      <textarea required rows={3} className="mt-2 w-full rounded-[20px] border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-white outline-none" placeholder="Luxury address, city, country" />
-                    </div>
-                    <button type="submit" className="w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-white">Place order</button>
-                  </div>
-                </form>
-              )}
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
       <Footer />
     </div>
   );

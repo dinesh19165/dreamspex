@@ -19,23 +19,32 @@ export default function ShopPage() {
   const prescriptionNotice = (location.state as { prescriptionNotice?: boolean } | null)?.prescriptionNotice;
   const categoryFilter = searchParams.get('category') ?? '';
   const searchFilter = searchParams.get('search') ?? '';
+  const materialFilter = searchParams.get('material') ?? '';
+  const colorFilter = searchParams.get('color') ?? '';
+  const badgeFilter = searchParams.get('badge') ?? '';
+  const sortFilter = searchParams.get('sort') ?? 'relevance';
   const [query, setQuery] = useState(searchFilter);
   const [selectedCategory, setSelectedCategory] = useState(categoryFilter);
   const [selectedBrand, setSelectedBrand] = useState('');
-  const [selectedMaterial, setSelectedMaterial] = useState('');
-  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedMaterial, setSelectedMaterial] = useState(materialFilter);
+  const [selectedColor, setSelectedColor] = useState(colorFilter);
+  const [selectedBadge, setSelectedBadge] = useState(badgeFilter);
   const [availableOnly, setAvailableOnly] = useState(false);
   const [minimumPrice, setMinimumPrice] = useState('');
   const [maximumPrice, setMaximumPrice] = useState('');
-  const [sortBy, setSortBy] = useState('relevance');
+  const [sortBy, setSortBy] = useState(sortFilter);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     setQuery(searchFilter);
     setSelectedCategory(categoryFilter);
+    setSelectedMaterial(materialFilter);
+    setSelectedColor(colorFilter);
+    setSelectedBadge(badgeFilter);
+    setSortBy(sortFilter);
     setPage(1);
-  }, [categoryFilter, searchFilter]);
+  }, [categoryFilter, searchFilter, materialFilter, colorFilter, badgeFilter, sortFilter]);
 
   const categoriesInStock = useMemo(() => [...new Set(products.map((product) => product.category))], []);
   const brands = useMemo(() => [...new Set(products.map((product) => product.brand))], []);
@@ -60,6 +69,7 @@ export default function ShopPage() {
         && (!selectedBrand || product.brand === selectedBrand)
         && (!selectedMaterial || product.material === selectedMaterial)
         && (!selectedColor || product.colors.includes(selectedColor))
+        && (!selectedBadge || product.badge?.toLowerCase() === selectedBadge.toLowerCase())
         && (!availableOnly || product.stock !== 'Out of Stock')
         && product.price >= minimum
         && product.price <= maximum;
@@ -67,10 +77,9 @@ export default function ShopPage() {
 
     if (sortBy === 'price-asc') return matching.sort((a, b) => a.price - b.price);
     if (sortBy === 'price-desc') return matching.sort((a, b) => b.price - a.price);
-    if (sortBy === 'popular') return matching.sort((a, b) => b.reviews - a.reviews);
     if (sortBy === 'newest') return matching.sort((a, b) => Number(b.badge === 'New') - Number(a.badge === 'New'));
     return matching;
-  }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, availableOnly, minimumPrice, maximumPrice, sortBy]);
+  }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, availableOnly, minimumPrice, maximumPrice, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const pagedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -85,7 +94,7 @@ export default function ShopPage() {
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-16 pb-32 sm:px-6 lg:px-8 lg:pb-16">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <SectionTitle eyebrow="Shop" title="Discover refined eyewear" description="Handpicked frames, lenses, and accessories crafted for modern living." />
+          <SectionTitle eyebrow="Shop" title={selectedBadge ? `${selectedBadge} eyewear` : selectedMaterial ? `${selectedMaterial} frames` : selectedColor ? `${selectedColor} frames` : 'Discover refined eyewear'} description="Explore products using the categories and attributes available in the current collection." />
           <p className="text-sm text-[var(--text-secondary)]">{filteredProducts.length} pieces to explore</p>
         </div>
         {prescriptionNotice ? <div className="mt-6 flex items-center gap-3 rounded-[20px] border border-[#7CBF00]/30 bg-[#7CBF00]/10 px-4 py-3 text-sm text-[#C7F36A]">Select a frame first to add your prescription.</div> : null}
@@ -103,8 +112,7 @@ export default function ShopPage() {
                   <option value="relevance">Relevance</option>
                   <option value="price-asc">Price: low to high</option>
                   <option value="price-desc">Price: high to low</option>
-                  <option value="popular">Most popular</option>
-                  <option value="newest">Newest</option>
+                  <option value="newest">New label first</option>
                 </select>
               </label>
               <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2.5 ${viewMode === 'grid' ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-200'}`}><LayoutGrid className="h-4 w-4" /></button>
@@ -113,7 +121,7 @@ export default function ShopPage() {
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {suggestions.map((suggestion) => (
-              <button key={suggestion} onClick={() => setQuery(suggestion)} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-400">{suggestion}</button>
+              <button key={suggestion} onClick={() => { setQuery(suggestion); setPage(1); }} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-400">{suggestion}</button>
             ))}
           </div>
           <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#9ACD32]"><FileText className="h-4 w-4" /> Prescription Available on selected eyewear</div>
@@ -144,6 +152,11 @@ export default function ShopPage() {
                   <option value="">All colours</option>{colors.map((color) => <option key={color}>{color}</option>)}
                 </select>
               </label>
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Product label
+                <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
+                  <option value="">All labels</option>{[...new Set(products.map((product) => product.badge).filter((badge): badge is string => Boolean(badge)))].map((badge) => <option key={badge} value={badge}>{badge}</option>)}
+                </select>
+              </label>
               <fieldset>
                 <legend className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Price range</legend>
                 <div className="mt-2 grid grid-cols-2 gap-2">
@@ -159,11 +172,12 @@ export default function ShopPage() {
                 <input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} className="accent-[var(--brand-green)]" />
                 In-stock items only
               </label>
-              <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); }} className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300">Clear filters</button>
+              <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); }} className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300">Clear filters</button>
             </div>
             <div className="mt-6 rounded-[20px] border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-200">
-              <p className="font-semibold">Priority access</p>
-              <p className="mt-2 text-slate-300">Members receive private previews and first-ship privileges.</p>
+              <p className="font-semibold">Dream Spex membership</p>
+              <p className="mt-2 text-slate-300">Explore the plans and benefits available in the current membership offering.</p>
+              <Link to="/membership" className="mt-3 inline-flex items-center gap-1 font-semibold text-cyan-200 hover:text-white">View plans <ArrowRight className="h-4 w-4" /></Link>
             </div>
           </motion.aside>
           <div>
@@ -173,7 +187,7 @@ export default function ShopPage() {
                   <ProductCard product={product} />
                 </motion.div>
               ))}
-              {!pagedProducts.length ? <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-center md:col-span-2 xl:col-span-3"><p className="font-serif text-2xl text-[var(--text-primary)]">Sorry, we couldn't find that frame.</p><p className="mt-2 text-sm text-[var(--text-secondary)]">Try a popular category or browse our bestsellers.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><Link to="/shop" className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-[#172015]">View bestsellers</Link><Link to="/categories" className="rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold">Popular categories</Link></div></div> : null}
+              {!pagedProducts.length ? <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-center md:col-span-2 xl:col-span-3"><p className="font-serif text-2xl text-[var(--text-primary)]">{selectedCategory && !categoriesInStock.some((category) => categorySlug(category) === categorySlug(selectedCategory)) ? `No ${normalize(selectedCategory)} products are listed yet.` : "Sorry, we couldn't find that frame."}</p><p className="mt-2 text-sm text-[var(--text-secondary)]">Browse the categories and labels represented in the current collection.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><Link to="/shop?badge=Bestseller" className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-[#172015]">Browse bestsellers</Link><Link to="/categories" className="rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold">Popular categories</Link></div></div> : null}
             </div>
 
             {cartQuantity > 0 && (

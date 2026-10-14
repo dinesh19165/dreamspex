@@ -80,24 +80,7 @@ export default function CartPage() {
                 </div>
                 {appliedCoupon ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon.code} ({appliedCoupon.discountPercent}% OFF)</span><span>-${discount}</span></div> : null}
                 <div className="flex items-center justify-between border-t border-white/10 pt-4 text-base font-semibold text-white"><span>Total</span><span>${total}</span></div>
-                <div className="grid gap-3 rounded-[20px] border border-white/10 bg-white/10 p-4">
-                  <label className="text-sm text-slate-300">
-                    <span className="block text-xs uppercase tracking-[0.3em] text-slate-400">Shipping option</span>
-                    <select className="mt-3 w-full rounded-full border border-white/10 bg-[#050816] px-4 py-3 text-sm text-white outline-none">
-                      <option>Standard delivery</option>
-                      <option>Express delivery</option>
-                      <option>Priority member dispatch</option>
-                    </select>
-                  </label>
-                  <label className="text-sm text-slate-300">
-                    <span className="block text-xs uppercase tracking-[0.3em] text-slate-400">Payment method</span>
-                    <select className="mt-3 w-full rounded-full border border-white/10 bg-[#050816] px-4 py-3 text-sm text-white outline-none">
-                      <option>Credit card</option>
-                      <option>Apple Pay</option>
-                      <option>PayPal</option>
-                    </select>
-                  </label>
-                </div>
+                <p className="rounded-[20px] border border-white/10 bg-white/5 p-4 text-sm leading-6 text-slate-400">Delivery options and payment methods are shown in the demo checkout. No real payment is processed.</p>
               </div>
 
               <Link to="/checkout" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-4 text-sm font-semibold text-white transition hover:brightness-110">

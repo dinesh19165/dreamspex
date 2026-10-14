@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Eye, Glasses, Heart, ShieldCheck, Star, Truck, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ArrowRight, Glasses, Heart, ShieldCheck, Star, Truck, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
@@ -9,18 +9,12 @@ import { useShop } from '../context/ShopContext';
 import { products } from '../data/mockData';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 
-const galleryImages = [
-  'https://images.unsplash.com/photo-1577803645773-f96470509666?auto=format&fit=crop&w=1200&q=90',
-  'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=1200&q=90',
-  'https://images.unsplash.com/photo-1556306535-38febf6782e7?auto=format&fit=crop&w=1200&q=90',
-  'https://images.unsplash.com/photo-1572635196237-14b3f281503f?auto=format&fit=crop&w=1200&q=90',
-];
-
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toggleWishlist, isInWishlist } = useShop();
   const product = products.find((item) => item.id === Number(id)) ?? products[0];
+  const galleryImages = [product.image];
   const supportsPrescription = product.category !== 'Contact Lenses';
   const [activeImage, setActiveImage] = useState(0);
   const [showPurchaseForm, setShowPurchaseForm] = useState(false);
@@ -91,8 +85,8 @@ export default function ProductDetailPage() {
               <Button variant="ghost" onClick={() => toggleWishlist(product)}><Heart className={`mr-2 h-4 w-4 ${isInWishlist(product.id) ? 'fill-current text-cyan-300' : ''}`} /> {isInWishlist(product.id) ? 'Saved to wishlist' : 'Add to wishlist'}</Button>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-white"><ShieldCheck className="h-4 w-4 text-cyan-400" /> Warranty</div><p className="mt-2 text-sm text-slate-400">2-year warranty and premium aftercare.</p></div>
-              <div className="rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-white"><Truck className="h-4 w-4 text-cyan-400" /> Shipping</div><p className="mt-2 text-sm text-slate-400">Free delivery on orders above $120.</p></div>
+              <div className="rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-white"><ShieldCheck className="h-4 w-4 text-cyan-400" /> Product availability</div><p className="mt-2 text-sm text-slate-400">{product.stock}</p></div>
+              <div className="rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-white"><Truck className="h-4 w-4 text-cyan-400" /> Delivery details</div><p className="mt-2 text-sm text-slate-400">Delivery options are shown during checkout.</p></div>
             </div>
           </motion.div>
         </div>
@@ -102,10 +96,12 @@ export default function ProductDetailPage() {
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Specifications</p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               {[
+                ['Category', product.category],
                 ['Material', product.material],
                 ['Brand', product.brand],
-                ['Finish', 'Polished titanium'],
-                ['Lens', 'Blue-light compatible'],
+                ['Available colours', product.colors.join(', ')],
+                ['Available sizes', product.sizes.join(', ')],
+                ['Availability', product.stock],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-[18px] border border-white/10 bg-slate-950/60 p-4">
                   <p className="text-sm text-slate-400">{label}</p>
@@ -115,14 +111,10 @@ export default function ProductDetailPage() {
             </div>
           </div>
           <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[#0f1b37] to-[#060b17] p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">360° preview</p>
-            <div className="mt-6 flex items-center justify-between rounded-[20px] border border-white/10 bg-white/10 p-4">
-              <div>
-                <p className="text-xl font-semibold text-white">Live rotation preview</p>
-                <p className="mt-2 text-sm text-slate-400">Inspect the sculptural profile from every angle.</p>
-              </div>
-              <div className="rounded-full border border-cyan-400/30 bg-cyan-400/10 p-3 text-cyan-300"><Eye className="h-5 w-5" /></div>
-            </div>
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Lens selection</p>
+            <h2 className="mt-3 text-2xl font-semibold text-white">Make it yours</h2>
+            <p className="mt-3 text-sm leading-7 text-slate-400">Review the available lens options and enter your prescription in the guided order flow.</p>
+            {supportsPrescription ? <Link to={`/prescription/${product.id}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-slate-300">Lens selection is not available for this item.</p>}
             <div className="mt-6 flex items-center justify-between">
               <button className="rounded-full border border-white/10 p-2.5 text-slate-200"><ChevronLeft className="h-4 w-4" /></button>
               <p className="text-sm text-slate-400">Preview ready</p>
@@ -153,7 +145,7 @@ export default function ProductDetailPage() {
             <Link to="/shop" className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition hover:text-cyan-200">Discover more <ArrowRight className="h-4 w-4" /></Link>
           </div>
           <div className="mt-8 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-            {products.slice(1).map((item) => <ProductCard key={item.id} product={item} />)}
+            {products.filter((item) => item.id !== product.id).slice(0, 4).map((item) => <ProductCard key={item.id} product={item} />)}
           </div>
         </div>
       </main>

@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
@@ -12,10 +13,11 @@ type ContactForm = {
 };
 
 export default function ContactPage() {
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ContactForm>();
+  const [submitted, setSubmitted] = useState(false);
+  const { register, handleSubmit, formState: { errors } } = useForm<ContactForm>();
 
   const onSubmit = () => {
-    reset();
+    setSubmitted(true);
   };
 
   return (
@@ -32,6 +34,7 @@ export default function ContactPage() {
             <p className="mt-4 text-sm leading-8 text-slate-400">House 22, New York Avenue<br />Northgate, London<br />hello@dreamspex.com<br />+44 20 5555 0202</p>
           </div>
           <div className="rounded-[24px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
+            <p className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-slate-200">This contact form is a frontend demo and does not send enquiries.</p>
             <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
               <input className="w-full rounded-[16px] border border-white/10 bg-[#060b17] px-4 py-3 text-sm text-white outline-none" placeholder="Your name" {...register('name', { required: 'Your name is required' })} />
               {errors.name ? <p className="text-sm text-rose-400">{errors.name.message}</p> : null}
@@ -39,8 +42,9 @@ export default function ContactPage() {
               {errors.email ? <p className="text-sm text-rose-400">{errors.email.message}</p> : null}
               <textarea className="min-h-32 w-full rounded-[16px] border border-white/10 bg-[#060b17] px-4 py-3 text-sm text-white outline-none" placeholder="Your message" {...register('message', { required: 'A message is required' })} />
               {errors.message ? <p className="text-sm text-rose-400">{errors.message.message}</p> : null}
-              <Button fullWidth>Send enquiry</Button>
+              <Button fullWidth>Preview enquiry</Button>
             </form>
+            {submitted ? <p role="status" className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-slate-200">Your enquiry was not sent. A backend messaging integration is required to deliver this form.</p> : null}
           </div>
         </div>
       </main>

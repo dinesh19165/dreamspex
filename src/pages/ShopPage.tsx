@@ -1,37 +1,76 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight } from 'lucide-react';
+import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
 import SectionTitle from '../components/ui/SectionTitle';
-import { categories, products } from '../data/mockData';
+import { products } from '../data/mockData';
 import { useShop } from '../context/ShopContext';
 
 const PAGE_SIZE = 3;
+const normalize = (value: string) => value.trim().toLowerCase().replaceAll('-', ' ').replaceAll('_', ' ');
+const categorySlug = (value: string) => normalize(value).replaceAll(' ', '-');
 
 export default function ShopPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const prescriptionNotice = (location.state as { prescriptionNotice?: boolean } | null)?.prescriptionNotice;
   const categoryFilter = searchParams.get('category') ?? '';
-  const shapeFilter = searchParams.get('shape') ?? '';
   const searchFilter = searchParams.get('search') ?? '';
-  const [query, setQuery] = useState(searchFilter || categoryFilter || shapeFilter);
+  const [query, setQuery] = useState(searchFilter);
+  const [selectedCategory, setSelectedCategory] = useState(categoryFilter);
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedMaterial, setSelectedMaterial] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const [minimumPrice, setMinimumPrice] = useState('');
+  const [maximumPrice, setMaximumPrice] = useState('');
+  const [sortBy, setSortBy] = useState('relevance');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    setQuery(searchFilter || categoryFilter || shapeFilter);
+    setQuery(searchFilter);
+    setSelectedCategory(categoryFilter);
     setPage(1);
-  }, [categoryFilter, searchFilter, shapeFilter]);
+  }, [categoryFilter, searchFilter]);
+
+  const categoriesInStock = useMemo(() => [...new Set(products.map((product) => product.category))], []);
+  const brands = useMemo(() => [...new Set(products.map((product) => product.brand))], []);
+  const materials = useMemo(() => [...new Set(products.map((product) => product.material))], []);
+  const colors = useMemo(() => [...new Set(products.flatMap((product) => product.colors))], []);
 
   const filteredProducts = useMemo(() => {
-    const q = query.trim().toLowerCase().replaceAll('-', ' ');
-    if (!q) return products;
-    return products.filter((product) => `${product.name} ${product.category} ${product.description} ${product.material} ${product.brand} ${product.colors.join(' ')}`.toLowerCase().replaceAll('-', ' ').includes(q));
-  }, [query]);
+    const searchTerms = normalize(query).split(/\s+/).filter(Boolean);
+    const minimum = minimumPrice === '' ? 0 : Number(minimumPrice);
+    const maximum = maximumPrice === '' ? Number.POSITIVE_INFINITY : Number(maximumPrice);
+    const matching = products.filter((product) => {
+      const searchable = normalize([
+        product.name,
+        product.category,
+        product.description,
+        product.material,
+        product.brand,
+        ...product.colors,
+      ].join(' '));
+      return searchTerms.every((term) => searchable.includes(term))
+        && (!selectedCategory || categorySlug(product.category) === categorySlug(selectedCategory))
+        && (!selectedBrand || product.brand === selectedBrand)
+        && (!selectedMaterial || product.material === selectedMaterial)
+        && (!selectedColor || product.colors.includes(selectedColor))
+        && (!availableOnly || product.stock !== 'Out of Stock')
+        && product.price >= minimum
+        && product.price <= maximum;
+    });
+
+    if (sortBy === 'price-asc') return matching.sort((a, b) => a.price - b.price);
+    if (sortBy === 'price-desc') return matching.sort((a, b) => b.price - a.price);
+    if (sortBy === 'popular') return matching.sort((a, b) => b.reviews - a.reviews);
+    if (sortBy === 'newest') return matching.sort((a, b) => Number(b.badge === 'New') - Number(a.badge === 'New'));
+    return matching;
+  }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, availableOnly, minimumPrice, maximumPrice, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const pagedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -51,15 +90,25 @@ export default function ShopPage() {
         </div>
         {prescriptionNotice ? <div className="mt-6 flex items-center gap-3 rounded-[20px] border border-[#7CBF00]/30 bg-[#7CBF00]/10 px-4 py-3 text-sm text-[#C7F36A]">Select a frame first to add your prescription.</div> : null}
 
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mt-8 rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mt-8 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <label className="flex flex-1 items-center gap-3 rounded-full border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
               <Search className="h-4 w-4 text-slate-400" />
-              <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="w-full bg-transparent outline-none placeholder:text-slate-500" placeholder="Search shapes, styles, and brands" />
+              <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="w-full bg-transparent outline-none placeholder:text-slate-500" placeholder="Search products, brands, materials, or colours" aria-label="Search products" />
             </label>
-            <div className="flex items-center gap-2">
-              <button onClick={() => setViewMode('grid')} className={`rounded-full border p-2.5 ${viewMode === 'grid' ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-200'}`}><LayoutGrid className="h-4 w-4" /></button>
-              <button onClick={() => setViewMode('list')} className={`rounded-full border p-2.5 ${viewMode === 'list' ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-200'}`}><List className="h-4 w-4" /></button>
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                <span>Sort by</span>
+                <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPage(1); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]">
+                  <option value="relevance">Relevance</option>
+                  <option value="price-asc">Price: low to high</option>
+                  <option value="price-desc">Price: high to low</option>
+                  <option value="popular">Most popular</option>
+                  <option value="newest">Newest</option>
+                </select>
+              </label>
+              <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2.5 ${viewMode === 'grid' ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-200'}`}><LayoutGrid className="h-4 w-4" /></button>
+              <button onClick={() => setViewMode('list')} aria-label="List view" aria-pressed={viewMode === 'list'} className={`rounded-full border p-2.5 ${viewMode === 'list' ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-200'}`}><List className="h-4 w-4" /></button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -72,10 +121,46 @@ export default function ShopPage() {
 
         <div className={`mt-10 grid gap-8 ${cartQuantity > 0 ? 'lg:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[260px_1fr]'}`}>
           <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="lg:sticky lg:top-24 self-start rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-            <h3 className="text-lg font-semibold text-white">Browse by category</h3>
-            <ul className="mt-5 space-y-3 text-sm text-slate-400">
-              {categories.map((category) => <li key={category.id}><Link to={`/shop?category=${category.slug}`} onClick={() => { setQuery(category.slug); setPage(1); }} className="block rounded-full border border-white/10 bg-slate-950/50 px-4 py-2 transition hover:border-cyan-400/50 hover:text-cyan-300">{category.name}</Link></li>)}
-            </ul>
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-white"><SlidersHorizontal className="h-4 w-4 text-cyan-300" /> Refine your search</h3>
+            <div className="mt-5 space-y-4">
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Category
+                <select value={selectedCategory} onChange={(event) => { setSelectedCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
+                  <option value="">All categories</option>
+                  {categoriesInStock.map((category) => <option key={category} value={categorySlug(category)}>{category}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Brand
+                <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
+                  <option value="">All brands</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Material
+                <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
+                  <option value="">All materials</option>{materials.map((material) => <option key={material}>{material}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Colour
+                <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
+                  <option value="">All colours</option>{colors.map((color) => <option key={color}>{color}</option>)}
+                </select>
+              </label>
+              <fieldset>
+                <legend className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Price range</legend>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <label className="text-xs text-slate-400">Min
+                    <input type="number" min="0" value={minimumPrice} onChange={(event) => { setMinimumPrice(event.target.value); setPage(1); }} placeholder="$0" className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm text-slate-200 outline-none" />
+                  </label>
+                  <label className="text-xs text-slate-400">Max
+                    <input type="number" min="0" value={maximumPrice} onChange={(event) => { setMaximumPrice(event.target.value); setPage(1); }} placeholder="No limit" className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm text-slate-200 outline-none" />
+                  </label>
+                </div>
+              </fieldset>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} className="accent-[var(--brand-green)]" />
+                In-stock items only
+              </label>
+              <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); }} className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300">Clear filters</button>
+            </div>
             <div className="mt-6 rounded-[20px] border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-200">
               <p className="font-semibold">Priority access</p>
               <p className="mt-2 text-slate-300">Members receive private previews and first-ship privileges.</p>

@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import { useTheme } from '../../context/useTheme';
 import { useAuth } from '../../context/useAuth';
-import WhatsAppSupport from '../ui/WhatsAppSupport';
 import BrandLogo from '../ui/BrandLogo';
 import LocationSelector from '../ui/LocationSelector';
 import { products } from '../../data/mockData';
@@ -113,9 +112,19 @@ export default function Navbar() {
       if (!megaMenuRef.current?.contains(event.target as Node)) setMegaMenuOpen(null);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setOpen(false);
+        setMobileMenuOpen(null);
+        setMegaMenuOpen(null);
+        setSearchOpen(true);
+      }
       if (event.key === 'Escape') {
         setMegaMenuOpen(null);
         setMobileMenuOpen(null);
+        setOpen(false);
+        setSearchOpen(false);
+        setSearchQuery('');
       }
     };
     document.addEventListener('mousedown', closeOnOutsideClick);
@@ -138,6 +147,13 @@ export default function Navbar() {
   return (
     <>
       <div ref={megaMenuRef} className="relative z-[70]" onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
+      <div className="bg-[#182218] px-4 py-2 text-center text-xs font-medium tracking-wide text-white sm:text-sm">
+        <Link to="/offers" className="inline-flex items-center justify-center gap-2 hover:text-[#c8ee91] focus-visible:text-[#c8ee91]">
+          <Sparkles className="h-3.5 w-3.5 text-[#b7e77a]" />
+          Discover this season’s offers
+          <span aria-hidden="true">→</span>
+        </Link>
+      </div>
       <header className={`sticky top-0 z-50 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/95 transition-all duration-300 ${scrolled ? 'backdrop-blur-2xl' : ''}`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-8">
           <BrandLogo compact />
@@ -156,13 +172,13 @@ export default function Navbar() {
           <div className="hidden h-10 flex-1 items-center justify-center px-5 lg:flex xl:px-10">
             <button onClick={openSearch} className="flex h-10 min-w-[220px] w-full max-w-xl items-center justify-between rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-sm leading-none text-[var(--text-secondary)] shadow-inner shadow-black/10">
               <span className="flex shrink-0 items-center gap-2 whitespace-nowrap"><Search className="h-4 w-4 shrink-0 text-slate-400" /> Search frames, styles, offers</span>
-              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">⌘ K</span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-slate-400">Ctrl / ⌘ K</span>
             </button>
           </div>
 
           <div className="flex items-center gap-2">
-            <LocationSelector />
-            <button onClick={toggleTheme} className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
+            <div className="hidden xl:block"><LocationSelector /></div>
+            <button onClick={toggleTheme} className="hidden h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50 xl:flex" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
               {theme === 'dark' ? <MoonStar className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>
             <button onClick={openSearch} className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50 lg:hidden" aria-label="Search">
@@ -176,9 +192,8 @@ export default function Navbar() {
               <ShoppingBag className="h-4 w-4" />
               <span className="absolute -right-1 -top-1 rounded-full bg-cyan-400 px-1.5 py-0.5 text-[10px] font-semibold text-slate-950">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
             </Link>
-            {isAuthenticated ? <div ref={profileRef} className="relative"><button type="button" onClick={() => setProfileOpen((current) => !current)} className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10" aria-label="Open account menu" aria-expanded={profileOpen}><UserRound className="h-4 w-4" /></button>{profileOpen ? <div className="absolute right-0 top-full z-[80] mt-3 w-56 rounded-2xl border border-white/10 bg-[#07101f]/95 p-2 shadow-2xl backdrop-blur-xl"><div className="border-b border-white/10 px-3 py-3"><p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Dream Spex</p><p className="mt-1 text-sm text-slate-300">Member account</p></div><Link to="/dashboard" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link><Link to="/orders" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><ShoppingBag className="h-4 w-4" /> My Orders</Link><Link to="/wallet" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><WalletCards className="h-4 w-4" /> Wallet</Link><Link to="/wishlist" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><Heart className="h-4 w-4" /> Wishlist</Link><Link to="/account" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><Settings className="h-4 w-4" /> Account Settings</Link><button type="button" onClick={logout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-rose-300 transition hover:bg-rose-400/10"><LogOut className="h-4 w-4" /> Logout</button></div> : null}</div> : <Link to="/login" className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10"><UserRound className="h-4 w-4" /></Link>}
-            <WhatsAppSupport label="" className="h-10 w-10 p-0" />
-            <button className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10 lg:hidden" aria-label="Open menu" onClick={() => setOpen(true)}>
+            {isAuthenticated ? <div ref={profileRef} className="relative hidden xl:block"><button type="button" onClick={() => setProfileOpen((current) => !current)} className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10" aria-label="Open account menu" aria-expanded={profileOpen}><UserRound className="h-4 w-4" /></button>{profileOpen ? <div className="absolute right-0 top-full z-[80] mt-3 w-56 rounded-2xl border border-white/10 bg-[#07101f]/95 p-2 shadow-2xl backdrop-blur-xl"><div className="border-b border-white/10 px-3 py-3"><p className="text-xs uppercase tracking-[0.2em] text-cyan-300">Dream Spex</p><p className="mt-1 text-sm text-slate-300">Member account</p></div><Link to="/dashboard" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><LayoutDashboard className="h-4 w-4" /> Dashboard</Link><Link to="/orders" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><ShoppingBag className="h-4 w-4" /> My Orders</Link><Link to="/wallet" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><WalletCards className="h-4 w-4" /> Wallet</Link><Link to="/wishlist" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><Heart className="h-4 w-4" /> Wishlist</Link><Link to="/account" onClick={() => setProfileOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-200 transition hover:bg-white/10 hover:text-cyan-300"><Settings className="h-4 w-4" /> Account Settings</Link><button type="button" onClick={logout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-rose-300 transition hover:bg-rose-400/10"><LogOut className="h-4 w-4" /> Logout</button></div> : null}</div> : <Link to="/login" className="hidden rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10 xl:flex"><UserRound className="h-4 w-4" /></Link>}
+            <button className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200 transition hover:bg-white/10 xl:hidden" aria-label="Open menu" onClick={() => setOpen(true)}>
               <Menu className="h-4 w-4" />
             </button>
           </div>
@@ -212,7 +227,7 @@ export default function Navbar() {
       <AnimatePresence>
         {searchOpen ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] flex items-start justify-center bg-[#03050c]/80 px-4 py-16 backdrop-blur-2xl">
-            <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="w-full max-w-2xl rounded-[28px] border border-white/10 bg-[#07101f]/95 p-6 shadow-2xl">
+            <motion.div role="dialog" aria-modal="true" aria-label="Product search" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="w-full max-w-2xl rounded-[28px] border border-white/10 bg-[#07101f]/95 p-6 shadow-2xl">
               <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/10 px-4 py-3">
                 <Search className="h-4 w-4 text-slate-400" />
                 <input autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') submitSearch(); if (event.key === 'Escape') closeSearch(); }} className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]" placeholder="Search your next frame" aria-label="Search products" />
@@ -228,14 +243,23 @@ export default function Navbar() {
         ) : null}
       </AnimatePresence>
 
-      {open ? <div className="fixed inset-0 z-40 bg-[#03050c]/70 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)} /> : null}
-      <motion.div initial={false} animate={{ x: open ? 0 : '100%' }} transition={{ type: 'spring', stiffness: 180, damping: 24 }} className="fixed right-0 top-0 z-50 h-full w-80 max-w-[85vw] border-l border-white/10 bg-[#060b17] p-6 shadow-2xl lg:hidden">
+      {open ? <div className="fixed inset-0 z-[80] bg-[#03050c]/70 backdrop-blur-sm xl:hidden" onClick={() => setOpen(false)} /> : null}
+      <motion.div role="dialog" aria-modal="true" aria-label="Mobile navigation" aria-hidden={!open} inert={!open} initial={false} animate={{ x: open ? 0 : '100%' }} transition={{ type: 'spring', stiffness: 180, damping: 24 }} className="fixed right-0 top-0 z-[90] h-full w-80 max-w-[85vw] overflow-y-auto border-l border-white/10 bg-[#060b17] p-6 shadow-2xl xl:hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-cyan-300"><Sparkles className="h-4 w-4" /> <p className="text-sm font-semibold uppercase tracking-[0.3em]">Menu</p></div>
           <button className="rounded-full border border-white/10 p-2 text-slate-200" onClick={() => setOpen(false)} aria-label="Close menu">
             <X className="h-4 w-4" />
           </button>
         </div>
+        <div className="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3">
+          <LocationSelector />
+          <button onClick={toggleTheme} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
+            {theme === 'dark' ? <MoonStar className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+          </button>
+        </div>
+        <Link to={isAuthenticated ? '/dashboard' : '/login'} onClick={() => setOpen(false)} className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200">
+          <UserRound className="h-4 w-4 text-cyan-300" /> {isAuthenticated ? 'My account' : 'Sign in or create account'}
+        </Link>
         <div className="mt-8 space-y-3">
           {navItems.map((item) => (
             <div key={item.path} className="rounded-2xl border border-white/10 bg-white/5">

@@ -1,17 +1,21 @@
-import { ArrowRight, MessageCircle, Send, Globe2, MapPin, Smartphone, CreditCard, Truck, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, MessageCircle, Send, Globe2, MapPin, CreditCard, Truck, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BrandLogo from '../ui/BrandLogo';
 
 export default function Footer() {
+  const [email, setEmail] = useState('');
+  const [signupPreviewed, setSignupPreviewed] = useState(false);
+
   return (
     <footer className="dark-surface border-t border-white/10 bg-[#03050c] text-slate-300">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
         <div>
           <BrandLogo />
           <p className="mt-4 text-sm leading-7 text-slate-400">Crafted for modern connoisseurs who value clarity, craftsmanship, and cinematic luxury.</p>
-          <div className="mt-6 rounded-[20px] border border-white/10 bg-white/5 p-4 text-sm text-slate-400">
-            <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-cyan-400" /> Store locator: Dubai, London, New York</div>
-          </div>
+          <Link to="/stores" className="mt-6 flex items-center gap-2 rounded-[20px] border border-white/10 bg-white/5 p-4 text-sm text-slate-300 transition hover:border-cyan-400/40 hover:text-white">
+            <MapPin className="h-4 w-4 text-cyan-400" /> Find a Dream Spex store
+          </Link>
         </div>
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-white">Customer care</h3>
@@ -21,7 +25,6 @@ export default function Footer() {
             <li><Link to="/shipping-policy" className="transition hover:text-cyan-300">Shipping</Link></li>
           </ul>
           <div className="mt-6 space-y-3 text-sm text-slate-400">
-            <div className="flex items-center gap-2"><Smartphone className="h-4 w-4 text-cyan-400" /> +971 4 555 0199</div>
             <a href="https://wa.me/9949735181" target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#25D366]/15 px-3 py-2 text-sm text-slate-100 transition hover:bg-[#25D366]/25">
               <MessageCircle className="h-4 w-4 text-[#25D366]" /> WhatsApp us
             </a>
@@ -47,10 +50,19 @@ export default function Footer() {
               </a>
             ))}
           </div>
-          <Link to="/contact" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-white">
-            Join newsletter <ArrowRight className="h-4 w-4" />
-          </Link>
-          <div className="mt-6 text-sm text-slate-400">Download app • Payment methods • Shipping partners</div>
+          <div className="mt-6 grid gap-3 text-sm font-medium">
+            <Link to="/offers" className="inline-flex items-center gap-2 text-white transition hover:text-cyan-300">Explore current offers <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/contact" className="inline-flex items-center gap-2 text-white transition hover:text-cyan-300">Talk to an advisor <ArrowRight className="h-4 w-4" /></Link>
+          </div>
+          <form className="mt-6" onSubmit={(event) => { event.preventDefault(); setSignupPreviewed(true); }}>
+            <label htmlFor="newsletter-email" className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Newsletter</label>
+            <div className="mt-2 flex gap-2">
+              <input id="newsletter-email" type="email" required value={email} onChange={(event) => { setEmail(event.target.value); setSignupPreviewed(false); }} placeholder="Email address" className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus-visible:border-cyan-400" />
+              <button type="submit" aria-label="Preview newsletter signup" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-cyan-400 text-slate-950 transition hover:bg-lime-300"><ArrowRight className="h-4 w-4" /></button>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">Demo only. Newsletter sign-up is not connected.</p>
+            {signupPreviewed ? <p role="status" className="mt-2 text-xs text-[#c8ee91]">No subscription was sent; an email integration is required.</p> : null}
+          </form>
         </div>
       </div>
       <div className="border-t border-white/10 px-4 py-6 text-center text-sm text-slate-500 lg:px-8">

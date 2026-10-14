@@ -3,6 +3,8 @@ import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, CircleDollarSig
 import type { LucideIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
+import Navbar from '../components/layout/Navbar';
+import Footer from '../components/layout/Footer';
 import { useAuth } from '../context/useAuth';
 import { useTheme } from '../context/useTheme';
 import { adminSalesOverview, franchiseOrders, franchiseProducts, franchiseRegistrations, franchises, franchiseStats, franchiseUsers, topProducts } from '../data/franchiseData';
@@ -39,7 +41,7 @@ function getDefaultNavigationItems(role: 'SUPER_ADMIN' | 'FRANCHISE_ADMIN' | 'CU
     return [
       { label: 'Dashboard', href: '/franchise/dashboard', icon: LayoutGrid },
       { label: 'Products', href: '/franchise/products', icon: PackageOpen },
-      { label: 'Inventory', href: '/admin/inventory', icon: Warehouse },
+      { label: 'Inventory', href: '/franchise/inventory', icon: Warehouse },
       { label: 'Orders', href: '/franchise/orders', icon: ShoppingCart },
       { label: 'Customers', href: '/franchise/customers', icon: Users },
       { label: 'Reports', href: '/franchise/reports', icon: TrendingUp },
@@ -1534,54 +1536,64 @@ export function StoresPage() {
       const matchesSearch = `${franchise.name} ${franchise.city} ${franchise.state} ${franchise.address}`.toLowerCase().includes(search.toLowerCase());
       const matchesCity = cityFilter === 'All' || franchise.city === cityFilter;
       const matchesState = stateFilter === 'All' || franchise.state === stateFilter;
-      return matchesSearch && matchesCity && matchesState;
+      return franchise.status === 'Active' && matchesSearch && matchesCity && matchesState;
     });
   }, [search, cityFilter, stateFilter]);
 
   return (
-    <DashboardShell>
-      <SectionTitle eyebrow="Stores" title="Dream Spex franchise locator" description="Find the right store, view opening hours, services, and request directions to the closest location." />
+    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <Navbar />
+      <main className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <SectionTitle eyebrow="Store locator" title="Find your nearest Dream Spex" description="Search the active store locations in our current demo directory." />
+        <p className="mt-4 text-sm text-[var(--text-secondary)]">Location details are sample frontend data. Please call the store to confirm hours and service availability before visiting.</p>
 
-      <div className="mb-8 grid gap-4 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 lg:grid-cols-3">
-        <div className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2">
-          <Search className="h-4 w-4 text-[var(--text-secondary)]" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]" placeholder="Search location" />
+        <div className="mt-8 grid gap-4 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 lg:grid-cols-3">
+          <label className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2">
+            <Search className="h-4 w-4 text-[var(--text-secondary)]" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]" placeholder="Search locations" aria-label="Search locations" />
+          </label>
+          <label className="sr-only" htmlFor="store-city-filter">Filter stores by city</label>
+          <select id="store-city-filter" value={cityFilter} onChange={(event) => setCityFilter(event.target.value)} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none">
+            <option>All</option>
+            {[...new Set(franchises.filter((franchise) => franchise.status === 'Active').map((franchise) => franchise.city))].map((city) => <option key={city}>{city}</option>)}
+          </select>
+          <label className="sr-only" htmlFor="store-state-filter">Filter stores by state</label>
+          <select id="store-state-filter" value={stateFilter} onChange={(event) => setStateFilter(event.target.value)} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none">
+            <option>All</option>
+            {[...new Set(franchises.filter((franchise) => franchise.status === 'Active').map((franchise) => franchise.state))].map((state) => <option key={state}>{state}</option>)}
+          </select>
         </div>
-        <select value={cityFilter} onChange={(event) => setCityFilter(event.target.value)} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none">
-          <option>All</option>
-          {franchises.map((franchise) => <option key={franchise.city}>{franchise.city}</option>)}
-        </select>
-        <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none">
-          <option>All</option>
-          {Array.from(new Set(franchises.map((franchise) => franchise.state))).map((state) => <option key={state}>{state}</option>)}
-        </select>
-      </div>
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {filteredStores.map((franchise) => (
-          <article key={franchise.id} className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.25em] text-[var(--brand-green)]">{franchise.city}</p>
-                <h3 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{franchise.name}</h3>
-              </div>
-              <StatusBadge status={franchise.status} />
-            </div>
-            <div className="mt-5 space-y-2 text-sm text-[var(--text-secondary)]">
-              <p>{franchise.address}</p>
-              <p>{franchise.city}, {franchise.state}</p>
-              <p>{franchise.phone}</p>
-              <p>Opening hours: {franchise.openingHours}</p>
-              <p>Available services: {franchise.services.join(', ')}</p>
-            </div>
-            <div className="mt-6 flex gap-3">
-              <Link to={`/admin/franchises/${franchise.id}`} className="flex-1"><Button variant="secondary">View Store</Button></Link>
-              <Button variant="secondary">Get Directions</Button>
-            </div>
-          </article>
-        ))}
-      </div>
-    </DashboardShell>
+        {filteredStores.length ? (
+          <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {filteredStores.map((franchise) => {
+              const directionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${franchise.address}, ${franchise.city}, ${franchise.state}`)}`;
+              return (
+                <article key={franchise.id} className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--brand-green)]">{franchise.city}, {franchise.state}</p>
+                  <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{franchise.name}</h2>
+                  <div className="mt-5 space-y-2 text-sm text-[var(--text-secondary)]">
+                    <p>{franchise.address}</p>
+                    <p><a className="underline-offset-4 hover:underline" href={`tel:${franchise.phone.replaceAll(' ', '')}`}>{franchise.phone}</a></p>
+                    <p>Hours: {franchise.openingHours}</p>
+                    <p>Services: {franchise.services.join(', ')}</p>
+                  </div>
+                  <a href={directionsUrl} target="_blank" rel="noreferrer noopener" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--brand-green)] px-4 py-3 text-sm font-semibold text-[#16200f] transition hover:brightness-105">
+                    <MapPin className="h-4 w-4" /> Get directions
+                  </a>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-8 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-center">
+            <h2 className="text-xl font-semibold">No active stores match your search</h2>
+            <button type="button" onClick={() => { setSearch(''); setCityFilter('All'); setStateFilter('All'); }} className="mt-4 rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold">Clear location filters</button>
+          </div>
+        )}
+      </main>
+      <Footer />
+    </div>
   );
 }
 

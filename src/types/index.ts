@@ -2,6 +2,10 @@ export interface Product {
   id: number;
   name: string;
   category: string;
+  gender?: string;
+  frameShape?: string;
+  frameType?: string;
+  popularity?: number;
   price: number;
   oldPrice?: number;
   image: string;

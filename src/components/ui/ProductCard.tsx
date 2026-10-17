@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Eye, FileText, Glasses, Heart, ShoppingCart } from 'lucide-react';
+import { ArrowRight, Eye, FileText, Glasses, Heart, ShoppingCart, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import type { Product } from '../../types';
@@ -49,6 +49,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </Link>
           <p className="mt-1 text-xs text-[var(--text-secondary)]">{product.brand}</p>
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--text-secondary)]" aria-label={`Sample catalogue rating ${product.rating} out of 5`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /> <span className="font-semibold text-[var(--text-primary)]">{product.rating.toFixed(1)}</span><span>sample · {product.reviews} demo ratings</span></p>
           <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--text-secondary)]">{product.description}</p>
           {supportsPrescription ? <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold"><span className="inline-flex items-center gap-1 text-[#9ACD32]"><FileText className="h-3.5 w-3.5" /> Prescription Available</span><Link to={`/virtual-try-on?productId=${product.id}`} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200"><Glasses className="h-3.5 w-3.5" /> Virtual Try-On</Link></div> : null}
           <div className="mt-auto flex items-center justify-between pt-5">

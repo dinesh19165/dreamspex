@@ -26,7 +26,7 @@ export default function CategoriesPage() {
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <SectionTitle eyebrow="Categories" title="Explore the collection" description="Browse categories represented by products in the current Dream Spex catalogue." />
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">Gender, frame shape, frame type, and several other category labels are not present in the current product data, so this collection only lists supported product categories.</p>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">Category, audience, frame-shape and frame-type labels are drawn from sample product data. This page only lists categories with products in the current catalogue.</p>
         <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {supportedCategories.map(({ slug, name, description, image, matchingProducts }) => (
             <Link key={slug} to={`/shop?category=${slug}`} className="group overflow-hidden rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm transition hover:-translate-y-1 hover:shadow-lg focus-visible:outline">

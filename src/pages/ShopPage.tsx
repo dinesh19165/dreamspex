@@ -19,16 +19,23 @@ export default function ShopPage() {
   const prescriptionNotice = (location.state as { prescriptionNotice?: boolean } | null)?.prescriptionNotice;
   const categoryFilter = searchParams.get('category') ?? '';
   const searchFilter = searchParams.get('search') ?? '';
+  const brandFilter = searchParams.get('brand') ?? '';
   const materialFilter = searchParams.get('material') ?? '';
   const colorFilter = searchParams.get('color') ?? '';
   const badgeFilter = searchParams.get('badge') ?? '';
+  const genderFilter = searchParams.get('gender') ?? '';
+  const frameShapeFilter = searchParams.get('shape') ?? '';
+  const frameTypeFilter = searchParams.get('frameType') ?? '';
   const sortFilter = searchParams.get('sort') ?? 'relevance';
   const [query, setQuery] = useState(searchFilter);
   const [selectedCategory, setSelectedCategory] = useState(categoryFilter);
-  const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedBrand, setSelectedBrand] = useState(brandFilter);
   const [selectedMaterial, setSelectedMaterial] = useState(materialFilter);
   const [selectedColor, setSelectedColor] = useState(colorFilter);
   const [selectedBadge, setSelectedBadge] = useState(badgeFilter);
+  const [selectedGender, setSelectedGender] = useState(genderFilter);
+  const [selectedFrameShape, setSelectedFrameShape] = useState(frameShapeFilter);
+  const [selectedFrameType, setSelectedFrameType] = useState(frameTypeFilter);
   const [availableOnly, setAvailableOnly] = useState(false);
   const [minimumPrice, setMinimumPrice] = useState('');
   const [maximumPrice, setMaximumPrice] = useState('');
@@ -39,17 +46,24 @@ export default function ShopPage() {
   useEffect(() => {
     setQuery(searchFilter);
     setSelectedCategory(categoryFilter);
+    setSelectedBrand(brandFilter);
     setSelectedMaterial(materialFilter);
     setSelectedColor(colorFilter);
     setSelectedBadge(badgeFilter);
+    setSelectedGender(genderFilter);
+    setSelectedFrameShape(frameShapeFilter);
+    setSelectedFrameType(frameTypeFilter);
     setSortBy(sortFilter);
     setPage(1);
-  }, [categoryFilter, searchFilter, materialFilter, colorFilter, badgeFilter, sortFilter]);
+  }, [categoryFilter, searchFilter, brandFilter, materialFilter, colorFilter, badgeFilter, genderFilter, frameShapeFilter, frameTypeFilter, sortFilter]);
 
   const categoriesInStock = useMemo(() => [...new Set(products.map((product) => product.category))], []);
   const brands = useMemo(() => [...new Set(products.map((product) => product.brand))], []);
   const materials = useMemo(() => [...new Set(products.map((product) => product.material))], []);
   const colors = useMemo(() => [...new Set(products.flatMap((product) => product.colors))], []);
+  const genders = useMemo(() => [...new Set(products.map((product) => product.gender).filter((gender): gender is string => Boolean(gender)))], []);
+  const frameShapes = useMemo(() => [...new Set(products.map((product) => product.frameShape).filter((shape): shape is string => Boolean(shape)))], []);
+  const frameTypes = useMemo(() => [...new Set(products.map((product) => product.frameType).filter((type): type is string => Boolean(type)))], []);
 
   const filteredProducts = useMemo(() => {
     const searchTerms = normalize(query).split(/\s+/).filter(Boolean);
@@ -62,6 +76,9 @@ export default function ShopPage() {
         product.description,
         product.material,
         product.brand,
+        product.gender ?? '',
+        product.frameShape ?? '',
+        product.frameType ?? '',
         ...product.colors,
       ].join(' '));
       return searchTerms.every((term) => searchable.includes(term))
@@ -70,6 +87,9 @@ export default function ShopPage() {
         && (!selectedMaterial || product.material === selectedMaterial)
         && (!selectedColor || product.colors.includes(selectedColor))
         && (!selectedBadge || product.badge?.toLowerCase() === selectedBadge.toLowerCase())
+        && (!selectedGender || product.gender === selectedGender)
+        && (!selectedFrameShape || product.frameShape === selectedFrameShape)
+        && (!selectedFrameType || product.frameType === selectedFrameType)
         && (!availableOnly || product.stock !== 'Out of Stock')
         && product.price >= minimum
         && product.price <= maximum;
@@ -77,9 +97,10 @@ export default function ShopPage() {
 
     if (sortBy === 'price-asc') return matching.sort((a, b) => a.price - b.price);
     if (sortBy === 'price-desc') return matching.sort((a, b) => b.price - a.price);
+    if (sortBy === 'popularity') return matching.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
     if (sortBy === 'newest') return matching.sort((a, b) => Number(b.badge === 'New') - Number(a.badge === 'New'));
     return matching;
-  }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, availableOnly, minimumPrice, maximumPrice, sortBy]);
+  }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const pagedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -97,6 +118,7 @@ export default function ShopPage() {
           <SectionTitle eyebrow="Shop" title={selectedBadge ? `${selectedBadge} eyewear` : selectedMaterial ? `${selectedMaterial} frames` : selectedColor ? `${selectedColor} frames` : 'Discover refined eyewear'} description="Explore products using the categories and attributes available in the current collection." />
           <p className="text-sm text-[var(--text-secondary)]">{filteredProducts.length} pieces to explore</p>
         </div>
+        <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">Gender, shape, frame type and popularity use sample catalogue fields. Newest sorting uses the “New” product label; product dates are not supplied.</p>
         {prescriptionNotice ? <div className="mt-6 flex items-center gap-3 rounded-[20px] border border-[#7CBF00]/30 bg-[#7CBF00]/10 px-4 py-3 text-sm text-[#C7F36A]">Select a frame first to add your prescription.</div> : null}
 
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mt-8 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-sm">
@@ -109,6 +131,7 @@ export default function ShopPage() {
               <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                 <span>Sort by</span>
                 <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPage(1); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]">
+                  <option value="popularity">Popularity</option>
                   <option value="relevance">Relevance</option>
                   <option value="price-asc">Price: low to high</option>
                   <option value="price-desc">Price: high to low</option>
@@ -142,6 +165,21 @@ export default function ShopPage() {
                   <option value="">All brands</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}
                 </select>
               </label>
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Gender
+                <select value={selectedGender} onChange={(event) => { setSelectedGender(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
+                  <option value="">All genders</option>{genders.map((gender) => <option key={gender}>{gender}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Frame shape
+                <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
+                  <option value="">All shapes</option>{frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Frame type
+                <select value={selectedFrameType} onChange={(event) => { setSelectedFrameType(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
+                  <option value="">All frame types</option>{frameTypes.map((type) => <option key={type}>{type}</option>)}
+                </select>
+              </label>
               <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Material
                 <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
                   <option value="">All materials</option>{materials.map((material) => <option key={material}>{material}</option>)}
@@ -172,7 +210,7 @@ export default function ShopPage() {
                 <input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} className="accent-[var(--brand-green)]" />
                 In-stock items only
               </label>
-              <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); }} className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300">Clear filters</button>
+              <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); }} className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300">Clear filters</button>
             </div>
             <div className="mt-6 rounded-[20px] border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-200">
               <p className="font-semibold">Dream Spex membership</p>

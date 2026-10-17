@@ -5,7 +5,8 @@ import { ThemeContext, type Theme } from './ThemeContext';
 const STORAGE_KEY = 'dream-spex-theme';
 
 function getInitialTheme(): Theme {
-  return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
+  const savedTheme = localStorage.getItem(STORAGE_KEY);
+  return savedTheme === 'dark' ? 'dark' : 'light';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

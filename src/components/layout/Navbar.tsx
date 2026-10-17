@@ -14,6 +14,8 @@ const navItems = [
   { label: 'Sunglasses', path: '/shop?category=sunglasses' },
   { label: 'Computer Glasses', path: '/shop?category=computer-glasses' },
   { label: 'Kids', path: '/shop?category=kids-collection' },
+  { label: 'Contact lenses', path: '/shop?category=contact-lenses' },
+  { label: 'Accessories', path: '/shop?category=accessories' },
   { label: 'Collections', path: '/categories' },
   { label: 'Offers', path: '/offers' },
   { label: 'Services', path: '/services' },
@@ -42,7 +44,9 @@ const megaMenus: MegaMenu[] = [
     ],
   },
   { label: 'Computer Glasses', groups: [{ title: 'Current collection', items: [{ label: 'Computer Glasses', path: '/shop?category=computer-glasses' }, { label: 'Blue light styles', path: '/shop?category=computer-glasses' }] }] },
-  { label: 'Kids', groups: [{ title: 'Kids collection', items: [{ label: 'No kids products are listed yet', path: '/categories' }] }] },
+  { label: 'Kids', groups: [{ title: 'Kids collection', items: [{ label: 'Shop kids’ eyewear', path: '/shop?category=kids-collection' }] }] },
+  { label: 'Contact lenses', groups: [{ title: 'Catalogue status', items: [{ label: 'No contact lenses are listed yet', path: '/shop?category=contact-lenses' }] }] },
+  { label: 'Accessories', groups: [{ title: 'Catalogue status', items: [{ label: 'No accessories are listed yet', path: '/shop?category=accessories' }] }] },
   { label: 'Collections', groups: [{ title: 'Explore collections', items: [{ label: 'All current categories', path: '/categories' }, { label: 'Luxury Collection', path: '/shop?category=luxury-collection' }, { label: 'New Arrivals', path: '/shop?badge=New' }, { label: 'Bestsellers', path: '/shop?badge=Bestseller' }] }] },
   { label: 'Offers', groups: [{ title: 'Save more', items: [{ label: "Today's Offers", path: '/offers' }, { label: 'New Customer Offers', path: '/offers' }, { label: 'Premium Collection Offers', path: '/offers' }, { label: 'Membership Offers', path: '/membership' }, { label: 'Coupon Offers', path: '/offers' }] }] },
   { label: 'Services', groups: [{ title: 'Care and convenience', items: [{ label: 'Virtual Try-On', path: '/virtual-try-on' }, { label: 'Eye Care', path: '/services' }, { label: 'Lens Consultation', path: '/prescription/1' }, { label: 'Home Trial', path: '/services' }, { label: 'Store Appointment', path: '/contact' }, { label: 'Contact Us', path: '/contact' }] }] },
@@ -158,9 +162,9 @@ export default function Navbar() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-8">
           <BrandLogo compact />
 
-          <nav className="hidden h-10 flex-1 items-center justify-center xl:flex">
+          <nav className="hidden h-10 flex-1 items-center justify-center xl:flex" aria-label="Store information">
             <div className="flex h-10 items-center gap-4 text-[15px] font-medium leading-none text-[var(--text-secondary)] lg:gap-5">
-              {navItems.map((item) => (
+              {navItems.filter((item) => ['Collections', 'Offers', 'Services'].includes(item.label)).map((item) => (
                 <Link key={item.path} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`group relative inline-flex h-10 items-center whitespace-nowrap leading-none transition-colors duration-200 hover:text-[var(--text-primary)] ${megaMenuOpen === item.label ? 'text-cyan-300' : ''}`}>
                   <span className="inline-flex items-center leading-none">{item.label}</span>
                   <span className={`absolute -bottom-1 left-0 h-0.5 w-full origin-left rounded-full bg-cyan-400 transition-transform duration-200 ${megaMenuOpen === item.label ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
@@ -198,6 +202,13 @@ export default function Navbar() {
             </button>
           </div>
         </div>
+        <nav aria-label="Shop categories" className="hidden border-t border-[var(--border-subtle)] xl:block">
+          <div className="mx-auto flex max-w-7xl items-center justify-center gap-7 overflow-x-auto px-8 py-2.5 text-sm font-medium text-[var(--text-secondary)]">
+            {navItems.filter((item) => !['Collections', 'Offers', 'Services'].includes(item.label)).map((item) => (
+              <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`whitespace-nowrap transition hover:text-[var(--brand-green-dark)] ${megaMenuOpen === item.label ? 'text-[var(--brand-green-dark)]' : ''}`}>{item.label}</Link>
+            ))}
+          </div>
+        </nav>
       </header>
 
       <AnimatePresence>

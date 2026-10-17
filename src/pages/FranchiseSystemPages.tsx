@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, CircleDollarSign, LayoutGrid, LogOut, MapPin, Moon, PackageCheck, PackageOpen, Search, Settings, ShoppingCart, Store, SunMedium, TrendingUp, UserRound, Users, Warehouse } from 'lucide-react';
+import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, CircleDollarSign, LayoutGrid, LogOut, MapPin, PackageCheck, PackageOpen, Search, Settings, ShoppingCart, Store, TrendingUp, UserRound, Users, Warehouse } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { useAuth } from '../context/useAuth';
-import { useTheme } from '../context/useTheme';
 import { adminSalesOverview, franchiseOrders, franchiseProducts, franchiseRegistrations, franchises, franchiseStats, franchiseUsers, topProducts } from '../data/franchiseData';
 
 const formatCurrency = (value: number) =>
@@ -64,7 +63,6 @@ function DashboardShell({
   subheading?: string;
   locationLabel?: string;
 }) {
-  const { theme, toggleTheme } = useTheme();
   const { role, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -175,9 +173,6 @@ function DashboardShell({
                 <Store className="h-4 w-4 text-[var(--brand-green)]" />
                 <span>All Franchises</span>
                 <ChevronDown className="h-4 w-4 text-[var(--text-secondary)]" />
-              </button>
-              <button type="button" onClick={toggleTheme} className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)]">
-                {theme === 'dark' ? <SunMedium className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
               <div className="flex items-center gap-3 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2.5 py-1.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-green)] text-xs font-semibold text-[#101810]">AR</div>

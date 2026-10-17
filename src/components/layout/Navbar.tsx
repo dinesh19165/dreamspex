@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, ShoppingBag, Heart, MoonStar, Settings, Sun, UserRound, WalletCards, X, Sparkles } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, ShoppingBag, Heart, Settings, UserRound, WalletCards, X, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
-import { useTheme } from '../../context/useTheme';
 import { useAuth } from '../../context/useAuth';
 import BrandLogo from '../ui/BrandLogo';
 import LocationSelector from '../ui/LocationSelector';
@@ -54,7 +53,6 @@ const megaMenus: MegaMenu[] = [
 
 export default function Navbar() {
   const { wishlist, cart } = useShop();
-  const { theme, toggleTheme } = useTheme();
   const { isAuthenticated, clearAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -182,9 +180,6 @@ export default function Navbar() {
 
           <div className="flex items-center gap-2">
             <div className="hidden xl:block"><LocationSelector /></div>
-            <button onClick={toggleTheme} className="hidden h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50 xl:flex" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
-              {theme === 'dark' ? <MoonStar className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-            </button>
             <button onClick={openSearch} className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50 lg:hidden" aria-label="Search">
               <Search className="h-4 w-4" />
             </button>
@@ -264,9 +259,6 @@ export default function Navbar() {
         </div>
         <div className="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3">
           <LocationSelector />
-          <button onClick={toggleTheme} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
-            {theme === 'dark' ? <MoonStar className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-          </button>
         </div>
         <Link to={isAuthenticated ? '/dashboard' : '/login'} onClick={() => setOpen(false)} className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200">
           <UserRound className="h-4 w-4 text-cyan-300" /> {isAuthenticated ? 'My account' : 'Sign in or create account'}

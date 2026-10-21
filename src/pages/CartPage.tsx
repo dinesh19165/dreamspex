@@ -5,6 +5,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
+import { getCartItemKey } from '../utils/cart';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total } = useShop();
@@ -26,10 +27,10 @@ export default function CartPage() {
             <Link to="/shop" className="mt-6 inline-flex items-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-white">Browse frames</Link>
           </div>
         ) : (
-          <div className="mt-10 grid gap-8 lg:grid-cols-[1.3fr_0.9fr]">
+          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.3fr_0.9fr]">
             <div className="space-y-4">
               {cart.map((item) => (
-                <div key={item.id} className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+                <div key={getCartItemKey(item)} className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
                   <div className="flex flex-wrap items-center gap-4">
                     <img src={item.image} alt={item.name} className="h-24 w-24 rounded-[20px] object-cover" />
                     <div className="min-w-0 flex-1">
@@ -38,15 +39,15 @@ export default function CartPage() {
                       <p className="mt-2 text-sm leading-6 text-slate-400">{item.description}</p>
                       {item.lensSelection ? <p className="mt-3 text-sm text-cyan-200">{item.lensSelection.type} · {item.lensSelection.coatings.length ? item.lensSelection.coatings.join(', ') : 'No coating selected'}</p> : null}
                     </div>
-                    <button onClick={() => removeFromCart(item.id)} className="rounded-full border border-white/10 bg-slate-950/60 p-3 text-slate-300 transition hover:bg-white/10">
+                    <button onClick={() => removeFromCart(getCartItemKey(item))} aria-label={`Remove ${item.name} from cart`} className="rounded-full border border-white/10 bg-slate-950/60 p-3 text-slate-300 transition hover:bg-white/10">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-4 text-sm text-slate-300">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">-</button>
+                      <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">-</button>
                       <span className="min-w-[2rem] text-center font-semibold text-white">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">+</button>
+                      <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity + 1)} aria-label={`Increase ${item.name} quantity`} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">+</button>
                     </div>
                     <span className="text-lg font-semibold text-white">${(item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity}</span>
                   </div>

@@ -55,6 +55,60 @@
   background-color: var(--bg-primary);
 }
 
+:root[data-theme='dark'] {
+  --bg-primary: #111711;
+  --bg-secondary: #1b241b;
+  --bg-card: #192119;
+  --text-primary: #eef3e9;
+  --text-secondary: #aab6a8;
+  --border-subtle: rgba(210, 228, 202, 0.16);
+  --text-on-dark: #f8fafc;
+  --text-on-dark-muted: #cbd5e1;
+  --control-surface: #1b241b;
+  --control-surface-hover: #263326;
+  color: var(--text-primary);
+  color-scheme: dark;
+  background-color: var(--bg-primary);
+}
+
+:root[data-theme='dark'] body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+:root[data-theme='dark'] [class~='bg-white'],
+:root[data-theme='dark'] [class*='bg-[#e9eee4]'],
+:root[data-theme='dark'] [class*='bg-[#f0f4ed]'],
+:root[data-theme='dark'] [class*='bg-[#dfe9d8]'],
+:root[data-theme='dark'] [class*='bg-[#edf2e9]'],
+:root[data-theme='dark'] [class*='bg-[#d9e2d4]'],
+:root[data-theme='dark'] [class*='bg-[#f7f9f5]'] {
+  background-color: var(--bg-card) !important;
+}
+
+:root[data-theme='dark'] [class*='text-[#182116]']:not([class*='bg-']),
+:root[data-theme='dark'] [class*='text-[#263322]']:not([class*='bg-']),
+:root[data-theme='dark'] [class*='text-[#172015]']:not([class*='bg-']),
+:root[data-theme='dark'] [class*='text-[#5f6c5b]']:not([class*='bg-']),
+:root[data-theme='dark'] [class*='text-[#687468]']:not([class*='bg-']),
+:root[data-theme='dark'] [class*='text-[#5d6c55]']:not([class*='bg-']),
+:root[data-theme='dark'] [class*='text-[#4b781a]']:not([class*='bg-']) {
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme='dark'] [class*='text-[#5f6c5b]']:not([class*='bg-']),
+:root[data-theme='dark'] [class*='text-[#687468]']:not([class*='bg-']),
+:root[data-theme='dark'] [class*='text-[#5d6c55]']:not([class*='bg-']) {
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme='dark'] [class*='border-black/10'],
+:root[data-theme='dark'] [class*='border-[#d5dfd1]'],
+:root[data-theme='dark'] [class*='border-[#d3dfcd]'],
+:root[data-theme='dark'] [class*='border-[#cbd7c5]'] {
+  border-color: var(--border-subtle) !important;
+}
+
 :root[data-theme='light'] body { background: var(--bg-primary); color: var(--text-primary); }
 :root[data-theme='light'] input, :root[data-theme='light'] textarea, :root[data-theme='light'] select { color: var(--text-primary) !important; }
 :root[data-theme='light'] input::placeholder, :root[data-theme='light'] textarea::placeholder { color: #8a958d !important; }

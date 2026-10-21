@@ -5,6 +5,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
+import { getCartItemKey } from '../utils/cart';
 
 export default function CheckoutPage() {
   const { cart, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total } = useShop();
@@ -32,7 +33,7 @@ export default function CheckoutPage() {
             <Link to="/shop" className="mt-6 inline-flex items-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-white">Continue shopping</Link>
           </div>
         ) : (
-          <div className="mt-10 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
             <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -70,7 +71,7 @@ export default function CheckoutPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Order summary</p>
               <div className="mt-6 grid gap-4">
                 {cart.map((item) => (
-                  <div key={item.id} className="grid gap-4 rounded-[20px] border border-white/10 bg-white/5 p-4 lg:grid-cols-[auto_1fr] lg:items-center">
+                  <div key={getCartItemKey(item)} className="grid gap-4 rounded-[20px] border border-white/10 bg-white/5 p-4 lg:grid-cols-[auto_1fr] lg:items-center">
                     <img src={item.image} alt={item.name} className="h-20 w-20 rounded-[20px] object-cover" />
                     <div>
                       <p className="font-semibold text-white">{item.name}</p>

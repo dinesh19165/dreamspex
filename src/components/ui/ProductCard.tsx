@@ -8,15 +8,18 @@ import LuxuryModal from './LuxuryModal';
 
 type ProductCardProps = {
   product: Product;
+  layout?: 'grid' | 'list';
 };
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, layout = 'grid' }: ProductCardProps) {
   const { toggleWishlist, addToCart, isInWishlist, isInCart } = useShop();
   const [open, setOpen] = useState(false);
   const [added, setAdded] = useState(false);
   const supportsPrescription = product.category !== 'Contact Lenses';
+  const unavailable = product.stock === 'Out of Stock';
 
   const handleAddToCart = () => {
+    if (unavailable) return;
     addToCart(product);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1200);
@@ -24,8 +27,8 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <>
-      <motion.article whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 220, damping: 18 }} className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_24px_70px_-42px_rgba(2,6,23,0.8)]">
-        <div className="relative aspect-[4/3] overflow-hidden bg-[var(--bg-secondary)]">
+      <motion.article whileHover={{ y: -4 }} transition={{ type: 'spring', stiffness: 220, damping: 18 }} className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_24px_70px_-42px_rgba(2,6,23,0.8)] ${layout === 'list' ? 'sm:flex-row' : ''}`}>
+        <div className={`relative aspect-[4/3] overflow-hidden bg-[var(--bg-secondary)] ${layout === 'list' ? 'sm:aspect-auto sm:min-h-64 sm:w-2/5 sm:shrink-0' : ''}`}>
           <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
           <div className="absolute left-4 top-4 rounded-full bg-[#182218]/85 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white">{product.badge}</div>
           <button onClick={() => toggleWishlist(product)} className={`absolute right-4 top-4 rounded-full border p-2 transition ${isInWishlist(product.id) ? 'border-cyan-400/40 bg-cyan-400/20 text-cyan-300' : 'border-white/10 bg-[#182218]/80 text-white'}`} aria-label={isInWishlist(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}>
@@ -35,13 +38,13 @@ export default function ProductCard({ product }: ProductCardProps) {
             <button type="button" aria-label={`Quick view ${product.name}`} className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white/90 px-3 py-2 text-sm font-semibold text-slate-900" onClick={() => setOpen(true)}>
               <Eye className="h-4 w-4" /> Quick view
             </button>
-            <button type="button" onClick={handleAddToCart} aria-label={`Add ${product.name} to cart`} className="rounded-full bg-cyan-500/90 p-2.5 text-white">
+            <button type="button" onClick={handleAddToCart} disabled={unavailable} aria-label={unavailable ? `${product.name} is out of stock` : `Add ${product.name} to cart`} className="rounded-full bg-cyan-500/90 p-2.5 text-white disabled:cursor-not-allowed disabled:opacity-50">
               <ShoppingCart className="h-4 w-4" />
             </button>
           </div>
           {added ? <div className="absolute inset-x-4 bottom-20 rounded-full border border-cyan-400/30 bg-slate-950/85 px-3 py-2 text-center text-sm text-cyan-300">Added to bag</div> : null}
         </div>
-        <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <div className={`flex flex-1 flex-col p-5 sm:p-6 ${layout === 'list' ? 'sm:min-w-0' : ''}`}>
           <div className="flex items-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">{product.category}</p>
           </div>
@@ -57,7 +60,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               <p className="text-lg font-semibold text-[var(--text-primary)]">${product.price}</p>
               {product.oldPrice ? <p className="text-sm text-[var(--text-secondary)] line-through">${product.oldPrice} <span className="ml-1 no-underline text-cyan-600">{Math.round((1 - product.price / product.oldPrice) * 100)}% off</span></p> : null}
             </div>
-            <button onClick={handleAddToCart} className={`rounded-full p-2.5 text-white transition hover:brightness-110 ${isInCart(product.id) ? 'bg-emerald-500' : 'bg-gradient-to-r from-cyan-400 to-blue-600'}`} aria-label={`Add ${product.name} to cart`}>
+            <button onClick={handleAddToCart} disabled={unavailable} className={`rounded-full p-2.5 text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 ${isInCart(product.id) ? 'bg-emerald-500' : 'bg-gradient-to-r from-cyan-400 to-blue-600'}`} aria-label={unavailable ? `${product.name} is out of stock` : `Add ${product.name} to cart`}>
               <ShoppingCart className="h-4 w-4" />
             </button>
           </div>
@@ -81,7 +84,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
           <div className="flex flex-col gap-3">
-            <button onClick={() => { addToCart(product); setOpen(false); }} className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-white">Add to bag</button>
+            <button disabled={unavailable} onClick={() => { addToCart(product); setOpen(false); }} className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{unavailable ? 'Out of stock' : 'Add to bag'}</button>
             <Link to={`/product/${product.id}`} className="rounded-full border border-white/10 px-4 py-3 text-center text-sm font-semibold text-slate-200">View details</Link>
           </div>
         </div>

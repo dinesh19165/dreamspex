@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import type { LensSelection, Prescription, Product } from '../types';
 import { calculateCoupon, findCoupon, type CouponResult } from '../services/couponService';
+import { getCartItemKey } from '../utils/cart';
 
 export type CartItem = Product & { quantity: number; configuredId?: string; prescription?: Prescription; lensSelection?: LensSelection };
 
@@ -14,8 +15,8 @@ type ShopContextValue = {
   addToCart: (product: Product) => void;
   addConfiguredToCart: (product: Product, prescription: Prescription, lensSelection: LensSelection) => void;
   removeFromWishlist: (productId: number) => void;
-  removeFromCart: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
+  removeFromCart: (itemKey: string) => void;
+  updateQuantity: (itemKey: string, quantity: number) => void;
   clearCart: () => void;
   appliedCoupon: CouponResult | null;
   applyCoupon: (code: string) => CouponResult | null;
@@ -37,7 +38,8 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   });
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('dream-spex-cart') ?? '[]') as CartItem[];
+      return (JSON.parse(localStorage.getItem('dream-spex-cart') ?? '[]') as CartItem[])
+        .map((item) => item.configuredId ? item : { ...item, configuredId: `product-${item.id}` });
     } catch {
       return [];
     }
@@ -78,20 +80,21 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
   const addToCart = (product: Product) => {
     setCart((current) => {
-      const existing = current.find((item) => item.id === product.id);
+      const itemKey = `product-${product.id}`;
+      const existing = current.find((item) => getCartItemKey(item) === itemKey);
       if (existing) {
-        return current.map((item) => (item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
+        return current.map((item) => (getCartItemKey(item) === itemKey ? { ...item, quantity: item.quantity + 1 } : item));
       }
-      return [...current, { ...product, quantity: 1 }];
+      return [...current, { ...product, quantity: 1, configuredId: itemKey }];
     });
   };
 
   const addConfiguredToCart = (product: Product, prescription: Prescription, lensSelection: LensSelection) => {
-    const configuredId = `${product.id}-${lensSelection.type}-${lensSelection.material}-${lensSelection.coatings.join('-')}`;
+    const configuredId = `configured-${product.id}-${encodeURIComponent(JSON.stringify({ prescription, lensSelection }))}`;
     setCart((current) => {
-      const existing = current.find((item) => item.id === product.id && item.lensSelection && JSON.stringify(item.lensSelection) === JSON.stringify(lensSelection));
+      const existing = current.find((item) => getCartItemKey(item) === configuredId);
       if (existing) return current.map((item) => (item === existing ? { ...item, quantity: item.quantity + 1 } : item));
-      return [...current, { ...product, id: product.id, quantity: 1, prescription, lensSelection, configuredId }];
+      return [...current, { ...product, quantity: 1, prescription, lensSelection, configuredId }];
     });
   };
 
@@ -99,14 +102,14 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     setWishlist((current) => current.filter((item) => item.id !== productId));
   };
 
-  const removeFromCart = (productId: number) => {
-    setCart((current) => current.filter((item) => item.id !== productId));
+  const removeFromCart = (itemKey: string) => {
+    setCart((current) => current.filter((item) => getCartItemKey(item) !== itemKey));
   };
 
-  const updateQuantity = (productId: number, quantity: number) => {
+  const updateQuantity = (itemKey: string, quantity: number) => {
     setCart((current) =>
       current.flatMap((item) => {
-        if (item.id !== productId) {
+        if (getCartItemKey(item) !== itemKey) {
           return [item];
         }
         return quantity > 0 ? [{ ...item, quantity }] : [];

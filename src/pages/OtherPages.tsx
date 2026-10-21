@@ -3,6 +3,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
+import { getCartItemKey } from '../utils/cart';
 import BrandLogo from '../components/ui/BrandLogo';
 
 const policyPages = [
@@ -80,22 +81,22 @@ export default function OtherPages() {
               <Link to="/shop" className="mt-6 inline-flex items-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-white">Shop now</Link>
             </div>
           ) : (
-            <div className="mt-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
               <div className="space-y-4">
                 {cart.map((item) => (
-                  <div key={item.id} className="rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+                  <div key={getCartItemKey(item)} className="rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                       <div>
                         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{item.category}</p>
                         <h3 className="mt-2 text-xl font-semibold text-white">{item.name}</h3>
                       </div>
-                      <button onClick={() => removeFromCart(item.id)} className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300">Remove</button>
+                      <button onClick={() => removeFromCart(getCartItemKey(item))} className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300">Remove</button>
                     </div>
                     <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">-</button>
+                        <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity - 1)} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">-</button>
                         <span className="min-w-8 text-center text-sm font-semibold text-white">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">+</button>
+                        <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity + 1)} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">+</button>
                       </div>
                       <span className="text-lg font-semibold text-white">${item.price * item.quantity}</span>
                     </div>

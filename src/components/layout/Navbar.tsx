@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, ShoppingBag, Heart, Settings, UserRound, WalletCards, X, Sparkles } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, ShoppingBag, Heart, Settings, UserRound, WalletCards, X, Sparkles, Moon, Sun } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import { useAuth } from '../../context/useAuth';
 import BrandLogo from '../ui/BrandLogo';
 import LocationSelector from '../ui/LocationSelector';
 import { products } from '../../data/mockData';
+import { useTheme } from '../../context/useTheme';
 
 const navItems = [
   { label: 'Eyeglasses', path: '/shop?category=frames' },
@@ -54,6 +55,7 @@ const megaMenus: MegaMenu[] = [
 export default function Navbar() {
   const { wishlist, cart } = useShop();
   const { isAuthenticated, clearAuthenticated } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -179,6 +181,9 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} className="hidden h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50 xl:flex">
+              {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </button>
             <div className="hidden xl:block"><LocationSelector /></div>
             <button onClick={openSearch} className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50 lg:hidden" aria-label="Search">
               <Search className="h-4 w-4" />
@@ -260,6 +265,10 @@ export default function Navbar() {
         <div className="mt-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3">
           <LocationSelector />
         </div>
+        <button type="button" onClick={toggleTheme} className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200" aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>
+          {theme === 'light' ? <Moon className="h-4 w-4 text-cyan-300" /> : <Sun className="h-4 w-4 text-cyan-300" />}
+          Switch to {theme === 'light' ? 'dark' : 'light'} mode
+        </button>
         <Link to={isAuthenticated ? '/dashboard' : '/login'} onClick={() => setOpen(false)} className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200">
           <UserRound className="h-4 w-4 text-cyan-300" /> {isAuthenticated ? 'My account' : 'Sign in or create account'}
         </Link>

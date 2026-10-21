@@ -8,14 +8,15 @@ import ProductCard from '../components/ui/ProductCard';
 import SectionTitle from '../components/ui/SectionTitle';
 import { products } from '../data/mockData';
 import { useShop } from '../context/ShopContext';
+import { getCartItemKey } from '../utils/cart';
 
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 6;
 const normalize = (value: string) => value.trim().toLowerCase().replaceAll('-', ' ').replaceAll('_', ' ');
 const categorySlug = (value: string) => normalize(value).replaceAll(' ', '-');
 
 export default function ShopPage() {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const prescriptionNotice = (location.state as { prescriptionNotice?: boolean } | null)?.prescriptionNotice;
   const categoryFilter = searchParams.get('category') ?? '';
   const searchFilter = searchParams.get('search') ?? '';
@@ -99,6 +100,16 @@ export default function ShopPage() {
     if (sortBy === 'price-desc') return matching.sort((a, b) => b.price - a.price);
     if (sortBy === 'popularity') return matching.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
     if (sortBy === 'newest') return matching.sort((a, b) => Number(b.badge === 'New') - Number(a.badge === 'New'));
+    if (searchTerms.length) {
+      const score = (product: (typeof matching)[number]) => {
+        const name = normalize(product.name);
+        const brand = normalize(product.brand);
+        return (name === normalize(query) ? 1000 : name.startsWith(normalize(query)) ? 500 : 0)
+          + (brand.startsWith(normalize(query)) ? 200 : 0)
+          + searchTerms.reduce((total, term) => total + (name.includes(term) ? 30 : brand.includes(term) ? 20 : 10), 0);
+      };
+      return matching.sort((a, b) => score(b) - score(a) || (b.popularity ?? 0) - (a.popularity ?? 0));
+    }
     return matching;
   }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy]);
 
@@ -210,7 +221,7 @@ export default function ShopPage() {
                 <input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} className="accent-[var(--brand-green)]" />
                 In-stock items only
               </label>
-              <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); }} className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300">Clear filters</button>
+              <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300">Clear filters</button>
             </div>
             <div className="mt-6 rounded-[20px] border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-200">
               <p className="font-semibold">Dream Spex membership</p>
@@ -222,7 +233,7 @@ export default function ShopPage() {
             <div className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
               {pagedProducts.map((product, index) => (
                 <motion.div key={product.id} initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.05 }}>
-                  <ProductCard product={product} />
+                  <ProductCard product={product} layout={viewMode} />
                 </motion.div>
               ))}
               {!pagedProducts.length ? <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-center md:col-span-2 xl:col-span-3"><p className="font-serif text-2xl text-[var(--text-primary)]">{selectedCategory && !categoriesInStock.some((category) => categorySlug(category) === categorySlug(selectedCategory)) ? `No ${normalize(selectedCategory)} products are listed yet.` : "Sorry, we couldn't find that frame."}</p><p className="mt-2 text-sm text-[var(--text-secondary)]">Browse the categories and labels represented in the current collection.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><Link to="/shop?badge=Bestseller" className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-[#172015]">Browse bestsellers</Link><Link to="/categories" className="rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold">Popular categories</Link></div></div> : null}
@@ -239,7 +250,7 @@ export default function ShopPage() {
                 </div>
                 <div className="mt-4 space-y-3 text-sm text-slate-300">
                   {cart.slice(0, 3).map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-[#050816] p-3">
+                    <div key={getCartItemKey(item)} className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-[#050816] p-3">
                       <img src={item.image} alt={item.name} className="h-12 w-12 rounded-[14px] object-cover" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-white">{item.name}</p>
@@ -281,7 +292,7 @@ export default function ShopPage() {
                 </div>
                 <div className="mt-6 space-y-4">
                   {cart.map((item) => (
-                    <div key={item.id} className="rounded-[20px] border border-white/10 bg-[#050816] p-4">
+                    <div key={getCartItemKey(item)} className="rounded-[20px] border border-white/10 bg-[#050816] p-4">
                       <div className="flex items-center gap-3">
                         <img src={item.image} alt={item.name} className="h-14 w-14 rounded-[16px] object-cover" />
                         <div className="min-w-0 flex-1">
@@ -289,9 +300,9 @@ export default function ShopPage() {
                           <p className="mt-1 text-xs text-slate-400">${item.price.toFixed(2)} each</p>
                         </div>
                         <div className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 p-1">
-                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="h-8 w-8 rounded-full bg-white/5 text-white transition hover:bg-white/10">-</button>
+                          <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`} className="h-8 w-8 rounded-full bg-white/5 text-white transition hover:bg-white/10">-</button>
                           <span className="min-w-[2rem] text-center text-sm font-semibold text-white">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="h-8 w-8 rounded-full bg-white/5 text-white transition hover:bg-white/10">+</button>
+                          <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity + 1)} aria-label={`Increase ${item.name} quantity`} className="h-8 w-8 rounded-full bg-white/5 text-white transition hover:bg-white/10">+</button>
                         </div>
                       </div>
                       <div className="mt-3 flex items-center justify-between text-sm text-slate-400">

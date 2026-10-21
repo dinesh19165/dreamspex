@@ -53,6 +53,7 @@ export default function ProductDetailPage() {
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
             <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">{product.brand}</p>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{product.category}</p>
               <h1 className="mt-3 text-4xl font-semibold text-white">{product.name}</h1>
               <p className="mt-3 flex items-center gap-2 text-sm text-slate-300" aria-label={`Sample catalogue rating ${product.rating} out of 5`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-white">{product.rating.toFixed(1)}</strong><span>sample catalogue rating · {product.reviews} demo ratings</span></p>
@@ -85,8 +86,8 @@ export default function ProductDetailPage() {
                 <Button variant="secondary" onClick={() => navigate(`/virtual-try-on?productId=${product.id}`)}><Glasses className="mr-2 h-4 w-4" />Virtual Try-On</Button>
                 <Button variant="secondary" onClick={() => navigate(`/prescription/${product.id}`)}>Add Prescription &amp; Choose Lenses</Button>
               </> : null}
-              <Button onClick={handleAddToCart}>{addedToCart ? 'Added to Cart' : 'Add to Cart'}</Button>
-              <Button onClick={handleBuyNow}>Buy now</Button>
+              <Button onClick={handleAddToCart} disabled={product.stock === 'Out of Stock'}>{product.stock === 'Out of Stock' ? 'Out of stock' : addedToCart ? 'Added to Cart' : 'Add to Cart'}</Button>
+              <Button onClick={handleBuyNow} disabled={product.stock === 'Out of Stock'}>Buy now</Button>
               <Button variant="ghost" onClick={() => toggleWishlist(product)}><Heart className={`mr-2 h-4 w-4 ${isInWishlist(product.id) ? 'fill-current text-cyan-300' : ''}`} /> {isInWishlist(product.id) ? 'Saved to wishlist' : 'Add to wishlist'}</Button>
             </div>
             <div className="grid gap-4 md:grid-cols-2">

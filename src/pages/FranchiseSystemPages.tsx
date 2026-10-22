@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, CircleDollarSign, LayoutGrid, LogOut, MapPin, PackageCheck, PackageOpen, Search, Settings, ShoppingCart, Store, TrendingUp, UserRound, Users, Warehouse } from 'lucide-react';
+import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, CircleDollarSign, LayoutGrid, LogOut, MapPin, Moon, PackageCheck, PackageOpen, Search, Settings, ShoppingCart, Store, Sun, TrendingUp, UserRound, Users, Warehouse } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { useAuth } from '../context/useAuth';
+import { useTheme } from '../context/useTheme';
 import { adminSalesOverview, franchiseOrders, franchiseProducts, franchiseRegistrations, franchises, franchiseStats, franchiseUsers, topProducts } from '../data/franchiseData';
 
 const formatCurrency = (value: number) =>
@@ -64,6 +65,7 @@ function DashboardShell({
   locationLabel?: string;
 }) {
   const { role, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -126,6 +128,10 @@ function DashboardShell({
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--bg-primary)]"><UserRound className="h-4 w-4" /></span>
           Profile
         </Link>
+        <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--bg-primary)]">{theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}</span>
+          Switch to {theme === 'light' ? 'dark' : 'light'} mode
+        </button>
         <button type="button" onClick={handleLogout} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-red-500/8 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-500/8"><LogOut className="h-4 w-4" /></span>
           Logout
@@ -575,7 +581,7 @@ export function SuperAdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-        <div className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
+        <div className="min-w-0 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
           <div className="mb-5 flex items-center justify-between gap-3">
             <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--text-secondary)]">Recent orders</p>
             <Link to="/admin/orders" className="text-sm font-semibold text-[var(--brand-green)]">View all</Link>
@@ -607,7 +613,7 @@ export function SuperAdminDashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
+        <div className="min-w-0 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
           <div className="mb-5 flex items-center justify-between gap-3">
             <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--text-secondary)]">Top selling products</p>
             <ArrowRight className="h-4 w-4 text-[var(--brand-green)]" />

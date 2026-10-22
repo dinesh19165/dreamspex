@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Moon, ShieldCheck, Sparkles, Sun } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
+import { useTheme } from '../context/useTheme';
 import { mockDemoCredentials, getMockFranchiseUserByEmail } from '../data/mockAuth';
 
 function LoginShell({
@@ -15,8 +16,12 @@ function LoginShell({
   accent: string;
   children: React.ReactNode;
 }) {
+  const { theme, toggleTheme } = useTheme();
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] px-4 py-10 text-[var(--text-primary)] sm:px-6">
+    <div className="relative min-h-screen bg-[var(--bg-primary)] px-4 py-10 text-[var(--text-primary)] sm:px-6">
+      <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} className="absolute right-5 top-5 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:bg-[var(--control-surface-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]">
+        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+      </button>
       <div className="mx-auto max-w-6xl overflow-hidden rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-2xl shadow-black/20">
         <div className="grid min-h-[760px] lg:grid-cols-[1.1fr_0.9fr]">
           <div className={`relative hidden overflow-hidden lg:block ${accent}`}>

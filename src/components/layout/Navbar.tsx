@@ -151,7 +151,7 @@ export default function Navbar() {
   return (
     <>
       <div ref={megaMenuRef} className="relative z-[70]" onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
-      <div className="bg-[#182218] px-4 py-2 text-center text-xs font-medium tracking-wide text-white sm:text-sm">
+      <div className="bg-[var(--brand-charcoal)] px-4 py-2 text-center text-xs font-medium tracking-wide text-white sm:text-sm">
         <Link to="/offers" className="inline-flex items-center justify-center gap-2 hover:text-[#c8ee91] focus-visible:text-[#c8ee91]">
           <Sparkles className="h-3.5 w-3.5 text-[#b7e77a]" />
           Discover this season’s offers

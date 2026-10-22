@@ -8,7 +8,7 @@ export default function Footer() {
   const [signupPreviewed, setSignupPreviewed] = useState(false);
 
   return (
-    <footer className="border-t border-[var(--border-subtle)] bg-[#e9eee4] text-[var(--text-secondary)]">
+    <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
         <div>
           <BrandLogo />
@@ -57,8 +57,8 @@ export default function Footer() {
           <form className="mt-6" onSubmit={(event) => { event.preventDefault(); setSignupPreviewed(true); }}>
             <label htmlFor="newsletter-email" className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-primary)]">Newsletter</label>
             <div className="mt-2 flex gap-2">
-              <input id="newsletter-email" type="email" required value={email} onChange={(event) => { setEmail(event.target.value); setSignupPreviewed(false); }} placeholder="Email address" className="min-w-0 flex-1 rounded-full border border-[var(--border-subtle)] bg-white px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[#788477] focus-visible:border-[#689f24]" />
-              <button type="submit" aria-label="Preview newsletter signup" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#7cbf00] text-[#172015] transition hover:bg-[#9acd32]"><ArrowRight className="h-4 w-4" /></button>
+              <input id="newsletter-email" type="email" required value={email} onChange={(event) => { setEmail(event.target.value); setSignupPreviewed(false); }} placeholder="Email address" className="min-w-0 flex-1 rounded-full border border-[var(--border-subtle)] bg-white px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)] focus-visible:border-[var(--focus-ring)]" />
+              <button type="submit" aria-label="Preview newsletter signup" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-green)] text-[var(--text-primary)] transition hover:bg-[var(--brand-green-light)]"><ArrowRight className="h-4 w-4" /></button>
             </div>
             <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">Demo only. Newsletter sign-up is not connected.</p>
             {signupPreviewed ? <p role="status" className="mt-2 text-xs font-medium text-[#3f7000]">No subscription was sent; an email integration is required.</p> : null}

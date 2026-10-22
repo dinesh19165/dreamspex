@@ -32,9 +32,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({ vari
     onClick?.(event);
   };
 
-  const base = 'relative inline-flex items-center justify-center overflow-hidden rounded-full px-5 py-3 text-sm font-semibold transition duration-200';
+  const base = 'relative inline-flex items-center justify-center overflow-hidden rounded-full px-5 py-3 text-sm font-semibold transition duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50';
   const variants = {
-    primary: 'bg-[var(--brand-green)] text-[#172015] shadow-lg shadow-black/20 hover:bg-[var(--brand-green-light)]',
+    primary: 'bg-[var(--brand-green)] text-[var(--text-primary)] shadow-lg shadow-black/10 hover:bg-[var(--brand-green-light)]',
     secondary: 'border border-[var(--brand-green)]/60 bg-[var(--control-surface)] text-[var(--text-primary)] hover:bg-[var(--control-surface-hover)]',
     ghost: 'border border-[var(--border-subtle)] bg-[var(--control-surface)] text-[var(--text-primary)] hover:border-[var(--brand-green)]/60 hover:bg-[var(--control-surface-hover)]',
   };

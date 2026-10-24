@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, ShoppingBag, Heart, Settings, UserRound, WalletCards, X, Sparkles, Moon, Sun } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogOut, Menu, Search, ShoppingBag, Heart, Settings, UserRound, WalletCards, X, Sparkles, Moon, Sun, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import { useAuth } from '../../context/useAuth';
@@ -18,6 +18,7 @@ const navItems = [
   { label: 'Accessories', path: '/shop?category=accessories' },
   { label: 'Collections', path: '/categories' },
   { label: 'Offers', path: '/offers' },
+  { label: 'Eye Care', path: '/services' },
   { label: 'Services', path: '/services' },
 ];
 
@@ -49,6 +50,7 @@ const megaMenus: MegaMenu[] = [
   { label: 'Accessories', groups: [{ title: 'Catalogue status', items: [{ label: 'No accessories are listed yet', path: '/shop?category=accessories' }] }] },
   { label: 'Collections', groups: [{ title: 'Explore collections', items: [{ label: 'All current categories', path: '/categories' }, { label: 'Luxury Collection', path: '/shop?category=luxury-collection' }, { label: 'New Arrivals', path: '/shop?badge=New' }, { label: 'Bestsellers', path: '/shop?badge=Bestseller' }] }] },
   { label: 'Offers', groups: [{ title: 'Save more', items: [{ label: "Today's Offers", path: '/offers' }, { label: 'New Customer Offers', path: '/offers' }, { label: 'Premium Collection Offers', path: '/offers' }, { label: 'Membership Offers', path: '/membership' }, { label: 'Coupon Offers', path: '/offers' }] }] },
+  { label: 'Eye Care', groups: [{ title: 'Care and convenience', items: [{ label: 'Home eye-test enquiry', path: '/services#appointments' }, { label: 'Virtual Try-On', path: '/virtual-try-on' }, { label: 'Prescription support', path: '/shop?category=frames' }, { label: 'Store Locator', path: '/stores' }] }] },
   { label: 'Services', groups: [{ title: 'Care and convenience', items: [{ label: 'Virtual Try-On', path: '/virtual-try-on' }, { label: 'Eye Care', path: '/services' }, { label: 'Lens Consultation', path: '/prescription/1' }, { label: 'Home Trial', path: '/services' }, { label: 'Store Appointment', path: '/contact' }, { label: 'Contact Us', path: '/contact' }] }] },
 ];
 
@@ -151,21 +153,29 @@ export default function Navbar() {
   return (
     <>
       <div ref={megaMenuRef} className="relative z-[70]" onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
-      <div className="bg-[var(--brand-charcoal)] px-4 py-2 text-center text-xs font-medium tracking-wide text-white sm:text-sm">
-        <Link to="/offers" className="inline-flex items-center justify-center gap-2 hover:text-[#c8ee91] focus-visible:text-[#c8ee91]">
-          <Sparkles className="h-3.5 w-3.5 text-[#b7e77a]" />
-          Discover this season’s offers
-          <span aria-hidden="true">→</span>
-        </Link>
+      <div className="top-promo px-4 py-2 text-xs font-medium tracking-wide sm:text-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-center gap-4 sm:justify-between">
+          <div className="top-promo__perks hidden items-center gap-6 md:flex">
+            <span className="inline-flex items-center gap-2"><Truck className="h-4 w-4 text-[#b7e77a]" /> Free shipping on orders above ₹999</span>
+            <span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-[#b7e77a]" /> 100% authentic products</span>
+            <span className="inline-flex items-center gap-2"><RotateCcw className="h-4 w-4 text-[#b7e77a]" /> Easy returns & exchanges</span>
+          </div>
+          <Link to="/offers" className="inline-flex items-center justify-center gap-2 hover:text-[#c8ee91] focus-visible:text-[#c8ee91]">
+            <Sparkles className="h-3.5 w-3.5 text-[#b7e77a]" />
+            <span className="hidden sm:inline">Special offers this season</span>
+            <span className="sm:hidden">Discover this season’s offers</span>
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </div>
       <header className={`sticky top-0 z-50 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/95 transition-all duration-300 ${scrolled ? 'backdrop-blur-2xl' : ''}`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-1 px-4 py-3 sm:gap-3 lg:px-8">
           <BrandLogo compact />
 
           <nav className="hidden h-10 flex-1 items-center justify-center xl:flex" aria-label="Store information">
             <div className="flex h-10 items-center gap-4 text-[15px] font-medium leading-none text-[var(--text-secondary)] lg:gap-5">
-              {navItems.filter((item) => ['Collections', 'Offers', 'Services'].includes(item.label)).map((item) => (
-                <Link key={item.path} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`group relative inline-flex h-10 items-center whitespace-nowrap leading-none transition-colors duration-200 hover:text-[var(--text-primary)] ${megaMenuOpen === item.label ? 'text-cyan-300' : ''}`}>
+              {navItems.filter((item) => ['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
+                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`group relative inline-flex h-10 items-center whitespace-nowrap leading-none transition-colors duration-200 hover:text-[var(--text-primary)] ${megaMenuOpen === item.label ? 'text-cyan-300' : ''}`}>
                   <span className="inline-flex items-center leading-none">{item.label}</span>
                   <span className={`absolute -bottom-1 left-0 h-0.5 w-full origin-left rounded-full bg-cyan-400 transition-transform duration-200 ${megaMenuOpen === item.label ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
                 </Link>
@@ -180,7 +190,7 @@ export default function Navbar() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} className="hidden h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50 xl:flex">
               {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </button>
@@ -204,7 +214,7 @@ export default function Navbar() {
         </div>
         <nav aria-label="Shop categories" className="hidden border-t border-[var(--border-subtle)] xl:block">
           <div className="mx-auto flex max-w-7xl items-center justify-center gap-7 overflow-x-auto px-8 py-2.5 text-sm font-medium text-[var(--text-secondary)]">
-            {navItems.filter((item) => !['Collections', 'Offers', 'Services'].includes(item.label)).map((item) => (
+            {navItems.filter((item) => !['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
               <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`whitespace-nowrap transition hover:text-[var(--brand-green-dark)] ${megaMenuOpen === item.label ? 'text-[var(--brand-green-dark)]' : ''}`}>{item.label}</Link>
             ))}
           </div>
@@ -274,7 +284,7 @@ export default function Navbar() {
         </Link>
         <div className="mt-8 space-y-3">
           {navItems.map((item) => (
-            <div key={item.path} className="rounded-2xl border border-white/10 bg-white/5">
+            <div key={item.label} className="rounded-2xl border border-white/10 bg-white/5">
               <button type="button" className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-slate-200" onClick={() => setMobileMenuOpen((current) => current === item.label ? null : item.label)} aria-expanded={mobileMenuOpen === item.label}>
                 {item.label}<ChevronDown className={`h-4 w-4 transition-transform ${mobileMenuOpen === item.label ? 'rotate-180 text-cyan-300' : ''}`} />
               </button>

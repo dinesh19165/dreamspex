@@ -15,7 +15,7 @@ export default function BrandLogo({ compact = false }: { compact?: boolean }) {
 			className="inline-flex shrink-0 items-center justify-center overflow-visible bg-transparent p-0 no-underline"
 			style={{
 				display: 'inline-flex',
-				width: compact ? 'clamp(120px, 18vw, 150px)' : 'clamp(160px, 24vw, 185px)',
+				width: compact ? 'clamp(96px, 18vw, 150px)' : 'clamp(160px, 24vw, 185px)',
 				height: '74px',
 				padding: '0 0.25rem',
 			}}
@@ -26,7 +26,7 @@ export default function BrandLogo({ compact = false }: { compact?: boolean }) {
 				alt="Dream Spex Solutions Pvt Ltd"
 				style={{
 					display: 'block',
-					width: compact ? 'clamp(120px, 18vw, 150px)' : 'clamp(160px, 24vw, 185px)',
+					width: compact ? 'clamp(96px, 18vw, 150px)' : 'clamp(160px, 24vw, 185px)',
 					height: 'auto',
 					objectFit: 'contain',
 					background: 'transparent',

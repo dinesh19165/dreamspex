@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Camera, ChevronRight, Eye, FileText, Glasses, MapPin, Sparkles, Stethoscope } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Stethoscope } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -9,10 +9,10 @@ import Button from '../components/ui/Button';
 import ProductCard from '../components/ui/ProductCard';
 import { categories, coupons, membershipPlans, products } from '../data/mockData';
 const categoryDetails = [
-  { name: 'Eyeglasses', slug: 'frames', image: categories[0].image, copy: 'Everyday frames with considered proportions.' },
-  { name: 'Sunglasses', slug: 'sunglasses', image: categories[1].image, copy: 'Sunglasses from the current collection.' },
-  { name: 'Computer glasses', slug: 'computer-glasses', image: categories[5].image, copy: 'Comfort-led clarity for long screen days.' },
-  { name: 'Kids’ eyewear', slug: 'kids-collection', image: products.find((product) => product.category === 'Kids Collection')?.image ?? categories[0].image, copy: 'Styles tagged for kids in the sample collection.' },
+  { name: 'Everyday Frames', slug: 'frames', image: products.find((product) => product.category === 'Frames')?.image ?? categories[0].image, copy: 'Classic styles for every look' },
+  { name: 'Statement Sunglasses', slug: 'sunglasses', image: products.find((product) => product.category === 'Sunglasses')?.image ?? categories[1].image, copy: 'Bold looks for brighter days' },
+  { name: 'Screen Comfort', slug: 'computer-glasses', image: products.find((product) => product.category === 'Computer Glasses')?.image ?? categories[5].image, copy: 'Blue light glasses for a healthier you' },
+  { name: 'Kids’ Eyewear', slug: 'kids-collection', image: products.find((product) => product.category === 'Kids Collection')?.image ?? categories[4].image, copy: 'Comfortable & durable for growing eyes' },
 ];
 
 const supportedMaterials = [...new Set(products.map((product) => product.material))];
@@ -21,9 +21,9 @@ const supportedBrands = [...new Set(products.map((product) => product.brand))];
 const supportedShapes = [...new Set(products.map((product) => product.frameShape).filter((shape): shape is string => Boolean(shape)))];
 const supportedGenders = [...new Set(products.map((product) => product.gender).filter((gender): gender is string => Boolean(gender)))];
 const heroSlides = [
-  { product: products[0], label: 'Eyeglasses', category: 'frames', imageAlt: 'Aurelia Rimless eyeglasses' },
-  { product: products[1], label: 'Sunglasses', category: 'sunglasses', imageAlt: 'Nocturne Shield sunglasses' },
-  { product: products[2], label: 'Computer glasses', category: 'computer-glasses', imageAlt: 'Lumen Blue Light glasses' },
+  { product: products[0], label: 'Eyeglasses', category: 'frames', image: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=1400&h=1000&q=85', imageAlt: 'Person wearing stylish eyeglasses' },
+  { product: products[1], label: 'Sunglasses', category: 'sunglasses', image: products[1].image, imageAlt: 'Featured sunglasses from the Dream Spex collection' },
+  { product: products[2], label: 'Computer glasses', category: 'computer-glasses', image: products[2].image, imageAlt: 'Featured computer glasses from the Dream Spex collection' },
 ];
 const colorSwatches: Record<string, string> = {
   Midnight: '#1f2937',
@@ -40,6 +40,13 @@ const services = [
   { icon: Stethoscope, title: 'Eye-care appointment', copy: 'Explore appointment options and service details.', path: '/services#appointments' },
   { icon: FileText, title: 'Prescription support', copy: 'Add prescription details in the guided frame order flow.', path: '/shop?category=frames' },
   { icon: Camera, title: 'Virtual try-on', copy: 'Find your fit before you commit, from the comfort of home.', path: '/virtual-try-on' },
+];
+
+const homeServiceLinks = [
+  { icon: House, title: 'Home Eye Test', copy: 'Explore at-home eye care', path: '/services#appointments' },
+  { icon: ScanFace, title: 'Virtual Try-On', copy: 'See it before you buy', path: '/virtual-try-on' },
+  { icon: MapPin, title: 'Store Locator', copy: 'Find a store near you', path: '/stores' },
+  { icon: Gift, title: 'Exclusive Offers', copy: 'Explore member offers', path: '/offers' },
 ];
 
 function FaceShapeIllustration({ shape }: { shape: string }) {
@@ -70,41 +77,77 @@ export default function HomePage() {
       <Helmet><title>Dream Spex | See Better. Look Remarkable.</title><meta name="description" content="Premium eyewear, precision lenses and expert optical care from Dream Spex." /></Helmet>
       <Navbar />
       <main>
-        <section aria-label="Featured eyewear" className="relative isolate overflow-hidden border-b border-black/10 bg-white">
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-            <div className="grid min-h-[440px] overflow-hidden rounded-[28px] bg-[#edf2e9] lg:min-h-[540px] lg:grid-cols-[.82fr_1.18fr]">
-              <motion.div key={`copy-${activeSlide}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 flex flex-col items-start justify-center px-7 py-10 sm:px-12 lg:px-14">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-[#5d9417]"><Sparkles className="h-4 w-4" /> Dream Spex | {slide.label}</p>
-                <h1 className="mt-5 max-w-lg font-serif text-4xl font-medium leading-[1.04] tracking-tight text-[#182116] sm:text-6xl">A clearer point of view.</h1>
-                <p className="mt-5 max-w-md text-base leading-7 text-[#5f6c5b]">{slide.product.name} — {slide.product.description}</p>
-                <div className="mt-7 flex flex-wrap gap-3">
-                  <Link to={`/shop?category=${slide.category}`}><Button>Shop {slide.label.toLowerCase()} <ArrowRight className="ml-2 h-4 w-4" /></Button></Link>
-                  <Link to={`/product/${slide.product.id}`} className="inline-flex items-center rounded-full border border-[#a9bba2] px-5 py-3 text-sm font-semibold text-[#182116] transition hover:border-[#689f24]">View featured frame</Link>
-                </div>
-                <div className="mt-9 flex items-center gap-3" aria-label={`Banner ${activeSlide + 1} of ${heroSlides.length}`}>
-                  {heroSlides.map((item, index) => <button type="button" key={item.category} onClick={() => setActiveSlide(index)} aria-label={`Show ${item.label} banner`} aria-current={index === activeSlide ? 'true' : undefined} className={`h-2.5 rounded-full transition-all ${index === activeSlide ? 'w-8 bg-[#5d9417]' : 'w-2.5 bg-[#b8c5b2] hover:bg-[#78946c]'}`} />)}
-                  <span className="ml-2 text-xs font-medium text-[#5f6c5b]">{String(activeSlide + 1).padStart(2, '0')} / {String(heroSlides.length).padStart(2, '0')}</span>
-                </div>
-              </motion.div>
-              <div className="relative min-h-[300px] overflow-hidden bg-[#d9e2d4] lg:min-h-full">
-                <motion.img key={`image-${activeSlide}`} initial={{ opacity: 0.75, scale: 1.02 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4 }} src={slide.product.image} alt={slide.imageAlt} className="absolute inset-0 h-full w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#182218]/60 via-transparent to-transparent" />
-                <div className="absolute bottom-5 left-5 flex items-center gap-3 text-[#ffffff] sm:bottom-8 sm:left-8">
-                  <span className="rounded-full bg-white/15 px-4 py-2 text-sm font-semibold backdrop-blur-md">{slide.product.name}</span>
-                  <Link to={`/product/${slide.product.id}`} aria-label={`View ${slide.product.name}`} className="rounded-full bg-white p-3 text-[#182116] transition hover:scale-105"><ArrowRight className="h-5 w-5" /></Link>
-                </div>
-                <div className="absolute right-4 top-1/2 flex -translate-y-1/2 gap-2 sm:right-6">
-                  <button type="button" onClick={() => changeSlide(-1)} aria-label="Previous featured category" className="rounded-full border border-white/50 bg-white/90 p-3 text-[#182116] shadow-lg transition hover:bg-white"><ArrowLeft className="h-4 w-4" /></button>
-                  <button type="button" onClick={() => changeSlide(1)} aria-label="Next featured category" className="rounded-full border border-white/50 bg-white/90 p-3 text-[#182116] shadow-lg transition hover:bg-white"><ArrowRight className="h-4 w-4" /></button>
-                </div>
+        <section aria-label="Featured eyewear" className="home-hero">
+          <div className="home-hero__layout">
+            <div className="home-hero__visual">
+              <motion.img
+                key={activeSlide}
+                initial={{ opacity: 0.8, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                src={slide.image}
+                alt={slide.imageAlt}
+                className="home-hero__image"
+              />
+              <div className="home-hero__image-wash" />
+              <div className="home-hero__indicators" aria-label={`Banner ${activeSlide + 1} of ${heroSlides.length}`}>
+                {heroSlides.map((item, index) => <button type="button" key={item.category} onClick={() => setActiveSlide(index)} aria-label={`Show ${item.label} banner`} aria-current={index === activeSlide ? 'true' : undefined} className={`h-2.5 rounded-full transition-all ${index === activeSlide ? 'w-8 bg-[#78be20]' : 'w-2.5 bg-white/85 hover:bg-white'}`} />)}
+              </div>
+              <div className="home-hero__arrows">
+                <button type="button" onClick={() => changeSlide(-1)} aria-label="Previous featured category"><ArrowLeft className="h-4 w-4" /></button>
+                <button type="button" onClick={() => changeSlide(1)} aria-label="Next featured category"><ArrowRight className="h-4 w-4" /></button>
               </div>
             </div>
+            <motion.div key={`copy-${activeSlide}`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="home-hero__copy">
+              <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#355e17]"><Sparkles className="h-4 w-4" /> Dream Spex <span aria-hidden="true">|</span> Eyewear</p>
+              <h1 className="mt-4 max-w-xl font-serif font-medium leading-[1.02] tracking-tight text-[#182116]">See your world differently.</h1>
+              <p className="mt-4 max-w-lg text-base leading-7 text-[#5f6c5b] sm:text-lg">Find frames that fit your style, your day, your vision.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link to={`/shop?category=${slide.category}`} className="inline-flex items-center justify-center rounded-full bg-[#78be20] px-6 py-3 text-sm font-semibold text-[#172015] shadow-sm transition hover:bg-[#8dcc39]">
+                  Shop {slide.label.toLowerCase()} <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+                <Link to="/shop?category=sunglasses" className="inline-flex items-center justify-center rounded-full border border-[#a9bba2] px-6 py-3 text-sm font-semibold text-[#182116] transition hover:border-[#689f24]">
+                  Explore sunglasses
+                </Link>
+              </div>
+              <div className="home-hero__benefits">
+                <span><Glasses aria-hidden="true" /><span>Stylish<br />collections</span></span>
+                <span><ShieldCheck aria-hidden="true" /><span>UV protection<br />for every day</span></span>
+                <span><Feather aria-hidden="true" /><span>Lightweight<br />& comfortable</span></span>
+              </div>
+            </motion.div>
           </div>
         </section>
 
-        <section className="border-b border-black/10 bg-[var(--bg-primary)]"><div className="mx-auto grid max-w-7xl grid-cols-2 divide-x divide-black/10 px-4 py-5 text-sm text-[var(--text-secondary)] sm:grid-cols-4 sm:px-6 lg:px-8"><Link to="/shop" className="flex items-center justify-center gap-2 py-2 hover:text-[var(--text-primary)]"><Eye className="h-4 w-4 text-[#689f24]" /> Browse the collection</Link><Link to="/virtual-try-on" className="flex items-center justify-center gap-2 py-2 hover:text-[var(--text-primary)]"><Glasses className="h-4 w-4 text-[#689f24]" /> Virtual try-on</Link><Link to="/shop?category=frames" className="flex items-center justify-center gap-2 py-2 hover:text-[var(--text-primary)]"><FileText className="h-4 w-4 text-[#689f24]" /> Prescription frames</Link><Link to="/stores" className="flex items-center justify-center gap-2 py-2 hover:text-[var(--text-primary)]"><MapPin className="h-4 w-4 text-[#689f24]" /> Store locations</Link></div></section>
+        <section aria-label="Shop eyewear collections" className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {categoryDetails.map((category, index) => (
+              <motion.div key={category.slug} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * .06 }}>
+                <Link to={`/shop?category=${category.slug}`} className="home-category-card group">
+                  <img src={category.image} alt="" loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(18, 28, 19, 0.78), rgba(18, 28, 19, 0.02) 72%)' }} />
+                  <div className="absolute inset-x-0 bottom-0 p-3 text-white sm:p-4">
+                    <h2 className="font-serif text-base font-medium sm:text-lg">{category.name}</h2>
+                    <p className="mt-1 text-xs text-white/90 sm:text-sm">{category.copy}</p>
+                    <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-white sm:text-sm">Shop now <ArrowRight className="h-3.5 w-3.5" /></span>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </section>
 
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Find your fit</p><h2 className="mt-3 font-serif text-4xl text-[var(--text-primary)]">Shop by category</h2></div><Link to="/categories" className="hidden items-center gap-1 text-sm font-semibold text-[#689f24] sm:flex">View all <ChevronRight className="h-4 w-4" /></Link></div><div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{categoryDetails.map((category, index) => <motion.div key={category.slug} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * .06 }}><Link to={`/shop?category=${category.slug}`} className="group block"><div className="aspect-[0.9] overflow-hidden rounded-2xl bg-[#e9eee4]"><img src={category.image} alt={category.name} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" /></div><h3 className="mt-4 text-lg font-semibold">{category.name}</h3><p className="mt-1 text-sm text-[var(--text-secondary)]">{category.copy}</p><span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#689f24]">Shop now <ArrowRight className="h-4 w-4" /></span></Link></motion.div>)}</div></section>
+        <section aria-label="Services and store information" className="home-service-strip">
+          <div className="home-service-strip__grid">
+            {homeServiceLinks.map(({ icon: Icon, title, copy, path }) => (
+              <Link key={title} to={path} className="home-service-strip__item">
+                <Icon aria-hidden="true" />
+                <span className="home-service-strip__copy"><span>{title}</span><span>{copy}</span></span>
+                <ArrowRight aria-hidden="true" className="home-service-strip__arrow" />
+              </Link>
+            ))}
+          </div>
+        </section>
 
         <section aria-labelledby="wearer-title" className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Shop by wearer</p><h2 id="wearer-title" className="mt-2 font-serif text-3xl text-[var(--text-primary)]">Find styles for your needs</h2></div><p className="max-w-md text-sm leading-6 text-[var(--text-secondary)]">Audience labels come from the sample catalogue; they are not fit or sizing recommendations.</p></div>

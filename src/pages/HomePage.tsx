@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Camera, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Stethoscope } from 'lucide-react';
+import { ArrowRight, Camera, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
-import ProductCard from '../components/ui/ProductCard';
 import { categories, coupons, membershipPlans, products } from '../data/mockData';
 import { HERO_IMAGE_URL, HERO_MOBILE_IMAGE_URL, HERO_MOBILE_VIDEO_URL, HERO_VIDEO_URL } from '../config/siteMedia';
 import { formatINR } from '../utils/currency';
@@ -33,12 +32,6 @@ const colorSwatches: Record<string, string> = {
   Onyx: '#292524',
 };
 
-const services = [
-  { icon: Stethoscope, title: 'Eye-care appointment', copy: 'Explore appointment options and service details.', path: '/services#appointments' },
-  { icon: FileText, title: 'Prescription support', copy: 'Add prescription details in the guided frame order flow.', path: '/shop?category=frames' },
-  { icon: Camera, title: 'Virtual try-on', copy: 'Find your fit before you commit, from the comfort of home.', path: '/virtual-try-on' },
-];
-
 const homeServiceLinks = [
   { icon: House, title: 'Home Eye Test', copy: 'Explore at-home eye care', path: '/services#appointments' },
   { icon: ScanFace, title: 'Virtual Try-On', copy: 'See it before you buy', path: '/virtual-try-on' },
@@ -57,6 +50,29 @@ function FaceShapeIllustration({ shape }: { shape: string }) {
   };
 
   return <svg viewBox="0 0 100 110" aria-hidden="true" className="h-24 w-20 text-[#689f24]/75 transition duration-300 group-hover:text-[#3f7000] sm:h-28 sm:w-24"><path d={paths[shape]} fill="none" stroke="currentColor" strokeWidth="2.2" /><path d="M36 48h10M54 48h10M46 69h8" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" opacity=".65" /></svg>;
+}
+
+function CompactHomeProductCard({ product }: { product: typeof products[number] }) {
+  return (
+    <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_18px_36px_-28px_rgba(15,23,42,0.28)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_42px_-28px_rgba(15,23,42,0.35)]">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[var(--bg-secondary)]">
+        <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-[1.03]" />
+      </div>
+
+      <div className="flex flex-1 flex-col p-3">
+        <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#689f24]">{product.category}</p>
+        <h3 className="mt-2 text-base font-semibold leading-5 text-[var(--text-primary)]">{product.name}</h3>
+        <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{product.description}</p>
+
+        <div className="mt-auto pt-3">
+          <p className="text-base font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p>
+          <Link to={`/product/${product.id}`} className="mt-3 inline-flex items-center justify-center rounded-full bg-[var(--brand-green)] px-3.5 py-2 text-xs font-semibold text-[#172015] transition hover:bg-[var(--brand-green-light)]">
+            View Product
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 export default function HomePage() {
@@ -92,6 +108,35 @@ export default function HomePage() {
   const collectionPath = collectionTab === 'trending' ? '/shop?sort=popularity' : `/shop?badge=${collectionTab === 'bestseller' ? 'Bestseller' : 'New'}`;
   const heroPoster = isMobile ? HERO_MOBILE_IMAGE_URL : HERO_IMAGE_URL;
   const heroVideoSrc = isMobile ? HERO_MOBILE_VIDEO_URL : HERO_VIDEO_URL;
+  const brandPromos = [
+    {
+      title: 'VisionEye Signature',
+      description: 'Refined silhouettes and lightweight comfort for every day.',
+      tag: 'Premium frames',
+      href: '/shop?brand=VisionEye',
+      image: products.find((product) => product.brand === 'VisionEye')?.image ?? products[0].image,
+      style: 'lg:col-span-2',
+      variant: 'primary',
+    },
+    {
+      title: 'Blue-Light Comfort',
+      description: 'Sharper screen time with lens protection and modern clarity.',
+      tag: 'Lens care',
+      href: '/shop?category=computer-glasses',
+      image: products.find((product) => product.category === 'Computer Glasses')?.image ?? categories[5].image,
+      style: '',
+      variant: 'secondary',
+    },
+    {
+      title: 'Try Before You Buy',
+      description: 'Preview frames in real time and find the one that fits best.',
+      tag: 'Virtual try-on',
+      href: '/virtual-try-on',
+      image: products.find((product) => product.badge === 'New')?.image ?? products[1]?.image ?? products[0].image,
+      style: '',
+      variant: 'secondary',
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -203,7 +248,7 @@ export default function HomePage() {
 
           <section className="border-y border-black/10 bg-[#f0f4ed] py-12"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Shop by material</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">Made from considered materials</h2><p className="mt-3 max-w-xl text-sm leading-6 text-[#5f6c5b]">Browse materials and colours represented in the current product catalogue.</p><div className="mt-6 flex flex-wrap gap-3">{supportedMaterials.map((material) => <Link key={material} to={`/shop?material=${encodeURIComponent(material)}`} className="rounded-full border border-[#cbd7c5] bg-white px-5 py-3 text-sm font-semibold text-[#263322] transition hover:border-[#689f24] hover:text-[#4b781a]">{material}</Link>)}</div><h3 className="mt-10 text-sm font-semibold uppercase tracking-[0.18em] text-[#5d6c55]">Shop by colour</h3><div className="mt-4 flex flex-wrap gap-3">{supportedColors.map((color) => <Link key={color} to={`/shop?color=${encodeURIComponent(color)}`} className="inline-flex items-center gap-2 rounded-full border border-[#cbd7c5] bg-white px-4 py-2.5 text-sm text-[#263322] transition hover:border-[#689f24] hover:text-[#4b781a]"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ backgroundColor: colorSwatches[color] ?? '#94a3b8' }} />{color}</Link>)}</div></div></section>
 
-          <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Discover the edit</p><h2 className="mt-3 font-serif text-4xl">Fresh arrivals &amp; featured frames</h2></div></div><div className="mt-8 grid gap-4 md:grid-cols-3"><Link to="/shop?badge=New" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#689f24]">New arrivals</p><p className="mt-3 font-serif text-2xl">Fresh from the collection</p><p className="mt-2 text-sm text-[var(--text-secondary)]">{products.filter((product) => product.badge?.toLowerCase() === 'new').length} new-tagged {products.filter((product) => product.badge?.toLowerCase() === 'new').length === 1 ? 'style' : 'styles'}</p><span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">Explore arrivals <ArrowRight className="h-4 w-4" /></span></Link><Link to="/shop?badge=Bestseller" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#689f24]">Catalogue highlights</p><p className="mt-3 font-serif text-2xl">Selected by Dream Spex</p><p className="mt-2 text-sm text-[var(--text-secondary)]">Shop styles labelled bestseller in the catalogue.</p><span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">Explore selected frames <ArrowRight className="h-4 w-4" /></span></Link><Link to="/shop?category=luxury-collection" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#689f24]">Featured collection</p><p className="mt-3 font-serif text-2xl">Luxury Collection</p><p className="mt-2 text-sm text-[var(--text-secondary)]">Explore products carrying this catalogue category.</p><span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">Explore collection <ArrowRight className="h-4 w-4" /></span></Link></div></section>
+          <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Discover the edit</p><h2 className="mt-3 font-serif text-4xl">Fresh arrivals &amp; featured frames</h2></div></div><div className="mt-8 grid gap-4 md:grid-cols-3"><Link to="/shop?badge=New" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#689f24]">New arrivals</p><p className="mt-3 font-serif text-2xl">Fresh from the collection</p><p className="mt-2 text-sm text-[var(--text-secondary)]">{products.filter((product) => product.badge?.toLowerCase() === 'new').length} new-tagged {products.filter((product) => product.badge?.toLowerCase() === 'new').length === 1 ? 'style' : 'styles'}</p><span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">Explore arrivals <ArrowRight className="h-4 w-4" /></span></Link><Link to="/shop?badge=Bestseller" className="rounded-2xl border border-[var(--border-subtle)] bg-[var,--bg-card)] p-6 transition hover:-translate-y-1"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#689f24]">Catalogue highlights</p><p className="mt-3 font-serif text-2xl">Selected by Dream Spex</p><p className="mt-2 text-sm text-[var,--text-secondary]">Shop styles labelled bestseller in the catalogue.</p><span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">Explore selected frames <ArrowRight className="h-4 w-4" /></span></Link><Link to="/shop?category=luxury-collection" className="rounded-2xl border border-[var(--border-subtle)] bg-[var,--bg-card)] p-6 transition hover:-translate-y-1"><p className="text-xs font-bold uppercase tracking-[0.2em] text-[#689f24]">Featured collection</p><p className="mt-3 font-serif text-2xl">Luxury Collection</p><p className="mt-2 text-sm text-[var,--text-secondary]">Explore products carrying this catalogue category.</p><span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">Explore collection <ArrowRight className="h-4 w-4" /></span></Link></div></section>
 
           <section className="border-y border-[var(--border-subtle)] bg-[var(--bg-secondary)] py-20"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]">The edit</p><h2 className="mt-3 font-serif text-4xl text-[var(--text-primary)]">Shop by frame shape</h2><p className="mt-3 max-w-xl text-sm text-[var(--text-secondary)]">Browse shapes represented in the current catalogue. Shape labels do not guarantee fit.</p></div><Link to="/shop" className="hidden items-center gap-1 text-sm font-semibold text-[#4b781a] sm:flex">Browse all styles <ChevronRight className="h-4 w-4" /></Link></div><div className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">{supportedShapes.map((shape) => { const product = products.find((item) => item.frameShape === shape); return product ? <Link key={shape} to={`/shop?shape=${encodeURIComponent(shape)}`} aria-label={`Shop ${shape} frames`} className="group relative aspect-square overflow-hidden rounded-2xl bg-[#e1e8dc]"><img src={product.image} alt={`${shape} eyewear`} loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" /><div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/65 to-transparent px-4 pb-4 pt-10 text-[#ffffff]"><span className="font-semibold drop-shadow">{shape}</span><span className="rounded-full bg-white/90 p-2 text-[#172015] shadow-sm"><ArrowRight className="h-4 w-4" /></span></div></Link> : null; })}</div></div></section>
 
@@ -217,8 +262,8 @@ export default function HomePage() {
             <div role="group" aria-label="Product collections" className="mt-6 flex flex-wrap gap-2">
               {([['trending', 'Trending'], ['bestseller', 'Bestsellers'], ['new', 'New arrivals']] as const).map(([tab, label]) => <button key={tab} type="button" onClick={() => setCollectionTab(tab)} aria-pressed={collectionTab === tab} className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${collectionTab === tab ? 'border-[#689f24] bg-[#689f24] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[#689f24]'}`}>{label}</button>)}
             </div>
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-              {collectionProducts.map((product) => <ProductCard key={product.id} product={product} />)}
+            <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {collectionProducts.map((product) => <CompactHomeProductCard key={product.id} product={product} />)}
               {!collectionProducts.length ? <p className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)]">No products currently carry this collection label.</p> : null}
             </div>
             {collectionTab === 'trending' ? <p className="mt-4 text-xs text-[var(--text-secondary)]">Trending order uses sample popularity scores in the product catalogue.</p> : null}
@@ -231,7 +276,7 @@ export default function HomePage() {
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <Link to="/categories" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1 hover:shadow-md"><Eye className="h-6 w-6 text-[#689f24]" /><h3 className="mt-4 text-lg font-semibold">Browse a considered edit</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Explore products and categories available in the current catalogue.</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">Explore products <ArrowRight className="h-4 w-4" /></span></Link>
               <Link to="/prescription/1" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1 hover:shadow-md"><FileText className="h-6 w-6 text-[#689f24]" /><h3 className="mt-4 text-lg font-semibold">Personalise your lenses</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Use the existing prescription and lens selection flow with a supported frame.</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">See lens options <ArrowRight className="h-4 w-4" /></span></Link>
-              <Link to="/stores" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1 hover:shadow-md"><MapPin className="h-6 w-6 text-[#689f24]" /><h3 className="mt-4 text-lg font-semibold">Find a store</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Browse the locations in the Dream Spex store directory.</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">View locations <ArrowRight className="h-4 w-4" /></span></Link>
+              <Link to="/stores" className="rounded-2xl border border-[var(--border-subtle)] bg-[var,--bg-card)] p-6 transition hover:-translate-y-1 hover:shadow-md"><MapPin className="h-6 w-6 text-[#689f24]" /><h3 className="mt-4 text-lg font-semibold">Find a store</h3><p className="mt-2 text-sm leading-6 text-[var,--text-secondary]">Browse the locations in the Dream Spex store directory.</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">View locations <ArrowRight className="h-4 w-4" /></span></Link>
             </div>
           </section>
 
@@ -239,38 +284,58 @@ export default function HomePage() {
             <div className="overflow-hidden rounded-[32px] border border-[var(--border-subtle)] bg-[#e9eee4] text-[var(--text-primary)] shadow-[0_24px_60px_-42px_rgba(24,34,24,0.3)]">
               <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
                 <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-14">
-                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]">Home trial</p>
-                  <h2 className="mt-4 max-w-md font-serif text-4xl leading-tight sm:text-5xl">Try frames at home.</h2>
-                  <p className="mt-5 max-w-md text-base leading-7 text-[var(--text-secondary)]">Explore a home try-on enquiry and check availability with your preferred store. This demo does not schedule visits.</p>
-                  <Link to="/services#appointments" className="group mt-8 inline-flex w-fit items-center gap-2 rounded-full bg-[#7cbf00] px-5 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[#9acd32]">
-                    Explore home trial <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-                  </Link>
+                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#4b781a]">Dream Spex membership</p>
+                  <h2 className="mt-3 max-w-lg font-serif text-4xl text-[#182116]">Better care, year after year.</h2>
+                  <div className="mt-8 grid gap-3 sm:grid-cols-3">{membershipPlans.map((plan) => <button key={plan.id} onClick={() => navigate(`/membership/checkout?plan=${plan.name.toLowerCase()}`)} className="rounded-2xl border border-[#d5dfd1] bg-white p-4 text-left text-[#182116] transition hover:border-[#689f24] hover:shadow-sm"><p className="text-sm font-semibold text-[#4b781a]">{plan.name}</p><p className="mt-2 text-2xl font-semibold">{formatINR(plan.price)}</p><p className="mt-3 text-xs leading-5 text-[#5f6c5b]">{plan.perks[0]}</p></button>)}</div>
                 </div>
-                <motion.div whileHover={{ scale: 1.02 }} transition={{ duration: 0.35 }} className="relative min-h-[300px] overflow-hidden bg-[#dfe7d8] sm:min-h-[380px] lg:min-h-[440px]">
-                  <img src="https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=1400&q=90" alt="Person wearing premium eyewear at home" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-center" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/15 via-transparent to-black/5" />
-                  <div className="absolute bottom-5 left-5 rounded-full border border-white/50 bg-white/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#263322] shadow-sm backdrop-blur-md">Try it your way</div>
-                </motion.div>
-              </div>
-              <div className="border-t border-[var(--border-subtle)] px-5 py-6 sm:px-8 lg:px-12">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  {['Browse frames', 'Choose a service', 'Preview an enquiry', 'Confirm with store', 'Order online'].map((step, index) => (
-                    <div key={step} className="relative flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-white/75 px-4 py-3 sm:block sm:min-h-[92px] sm:px-4 sm:py-4">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#7cbf00] text-xs font-bold text-[#172015]">0{index + 1}</span>
-                      <p className="text-sm font-semibold text-[var(--text-primary)] sm:mt-4">{step}</p>
-                      {index < 4 ? <span className="hidden lg:block absolute -right-2 top-1/2 h-px w-4 bg-[#7cbf00]/45" /> : null}
-                    </div>
-                  ))}
+                <div className="rounded-3xl border border-[#d5dfd1] bg-[#f0f4ed] p-8">
+                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Offers</p>
+                  <h2 className="mt-3 font-serif text-3xl text-[#182116]">A little more clarity for less.</h2>
+                  <div className="mt-6 space-y-3">{coupons.map((coupon) => <div key={coupon.code} className="flex items-center justify-between border-b border-[#d5dfd1] pb-3"><div><p className="font-semibold text-[#182116]">{coupon.discount} <span className="font-normal text-[#687468]">{coupon.title}</span></p><p className="text-xs text-[#687468]">Code: {coupon.code}</p></div><Link to="/offers" className="text-sm font-semibold text-[#5d9417]">View offer</Link></div>)}</div>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="border-y border-black/10 bg-[#f0f4ed] py-20"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="grid gap-12 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Optical care</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">More than a frame store.</h2><p className="mt-5 leading-7 text-[#5f6c5b]">From first prescription to final fit, our optical specialists make every step clear and comfortable.</p><Link to="/services" className="mt-7 inline-flex items-center gap-2 font-semibold text-[#5d9417]">Explore services <ArrowRight className="h-4 w-4" /></Link></div><div className="grid gap-4 sm:grid-cols-3">{services.map(({ icon: Icon, title, copy, path }) => <Link key={title} to={path} className="rounded-2xl border border-[#d3dfcd] bg-white p-5 transition hover:-translate-y-1"><Icon className="h-6 w-6 text-[#689f24]" /><h3 className="mt-8 font-semibold text-[#182116]">{title}</h3><p className="mt-2 text-sm leading-6 text-[#687468]">{copy}</p></Link>)}</div></div></div></section>
-
-          <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><div className="grid gap-6 lg:grid-cols-[1.2fr_.8fr]"><div className="rounded-3xl border border-[var(--border-subtle)] bg-[#e9eee4] p-8 sm:p-10"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#4b781a]">Dream Spex membership</p><h2 className="mt-3 max-w-lg font-serif text-4xl text-[#182116]">Better care, year after year.</h2><div className="mt-8 grid gap-3 sm:grid-cols-3">{membershipPlans.map((plan) => <button key={plan.id} onClick={() => navigate(`/membership/checkout?plan=${plan.name.toLowerCase()}`)} className="rounded-2xl border border-[#d5dfd1] bg-white p-4 text-left text-[#182116] transition hover:border-[#689f24] hover:shadow-sm"><p className="text-sm font-semibold text-[#4b781a]">{plan.name}</p><p className="mt-2 text-2xl font-semibold">{formatINR(plan.price)}</p><p className="mt-3 text-xs leading-5 text-[#5f6c5b]">{plan.perks[0]}</p></button>)}</div></div><div className="rounded-3xl border border-[#d5dfd1] bg-[#f0f4ed] p-8"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Offers</p><h2 className="mt-3 font-serif text-3xl text-[#182116]">A little more clarity for less.</h2><div className="mt-6 space-y-3">{coupons.map((coupon) => <div key={coupon.code} className="flex items-center justify-between border-b border-[#d5dfd1] pb-3"><div><p className="font-semibold text-[#182116]">{coupon.discount} <span className="font-normal text-[#687468]">{coupon.title}</span></p><p className="text-xs text-[#687468]">Code: {coupon.code}</p></div><Link to="/offers" className="text-sm font-semibold text-[#5d9417]">View offer</Link></div>)}</div></div></div></section>
-
           <section className="bg-[#dfe9d8] py-16"><div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]"><MapPin className="h-4 w-4" /> Visit Dream Spex</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">Your vision deserves expert care.</h2></div><div className="flex flex-wrap gap-3"><Link to="/services#appointments"><Button>Explore appointments</Button></Link><Link to="/stores" className="inline-flex items-center gap-2 rounded-full border border-[#a9bba2] px-5 py-3 text-sm font-semibold text-[#182116]">Find a store <ArrowRight className="h-4 w-4" /></Link></div></div></section>
+
+          <section aria-label="Brand promotions" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Brand promos</p>
+                <h2 className="mt-2 font-serif text-3xl text-[var(--text-primary)]">Premium picks for every day</h2>
+              </div>
+              <Link to="/shop" className="hidden items-center gap-1 text-sm font-semibold text-[#689f24] sm:inline-flex">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              {brandPromos.map(({ title, description, tag, href, image, style, variant }) => (
+                <Link
+                  key={title}
+                  to={href}
+                  className={`group relative overflow-hidden rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_22px_50px_-36px_rgba(17,24,39,0.25)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_30px_60px_-36px_rgba(17,24,39,0.28)] ${style} ${variant === 'primary' ? 'lg:col-span-2' : ''}`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0f1b13]/75 via-[#0f1b13]/30 to-transparent" aria-hidden="true" />
+                  <img src={image} alt={title} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+
+                  <div className="relative flex min-h-[260px] flex-col justify-between p-5 sm:p-6 lg:min-h-[300px] lg:p-7">
+                    <div className="inline-flex w-fit rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-white/90 backdrop-blur-sm">
+                      {tag}
+                    </div>
+
+                    <div className="max-w-[18rem]">
+                      <h3 className="font-serif text-3xl leading-none text-white sm:text-4xl">{title}</h3>
+                      <p className="mt-3 max-w-xs text-sm leading-6 text-white/85">{description}</p>
+                    </div>
+
+                    <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#172015] shadow-lg shadow-[#0f1b13]/20 transition group-hover:bg-[#dfeec8]">
+                      Explore collection <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
         </div>
       </main>
       <Footer />

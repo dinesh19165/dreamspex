@@ -1,66 +1,166 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, Moon, ShieldCheck, Sparkles, Sun } from 'lucide-react';
+import { ArrowRight, Camera, Eye, EyeOff, Lock, Mail, Moon, ShieldCheck, Sparkles, Sun } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import BrandLogo from '../components/ui/BrandLogo';
 import { useAuth } from '../context/useAuth';
 import { useTheme } from '../context/useTheme';
 import { mockDemoCredentials, getMockFranchiseUserByEmail } from '../data/mockAuth';
 
-function LoginShell({
-  title,
-  subtitle,
-  accent,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  accent: string;
-  children: React.ReactNode;
-}) {
+const CUSTOMER_PROMO = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80';
+
+function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+
   return (
-    <div className="relative min-h-screen bg-[var(--bg-primary)] px-4 py-10 text-[var(--text-primary)] sm:px-6">
-      <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} className="absolute right-5 top-5 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:bg-[var(--control-surface-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]">
+    <div className={`relative min-h-screen overflow-hidden px-3 py-2 sm:px-4 lg:px-5 ${isDark ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]' : 'bg-[#f3efe8] text-[#1a221b]'}`}>
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        className={`absolute right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-black/20 hover:bg-[var(--bg-secondary)]' : 'border-[#dfe4d5] bg-white/70 text-[#1a221b] shadow-black/5 hover:bg-white'}`}
+      >
         {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
       </button>
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-2xl shadow-black/20">
-        <div className="grid min-h-[760px] lg:grid-cols-[1.1fr_0.9fr]">
-          <div className={`relative hidden overflow-hidden lg:block ${accent}`}>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.2),_transparent_45%)]" />
-            <div className="relative flex h-full flex-col justify-between p-10 text-white">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
-                  <Sparkles className="h-5 w-5" />
+
+      <div className={`mx-auto max-w-[1520px] overflow-hidden rounded-[34px] border shadow-[0_32px_90px_rgba(17,24,39,0.12)] ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)]' : 'border-[#dfe4d5] bg-[#f6f3ee]'}`}>
+        <div className="grid min-h-[calc(100vh-1rem)] grid-cols-1 lg:grid-cols-[1.45fr_1fr]">
+          <div className="relative block overflow-hidden bg-[var(--bg-secondary)] lg:block">
+            <div className="relative h-[270px] overflow-hidden md:h-[320px] lg:h-full lg:min-h-[680px]">
+              <img
+                src={CUSTOMER_PROMO}
+                alt="Premium eyewear lifestyle"
+                className="absolute inset-0 h-full w-full object-cover object-center"
+              />
+              <div className={`absolute inset-0 ${isDark ? 'bg-[linear-gradient(90deg,rgba(9,15,13,0.68),rgba(9,15,13,0.52),rgba(9,15,13,0.26))]' : 'bg-[linear-gradient(90deg,rgba(244,239,232,0.74),rgba(244,239,232,0.42),rgba(244,239,232,0.18))]'}`} />
+
+              <div className="relative z-10 flex h-full flex-col justify-between p-4 sm:p-6 lg:p-6 xl:p-8">
+                <div className="max-w-[180px] bg-transparent">
+                  <BrandLogo compact />
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-white/70">Dream Spex</p>
-                  <p className="mt-1 text-xl font-semibold">{title}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-white/70">DEMO ACCESS</p>
-                <h1 className="mt-6 max-w-md text-5xl font-semibold leading-tight">Premium eyewear operations, simplified.</h1>
-                <p className="mt-5 max-w-sm text-base leading-7 text-white/75">Frontend mock access only for demonstrating the customer, franchise, and admin experience.</p>
-              </div>
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur-sm">
-                <p className="text-xs uppercase tracking-[0.25em] text-white/65">Demo credentials</p>
-                <div className="mt-3 space-y-2 text-sm text-white/80">
-                  <p>Customer: customer@dreamspex.com</p>
-                  <p>Franchise: hyderabad@dreamspex.com</p>
-                  <p>Super Admin: admin@dreamspex.com</p>
+
+                <div className="max-w-[580px] pb-2">
+                  <h1 className={`max-w-[420px] text-[clamp(2.5rem,4vw,3.75rem)] font-semibold leading-[0.96] tracking-[-0.06em] ${isDark ? 'text-white' : 'text-[#17211a]'}`}>
+                    Glasses that<br />
+                    define your<br />
+                    <span className="text-[var(--brand-green)]">everyday style.</span>
+                  </h1>
+
+                  <p className={`mt-3 max-w-md text-sm leading-6 sm:text-base ${isDark ? 'text-white/80' : 'text-[#2d4033]'}`}>
+                    Curated frames, expert guidance and premium care designed around your look.
+                  </p>
+
+                  <div className="mt-5 flex flex-wrap items-center gap-3 md:gap-4">
+                    { [
+                      { icon: Sparkles, label: 'Premium\nFrames' },
+                      { icon: Camera, label: 'Virtual\nTry-On' },
+                      { icon: ShieldCheck, label: 'Free\nConsultation' },
+                    ].map(({ icon: Icon, label }) => (
+                      <div key={label} className={`flex min-w-[92px] flex-col items-center gap-2 text-center ${isDark ? 'text-white' : 'text-[#17211a]'}`}>
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-full border shadow-[0_10px_30px_rgba(0,0,0,0.06)] ${isDark ? 'border-white/15 bg-white/8' : 'border-[#1d2a1d]/20 bg-[#f4faf0]/80'}`}>
+                          <Icon className={`h-4 w-4 ${isDark ? 'text-white' : 'text-[#17211a]'}`} />
+                        </div>
+                        <span className="whitespace-pre-line text-center text-[11px] font-medium leading-4">{label}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-center p-6 sm:p-10 lg:p-14">
-            <div className="w-full max-w-md">
-              <div className="mb-8">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--brand-green)]">Dream Spex</p>
-                <h2 className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">{subtitle}</h2>
+          <div className={`relative flex items-center justify-center px-4 py-4 sm:px-6 lg:px-7 ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#f8f6f2]'}`}>
+            <div className={`absolute -left-10 top-8 h-24 w-24 rounded-full blur-2xl ${isDark ? 'bg-[rgba(124,180,88,0.18)]' : 'bg-[#dfead1]/80'}`} />
+            <div className={`absolute -right-10 bottom-6 h-28 w-28 rounded-full blur-2xl ${isDark ? 'bg-[rgba(124,180,88,0.18)]' : 'bg-[#dfead1]/80'}`} />
+
+            <div className={`relative z-10 w-full max-w-[470px] rounded-[28px] border p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:p-6 ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)]' : 'border-[#e0e7d8] bg-[#f9f8f5]'}`}>
+              <div className="mb-5 flex items-center justify-center">
+                <div className="max-w-[150px]">
+                  <BrandLogo compact />
+                </div>
               </div>
+
+              <div className="mb-6 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">WELCOME BACK</p>
+                <h2 className={`mt-3 text-[clamp(2rem,2.6vw,2.5rem)] font-semibold tracking-[-0.04em] ${isDark ? 'text-[var(--text-primary)]' : 'text-[#1b251a]'}`}>Sign in to Dream Spex</h2>
+                <p className={`mt-2 text-sm ${isDark ? 'text-[var(--text-secondary)]' : 'text-[#536456]'}`}>Discover eyewear that fits your style.</p>
+              </div>
+
               {children}
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminPortalLayout({ children }: { children: React.ReactNode }) {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <div className={`relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-3 sm:px-6 lg:px-8 ${isDark ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]' : 'bg-[#efefeb] text-[#17211a]'}`}>
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        className={`absolute right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-black/20 hover:bg-[var(--bg-secondary)]' : 'border-[#dfe4d5] bg-white/80 text-[#1a221b] shadow-black/5 hover:bg-white'}`}
+      >
+        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+      </button>
+
+      <div className={`w-full max-w-[560px] rounded-[30px] border p-5 shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-6 ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)]' : 'border-[#e4e8df] bg-[#f5f5f3]'}`}>
+        <div className="mb-5 flex justify-center">
+          <div className="max-w-[200px]">
+            <BrandLogo compact />
+          </div>
+        </div>
+
+        <div className="text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">ADMIN PORTAL</p>
+          <h1 className={`mt-4 text-[clamp(2.2rem,3vw,2.8rem)] font-semibold tracking-[-0.05em] ${isDark ? 'text-[var(--text-primary)]' : 'text-[#1a221c]'}`}>Admin Login</h1>
+          <p className={`mt-2 text-sm ${isDark ? 'text-[var(--text-secondary)]' : 'text-[#58675d]'}`}>Sign in to access the administrative dashboard.</p>
+        </div>
+
+        <div className="mt-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FranchisePortalLayout({ children }: { children: React.ReactNode }) {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
+
+  return (
+    <div className={`relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-3 sm:px-6 lg:px-8 ${isDark ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]' : 'bg-[#efefeb] text-[#17211a]'}`}>
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        className={`absolute right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-black/20 hover:bg-[var(--bg-secondary)]' : 'border-[#dfe4d5] bg-white/80 text-[#1a221b] shadow-black/5 hover:bg-white'}`}
+      >
+        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+      </button>
+
+      <div className={`w-full max-w-[560px] rounded-[30px] border p-5 shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-6 ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)]' : 'border-[#e4e8df] bg-[#f5f5f3]'}`}>
+        <div className="mb-5 flex justify-center">
+          <div className="max-w-[200px]">
+            <BrandLogo compact />
+          </div>
+        </div>
+
+        <div className="text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">FRANCHISE ADMIN PORTAL</p>
+          <h1 className={`mt-4 text-[clamp(2.1rem,2.8vw,2.8rem)] font-semibold tracking-[-0.05em] ${isDark ? 'text-[var(--text-primary)]' : 'text-[#1a221c]'}`}>Franchise Admin Login</h1>
+          <p className={`mt-2 text-sm ${isDark ? 'text-[var(--text-secondary)]' : 'text-[#58675d]'}`}>Sign in to manage your franchise store.</p>
+        </div>
+
+        <div className="mt-6">
+          {children}
         </div>
       </div>
     </div>
@@ -107,7 +207,7 @@ function RoleLoginForm({
   };
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+    <form className="space-y-4" onSubmit={handleSubmit} noValidate>
       <label className="block text-sm text-[var(--text-secondary)]">
         <span className="mb-2 inline-block">Email</span>
         <div className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3">
@@ -131,7 +231,7 @@ function RoleLoginForm({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             type={showPassword ? 'text' : 'password'}
-            autoComplete={kind === 'admin' ? 'current-password' : 'current-password'}
+            autoComplete="current-password"
             placeholder="Enter your password"
             className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
           />
@@ -146,20 +246,18 @@ function RoleLoginForm({
           <input type="checkbox" checked={rememberMe} onChange={() => setRememberMe((current) => !current)} className="h-4 w-4 accent-[var(--brand-green)]" />
           <span>Remember Me</span>
         </label>
-        <Link to={kind === 'customer' ? '/forgot-password' : kind === 'franchise' ? '/franchise/login' : '/admin/login'} className="font-medium text-[var(--brand-green)]">Forgot Password</Link>
+        <Link to="/forgot-password" className="font-medium text-[var(--brand-green)]">Forgot Password?</Link>
       </div>
 
-      {error ? <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p> : null}
-
-      <button type="submit" disabled={loading} className="inline-flex w-full items-center justify-center rounded-full bg-[var(--brand-green)] px-5 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[var(--brand-green-light)] disabled:cursor-not-allowed disabled:opacity-70">
+      {error ? <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      <button type="submit" disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#9ecf4d_0%,#7cae2e_100%)] px-5 py-3 text-base font-semibold text-[#172015] shadow-[0_18px_42px_rgba(131,188,58,0.28)] transition hover:-translate-y-0.5 hover:bg-[#90ca41] disabled:cursor-not-allowed disabled:opacity-75">
         {loading ? 'Logging in...' : 'Login'}
+        {!loading ? <ArrowRight className="h-4 w-4" /> : null}
       </button>
 
-      <div className="flex items-center justify-between gap-3 pt-2 text-sm text-[var(--text-secondary)]">
-        <Link to={kind === 'customer' ? '/register' : kind === 'franchise' ? '/franchise/login' : '/admin/login'} className="font-medium text-[var(--brand-green)]">
-          {kind === 'customer' ? 'Create account' : 'Back to Dream Spex'}
-        </Link>
-        {kind === 'customer' ? <Link to="/" className="font-medium text-[var(--text-secondary)]">Back to Dream Spex</Link> : <Link to="/" className="font-medium text-[var(--text-secondary)]">Back to Dream Spex</Link> }
+      <div className="flex items-center justify-between gap-3 pt-1 text-sm text-[var(--text-secondary)]">
+        <Link to="/" className="font-medium text-[var(--text-secondary)]">Back to Dream Spex</Link>
+        {kind === 'customer' ? <Link to="/register" className="font-medium text-[var(--brand-green)]">Create account</Link> : null}
       </div>
     </form>
   );
@@ -176,7 +274,7 @@ export function CustomerLoginPage() {
   }, [isAuthenticated, navigate, role]);
 
   return (
-    <LoginShell title="Customer Login" subtitle="Welcome back to Dream Spex" accent="bg-[linear-gradient(135deg,_#0d1510,_#1d3227,_#182218)]">
+    <CustomerPortalLayout>
       <RoleLoginForm
         kind="customer"
         onSubmit={(email, password) => {
@@ -188,7 +286,7 @@ export function CustomerLoginPage() {
           navigate('/', { replace: true });
         }}
       />
-    </LoginShell>
+    </CustomerPortalLayout>
   );
 }
 
@@ -203,7 +301,7 @@ export function FranchiseLoginPage() {
   }, [isAuthenticated, navigate, role]);
 
   return (
-    <LoginShell title="Franchise" subtitle="Franchise Partner Login" accent="bg-[linear-gradient(135deg,_#13232d,_#173744,_#091c24)]">
+    <FranchisePortalLayout>
       <RoleLoginForm
         kind="franchise"
         onSubmit={(email, password) => {
@@ -216,7 +314,7 @@ export function FranchiseLoginPage() {
           navigate('/franchise/dashboard', { replace: true });
         }}
       />
-    </LoginShell>
+    </FranchisePortalLayout>
   );
 }
 
@@ -231,7 +329,7 @@ export function AdminLoginPage() {
   }, [isAuthenticated, navigate, role]);
 
   return (
-    <LoginShell title="Admin" subtitle="Super Admin Login" accent="bg-[linear-gradient(135deg,_#111827,_#1f2937,_#0f172a)]">
+    <AdminPortalLayout>
       <RoleLoginForm
         kind="admin"
         onSubmit={(email, password) => {
@@ -243,7 +341,7 @@ export function AdminLoginPage() {
           navigate('/admin/dashboard', { replace: true });
         }}
       />
-    </LoginShell>
+    </AdminPortalLayout>
   );
 }
 

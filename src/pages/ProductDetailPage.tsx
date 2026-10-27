@@ -177,17 +177,17 @@ export default function ProductDetailPage() {
           <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Specifications</p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {{
-                'Category': product.category,
-                ...(product.gender ? {'Audience': product.gender} : {}),
-                ...(product.frameShape ? {'Frame shape': product.frameShape} : {}),
-                ...(product.frameType ? {'Frame type': product.frameType} : {}),
-                'Material': product.material,
-                'Brand': product.brand,
-                'Available colours': product.colors.join(', '),
-                'Available sizes': product.sizes.join(', '),
-                'Availability': product.stock,
-              }.map(([label, value]) => (
+              {([
+                ['Category', product.category],
+                ...(product.gender ? [['Audience', product.gender]] : []),
+                ...(product.frameShape ? [['Frame shape', product.frameShape]] : []),
+                ...(product.frameType ? [['Frame type', product.frameType]] : []),
+                ['Material', product.material],
+                ['Brand', product.brand],
+                ['Available colours', product.colors.join(', ')],
+                ['Available sizes', product.sizes.join(', ')],
+                ['Availability', product.stock],
+              ] as Array<[string, string]>).map(([label, value]) => (
                 <div key={String(label)} className="rounded-[18px] border border-white/10 bg-slate-950/60 p-4">
                   <p className="text-sm text-slate-400">{String(label)}</p>
                   <p className="mt-2 font-semibold text-white">{String(value)}</p>

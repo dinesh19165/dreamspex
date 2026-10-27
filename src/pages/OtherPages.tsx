@@ -5,6 +5,7 @@ import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
 import BrandLogo from '../components/ui/BrandLogo';
+import { formatINR } from '../utils/currency';
 
 const policyPages = [
   { title: 'FAQ', description: 'Find answers to common questions about fit, delivery, and services.' },
@@ -55,7 +56,7 @@ export default function OtherPages() {
                     <button onClick={() => removeFromWishlist(product.id)} className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300">Remove</button>
                   </div>
                   <div className="mt-6 flex items-center justify-between">
-                    <span className="text-lg font-semibold text-white">${product.price}</span>
+                    <span className="text-lg font-semibold text-white">{formatINR(product.price)}</span>
                     <Link to={`/product/${product.id}`} className="text-sm font-semibold text-cyan-300">View details</Link>
                   </div>
                 </div>
@@ -98,7 +99,7 @@ export default function OtherPages() {
                         <span className="min-w-8 text-center text-sm font-semibold text-white">{item.quantity}</span>
                         <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity + 1)} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">+</button>
                       </div>
-                      <span className="text-lg font-semibold text-white">${item.price * item.quantity}</span>
+                      <span className="text-lg font-semibold text-white">{formatINR(item.price * item.quantity)}</span>
                     </div>
                   </div>
                 ))}
@@ -107,7 +108,7 @@ export default function OtherPages() {
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Summary</p>
                 <div className="mt-6 space-y-4 text-sm text-slate-300">
                   <div className="flex items-center justify-between"><span>Items</span><span>{cart.reduce((sum, item) => sum + item.quantity, 0)}</span></div>
-                  <div className="flex items-center justify-between"><span>Subtotal</span><span>${cart.reduce((sum, item) => sum + item.price * item.quantity, 0)}</span></div>
+                  <div className="flex items-center justify-between"><span>Subtotal</span><span>{formatINR(cart.reduce((sum, item) => sum + item.price * item.quantity, 0))}</span></div>
                 </div>
                 <button onClick={clearCart} className="mt-8 w-full rounded-full border border-white/10 px-4 py-3 text-sm font-semibold text-white">Clear bag</button>
                 <Link to="/checkout" className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-white">Proceed to checkout</Link>

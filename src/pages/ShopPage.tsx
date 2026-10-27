@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight, SlidersHorizontal } from 'lucide-react';
+import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight, SlidersHorizontal, X, Home, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
-import SectionTitle from '../components/ui/SectionTitle';
 import { products } from '../data/mockData';
 import { useShop } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
+import { formatINR } from '../utils/currency';
 
 const PAGE_SIZE = 6;
 const normalize = (value: string) => value.trim().toLowerCase().replaceAll('-', ' ').replaceAll('_', ' ');
@@ -43,6 +43,7 @@ export default function ShopPage() {
   const [sortBy, setSortBy] = useState(sortFilter);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(1);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     setQuery(searchFilter);
@@ -115,215 +116,235 @@ export default function ShopPage() {
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const pagedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
   const suggestions = ['Aurelia', 'Nocturne', 'Lumen', 'Solstice'];
   const { cart, updateQuantity } = useShop();
   const cartQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  return (
-    <div className="min-h-screen bg-[#050816] text-slate-100">
-      <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-16 pb-32 sm:px-6 lg:px-8 lg:pb-16">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <SectionTitle eyebrow="Shop" title={selectedBadge ? `${selectedBadge} eyewear` : selectedMaterial ? `${selectedMaterial} frames` : selectedColor ? `${selectedColor} frames` : 'Discover refined eyewear'} description="Explore products using the categories and attributes available in the current collection." />
-          <p className="text-sm text-[var(--text-secondary)]">{filteredProducts.length} pieces to explore</p>
+  const filterFields = (
+    <div className="space-y-4">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Category
+        <select value={selectedCategory} onChange={(event) => { setSelectedCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+          <option value="">All categories</option>
+          {categoriesInStock.map((category) => <option key={category} value={categorySlug(category)}>{category}</option>)}
+        </select>
+      </label>
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Brand
+        <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+          <option value="">All brands</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}
+        </select>
+      </label>
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Gender
+        <select value={selectedGender} onChange={(event) => { setSelectedGender(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+          <option value="">All genders</option>{genders.map((gender) => <option key={gender}>{gender}</option>)}
+        </select>
+      </label>
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Frame shape
+        <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+          <option value="">All shapes</option>{frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
+        </select>
+      </label>
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Frame type
+        <select value={selectedFrameType} onChange={(event) => { setSelectedFrameType(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+          <option value="">All frame types</option>{frameTypes.map((type) => <option key={type}>{type}</option>)}
+        </select>
+      </label>
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Material
+        <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+          <option value="">All materials</option>{materials.map((material) => <option key={material}>{material}</option>)}
+        </select>
+      </label>
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Colour
+        <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+          <option value="">All colours</option>{colors.map((color) => <option key={color}>{color}</option>)}
+        </select>
+      </label>
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Product label
+        <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+          <option value="">All labels</option>{[...new Set(products.map((product) => product.badge).filter((badge): badge is string => Boolean(badge)))].map((badge) => <option key={badge} value={badge}>{badge}</option>)}
+        </select>
+      </label>
+      <fieldset>
+        <legend className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Price range</legend>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <label className="text-xs text-slate-500">Min
+            <input type="number" min="0" value={minimumPrice} onChange={(event) => { setMinimumPrice(event.target.value); setPage(1); }} placeholder="₹0" className="mt-1 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15" />
+          </label>
+          <label className="text-xs text-slate-500">Max
+            <input type="number" min="0" value={maximumPrice} onChange={(event) => { setMaximumPrice(event.target.value); setPage(1); }} placeholder="No limit" className="mt-1 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15" />
+          </label>
         </div>
-        <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">Gender, shape, frame type and popularity use sample catalogue fields. Newest sorting uses the “New” product label; product dates are not supplied.</p>
-        {prescriptionNotice ? <div className="mt-6 flex items-center gap-3 rounded-[20px] border border-[#7CBF00]/30 bg-[#7CBF00]/10 px-4 py-3 text-sm text-[#C7F36A]">Select a frame first to add your prescription.</div> : null}
+      </fieldset>
+      <label className="flex items-center gap-2 text-sm text-slate-600">
+        <input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} className="h-4 w-4 accent-[#7CBF00]" />
+        In-stock items only
+      </label>
+      <div className="flex gap-2 pt-2">
+        <button type="button" onClick={() => setMobileFiltersOpen(false)} className="flex-1 rounded-full bg-[#17300d] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#234815]">Apply</button>
+        <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[#7CBF00] hover:text-[#17300d]">Clear</button>
+      </div>
+    </div>
+  );
 
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mt-8 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <label className="flex flex-1 items-center gap-3 rounded-full border border-white/10 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
-              <Search className="h-4 w-4 text-slate-400" />
-              <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="w-full bg-transparent outline-none placeholder:text-slate-500" placeholder="Search products, brands, materials, or colours" aria-label="Search products" />
+  return (
+    <div className="min-h-screen bg-[#f7f5f0] text-slate-800">
+      <Navbar />
+      <main className="mx-auto max-w-7xl px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-16">
+        <div className="rounded-[28px] border border-[#dfe7d7] bg-white px-5 py-5 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)] sm:px-7">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-[#5e6b5e]">
+            <Link to="/" className="inline-flex items-center gap-1 font-medium text-[#17300d] hover:text-[#24491a]">
+              <Home className="h-4 w-4" /> Home
+            </Link>
+            <ChevronRightIcon className="h-4 w-4 text-[#7a867a]" />
+            <span>Eyeglasses</span>
+            <ChevronRightIcon className="h-4 w-4 text-[#7a867a]" />
+            <span className="font-semibold text-[#17300d]">Frames</span>
+          </div>
+          <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#7CBF00]">Premium collection</p>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#182116] sm:text-4xl">Eyeglasses Frames</h1>
+            </div>
+            <p className="text-sm text-[#5f6c5b]">{filteredProducts.length} styles ready to explore</p>
+          </div>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5f6c5b]">Discover frames that match your style.</p>
+        </div>
+
+        {prescriptionNotice ? <div className="mt-6 flex items-center gap-3 rounded-[20px] border border-[#7CBF00]/30 bg-[#7CBF00]/10 px-4 py-3 text-sm text-[#17300d]">Select a frame first to add your prescription.</div> : null}
+
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mt-8 rounded-[26px] border border-[#dfe7d7] bg-white p-4 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)] sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <label className="flex flex-1 items-center gap-3 rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-4 py-3 text-sm text-slate-600 shadow-inner">
+              <Search className="h-4 w-4 text-[#556356]" />
+              <input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} className="w-full bg-transparent text-sm text-[#182116] outline-none placeholder:text-[#70806d]" placeholder="Search frames, brands or styles" aria-label="Search products" />
             </label>
             <div className="flex items-center justify-between gap-3">
-              <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <span>Sort by</span>
-                <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPage(1); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]">
-                  <option value="popularity">Popularity</option>
-                  <option value="relevance">Relevance</option>
-                  <option value="price-asc">Price: low to high</option>
-                  <option value="price-desc">Price: high to low</option>
-                  <option value="newest">New label first</option>
+              <label className="flex items-center gap-2 text-sm text-[#4d5c4c]">
+                <span className="hidden sm:inline">Sort by</span>
+                <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPage(1); }} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2.5 text-sm text-[#182116] outline-none transition focus:border-[#7CBF00]">
+                  <option value="relevance">Recommended</option>
+                  <option value="newest">New Arrivals</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="popularity">Best Rated</option>
                 </select>
               </label>
-              <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2.5 ${viewMode === 'grid' ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-200'}`}><LayoutGrid className="h-4 w-4" /></button>
-              <button onClick={() => setViewMode('list')} aria-label="List view" aria-pressed={viewMode === 'list'} className={`rounded-full border p-2.5 ${viewMode === 'list' ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300' : 'border-white/10 bg-white/5 text-slate-200'}`}><List className="h-4 w-4" /></button>
+              <div className="hidden items-center gap-2 sm:flex">
+                <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2.5 ${viewMode === 'grid' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><LayoutGrid className="h-4 w-4" /></button>
+                <button onClick={() => setViewMode('list')} aria-label="List view" aria-pressed={viewMode === 'list'} className={`rounded-full border p-2.5 ${viewMode === 'list' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><List className="h-4 w-4" /></button>
+              </div>
+              <button type="button" onClick={() => setMobileFiltersOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2.5 text-sm font-medium text-[#17300d] sm:hidden">
+                <SlidersHorizontal className="h-4 w-4" /> Filter
+              </button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {suggestions.map((suggestion) => (
-              <button key={suggestion} onClick={() => { setQuery(suggestion); setPage(1); }} className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-400">{suggestion}</button>
+              <button key={suggestion} onClick={() => { setQuery(suggestion); setPage(1); }} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2 text-sm text-[#4d5c4c] transition hover:border-[#7CBF00]/40 hover:text-[#17300d]">{suggestion}</button>
             ))}
           </div>
-          <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#9ACD32]"><FileText className="h-4 w-4" /> Prescription Available on selected eyewear</div>
+          <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#17300d]"><FileText className="h-4 w-4 text-[#7CBF00]" /> Prescription available on selected eyewear</div>
         </motion.div>
 
-        <div className={`mt-10 grid gap-8 ${cartQuantity > 0 ? 'lg:grid-cols-[260px_1fr_320px]' : 'lg:grid-cols-[260px_1fr]'}`}>
-          <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="lg:sticky lg:top-24 self-start rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-white"><SlidersHorizontal className="h-4 w-4 text-cyan-300" /> Refine your search</h3>
-            <div className="mt-5 space-y-4">
-              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Category
-                <select value={selectedCategory} onChange={(event) => { setSelectedCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
-                  <option value="">All categories</option>
-                  {categoriesInStock.map((category) => <option key={category} value={categorySlug(category)}>{category}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Brand
-                <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
-                  <option value="">All brands</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Gender
-                <select value={selectedGender} onChange={(event) => { setSelectedGender(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
-                  <option value="">All genders</option>{genders.map((gender) => <option key={gender}>{gender}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Frame shape
-                <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
-                  <option value="">All shapes</option>{frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Frame type
-                <select value={selectedFrameType} onChange={(event) => { setSelectedFrameType(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
-                  <option value="">All frame types</option>{frameTypes.map((type) => <option key={type}>{type}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Material
-                <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
-                  <option value="">All materials</option>{materials.map((material) => <option key={material}>{material}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Colour
-                <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
-                  <option value="">All colours</option>{colors.map((color) => <option key={color}>{color}</option>)}
-                </select>
-              </label>
-              <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Product label
-                <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-slate-200 outline-none">
-                  <option value="">All labels</option>{[...new Set(products.map((product) => product.badge).filter((badge): badge is string => Boolean(badge)))].map((badge) => <option key={badge} value={badge}>{badge}</option>)}
-                </select>
-              </label>
-              <fieldset>
-                <legend className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Price range</legend>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <label className="text-xs text-slate-400">Min
-                    <input type="number" min="0" value={minimumPrice} onChange={(event) => { setMinimumPrice(event.target.value); setPage(1); }} placeholder="$0" className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm text-slate-200 outline-none" />
-                  </label>
-                  <label className="text-xs text-slate-400">Max
-                    <input type="number" min="0" value={maximumPrice} onChange={(event) => { setMaximumPrice(event.target.value); setPage(1); }} placeholder="No limit" className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2.5 text-sm text-slate-200 outline-none" />
-                  </label>
-                </div>
-              </fieldset>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} className="accent-[var(--brand-green)]" />
-                In-stock items only
-              </label>
-              <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="w-full rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-300">Clear filters</button>
+        <div className={`mt-10 grid gap-8 ${cartQuantity > 0 ? 'xl:grid-cols-[280px_1fr_320px]' : 'xl:grid-cols-[280px_1fr]'}`}>
+          <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="hidden xl:block self-start rounded-[28px] border border-[#dfe7d7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)]">
+            <div className="flex items-center justify-between gap-3 pb-4">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-[#182116]"><SlidersHorizontal className="h-4 w-4 text-[#7CBF00]" /> Refine filters</h3>
+              <span className="rounded-full bg-[#edf7d9] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#17300d]">{filteredProducts.length}</span>
             </div>
-            <div className="mt-6 rounded-[20px] border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-200">
-              <p className="font-semibold">Dream Spex membership</p>
-              <p className="mt-2 text-slate-300">Explore the plans and benefits available in the current membership offering.</p>
-              <Link to="/membership" className="mt-3 inline-flex items-center gap-1 font-semibold text-cyan-200 hover:text-white">View plans <ArrowRight className="h-4 w-4" /></Link>
-            </div>
+            {filterFields}
           </motion.aside>
+
           <div>
-            <div className={`grid gap-8 ${viewMode === 'grid' ? 'md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+            <div className="mb-5 flex items-center justify-between gap-3 rounded-[20px] border border-[#dfe7d7] bg-white px-4 py-3 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">
+              <p className="text-sm text-[#536353]">Showing <span className="font-semibold text-[#182116]">{pagedProducts.length}</span> of <span className="font-semibold text-[#182116]">{filteredProducts.length}</span> frames</p>
+              <div className="hidden items-center gap-2 sm:flex">
+                <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2 ${viewMode === 'grid' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><LayoutGrid className="h-4 w-4" /></button>
+                <button onClick={() => setViewMode('list')} aria-label="List view" aria-pressed={viewMode === 'list'} className={`rounded-full border p-2 ${viewMode === 'list' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><List className="h-4 w-4" /></button>
+              </div>
+            </div>
+
+            <div className={`grid gap-5 ${viewMode === 'grid' ? 'sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4' : 'grid-cols-1'}`}>
               {pagedProducts.map((product, index) => (
-                <motion.div key={product.id} initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.05 }}>
+                <motion.div key={product.id} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.04 }}>
                   <ProductCard product={product} layout={viewMode} />
                 </motion.div>
               ))}
-              {!pagedProducts.length ? <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-center md:col-span-2 xl:col-span-3"><p className="font-serif text-2xl text-[var(--text-primary)]">{selectedCategory && !categoriesInStock.some((category) => categorySlug(category) === categorySlug(selectedCategory)) ? `No ${normalize(selectedCategory)} products are listed yet.` : "Sorry, we couldn't find that frame."}</p><p className="mt-2 text-sm text-[var(--text-secondary)]">Browse the categories and labels represented in the current collection.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><Link to="/shop?badge=Bestseller" className="rounded-full bg-cyan-400 px-4 py-2 text-sm font-semibold text-[#172015]">Browse bestsellers</Link><Link to="/categories" className="rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold">Popular categories</Link></div></div> : null}
+              {!pagedProducts.length ? <div className="rounded-[24px] border border-[#dfe7d7] bg-white p-8 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4"><p className="font-serif text-2xl text-[#182116]">No frames match your current selection.</p><p className="mt-2 text-sm text-[#5f6c5b]">Try broadening your search or resetting the filters.</p><button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="mt-5 rounded-full bg-[#17300d] px-4 py-2.5 text-sm font-semibold text-white">Reset filters</button></div> : null}
             </div>
 
-            {cartQuantity > 0 && (
-              <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 p-5 text-slate-100 lg:hidden">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Order preview</p>
-                    <p className="mt-2 text-lg font-semibold text-white">{cartQuantity} items</p>
-                  </div>
-                  <ShoppingCart className="h-6 w-6 text-cyan-300" />
-                </div>
-                <div className="mt-4 space-y-3 text-sm text-slate-300">
-                  {cart.slice(0, 3).map((item) => (
-                    <div key={getCartItemKey(item)} className="flex items-center gap-3 rounded-[20px] border border-white/10 bg-[#050816] p-3">
-                      <img src={item.image} alt={item.name} className="h-12 w-12 rounded-[14px] object-cover" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-white">{item.name}</p>
-                        <p className="text-xs text-slate-400">{item.quantity} × ${item.price.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {cart.length > 3 ? <p className="text-xs text-slate-400">+{cart.length - 3} more items</p> : null}
-                </div>
-                <div className="mt-4 rounded-[20px] border border-white/10 bg-[#050816] p-4 text-sm text-slate-300">
-                  <div className="flex items-center justify-between"><span>Subtotal</span><span className="font-semibold text-white">${subtotal.toFixed(2)}</span></div>
-                </div>
-                <Link to="/checkout" className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110">
-                  Checkout
-                </Link>
-              </div>
-            )}
-
-            <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 backdrop-blur-xl">
-              <p className="text-sm text-slate-400">Showing {pagedProducts.length} of {filteredProducts.length} pieces</p>
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#dfe7d7] bg-white px-4 py-4 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">
+              <p className="text-sm text-[#536353]">Page {page} of {totalPages}</p>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200"><ChevronLeft className="h-4 w-4" /></button>
+                <button onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2.5 text-[#17300d]"><ChevronLeft className="h-4 w-4" /></button>
                 {Array.from({ length: totalPages }, (_, index) => index + 1).map((value) => (
-                  <button key={value} onClick={() => setPage(value)} className={`h-10 w-10 rounded-full text-sm ${page === value ? 'bg-cyan-400 text-slate-950' : 'border border-white/10 bg-white/5 text-slate-200'}`}>{value}</button>
+                  <button key={value} onClick={() => setPage(value)} className={`h-10 w-10 rounded-full text-sm ${page === value ? 'bg-[#17300d] text-white' : 'border border-[#dfe7d7] bg-[#f7f5f0] text-[#182116]'}`}>{value}</button>
                 ))}
-                <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="rounded-full border border-white/10 bg-white/5 p-2.5 text-slate-200"><ChevronRight className="h-4 w-4" /></button>
+                <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2.5 text-[#17300d]"><ChevronRight className="h-4 w-4" /></button>
               </div>
             </div>
           </div>
+
           {cartQuantity > 0 && (
-            <aside className="hidden lg:block">
-              <div className="sticky top-24 rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-                <div className="flex items-center justify-between gap-3 rounded-[20px] border border-cyan-400/20 bg-[#07101f] p-4">
+            <aside className="hidden xl:block">
+              <div className="sticky top-24 rounded-[28px] border border-[#dfe7d7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)]">
+                <div className="flex items-center justify-between gap-3 rounded-[20px] border border-[#dfe7d7] bg-[#f7f5f0] p-4">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Order preview</p>
-                    <p className="mt-2 text-lg font-semibold text-white">{cartQuantity} items</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#7CBF00]">Order preview</p>
+                    <p className="mt-2 text-lg font-semibold text-[#182116]">{cartQuantity} item{cartQuantity === 1 ? '' : 's'}</p>
                   </div>
-                  <ShoppingCart className="h-6 w-6 text-cyan-300" />
+                  <ShoppingCart className="h-6 w-6 text-[#17300d]" />
                 </div>
                 <div className="mt-6 space-y-4">
                   {cart.map((item) => (
-                    <div key={getCartItemKey(item)} className="rounded-[20px] border border-white/10 bg-[#050816] p-4">
+                    <div key={getCartItemKey(item)} className="rounded-[20px] border border-[#dfe7d7] bg-[#f7f5f0] p-4">
                       <div className="flex items-center gap-3">
                         <img src={item.image} alt={item.name} className="h-14 w-14 rounded-[16px] object-cover" />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-white">{item.name}</p>
-                          <p className="mt-1 text-xs text-slate-400">${item.price.toFixed(2)} each</p>
+                          <p className="truncate text-sm font-semibold text-[#182116]">{item.name}</p>
+                          <p className="mt-1 text-xs text-[#5f6c5b]">{formatINR(item.price)} each</p>
                         </div>
-                        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 p-1">
-                          <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`} className="h-8 w-8 rounded-full bg-white/5 text-white transition hover:bg-white/10">-</button>
-                          <span className="min-w-[2rem] text-center text-sm font-semibold text-white">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity + 1)} aria-label={`Increase ${item.name} quantity`} className="h-8 w-8 rounded-full bg-white/5 text-white transition hover:bg-white/10">+</button>
+                        <div className="flex items-center gap-2 rounded-full border border-[#dfe7d7] bg-white p-1">
+                          <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`} className="h-8 w-8 rounded-full bg-[#f7f5f0] text-[#17300d] transition hover:bg-[#edf7d9]">-</button>
+                          <span className="min-w-[2rem] text-center text-sm font-semibold text-[#182116]">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity + 1)} aria-label={`Increase ${item.name} quantity`} className="h-8 w-8 rounded-full bg-[#f7f5f0] text-[#17300d] transition hover:bg-[#edf7d9]">+</button>
                         </div>
                       </div>
-                      <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
+                      <div className="mt-3 flex items-center justify-between text-sm text-[#5f6c5b]">
                         <span>Total</span>
-                        <span className="font-semibold text-white">${(item.price * item.quantity).toFixed(2)}</span>
+                        <span className="font-semibold text-[#182116]">{formatINR(item.price * item.quantity)}</span>
                       </div>
                     </div>
                   ))}
-                  <div className="rounded-[20px] border border-white/10 bg-[#050816] p-4 text-sm text-slate-300">
-                    <div className="flex items-center justify-between"><span>Subtotal</span><span className="font-semibold text-white">${subtotal.toFixed(2)}</span></div>
-                    <div className="mt-3 rounded-full border border-white/10 bg-[#07101f] px-4 py-3 text-sm text-slate-300">Free delivery on orders over $150</div>
+                  <div className="rounded-[20px] border border-[#dfe7d7] bg-[#f7f5f0] p-4 text-sm text-[#5f6c5b]">
+                    <div className="flex items-center justify-between"><span>Subtotal</span><span className="font-semibold text-[#182116]">{formatINR(subtotal)}</span></div>
+                    <div className="mt-3 rounded-full border border-[#dfe7d7] bg-white px-4 py-3 text-sm text-[#5f6c5b]">Free delivery on orders over ₹1,500</div>
                   </div>
-                  <Link to="/checkout" className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110">
-                    Checkout <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                  <Link to="/checkout" className="inline-flex w-full items-center justify-center rounded-full bg-[#17300d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#224615]">Checkout <ArrowRight className="ml-2 h-4 w-4" /></Link>
                 </div>
               </div>
             </aside>
           )}
         </div>
       </main>
+
+      {mobileFiltersOpen ? (
+        <div className="fixed inset-0 z-50 bg-[#0d1710]/45 backdrop-blur-[2px] xl:hidden">
+          <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-xl rounded-t-[28px] border-t border-[#dfe7d7] bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#7CBF00]">Filters</p>
+                <h3 className="mt-1 text-xl font-semibold text-[#182116]">Refine your search</h3>
+              </div>
+              <button type="button" onClick={() => setMobileFiltersOpen(false)} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2 text-[#17300d]">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-5 max-h-[58vh] overflow-y-auto pb-4">{filterFields}</div>
+          </div>
+        </div>
+      ) : null}
+
       <Footer />
     </div>
   );

@@ -3,6 +3,7 @@ import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import Button from '../components/ui/Button';
 import { membershipPlans } from '../data/mockData';
+import { formatINR } from '../utils/currency';
 import { useNavigate } from 'react-router-dom';
 
 export default function MembershipPage() {
@@ -17,7 +18,7 @@ export default function MembershipPage() {
           {membershipPlans.map((plan) => (
             <div key={plan.id} className={`rounded-[24px] border p-8 backdrop-blur-xl ${plan.featured ? 'border-cyan-400/30 bg-[#17300d]' : 'border-white/10 bg-[#151823]'}`}>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{plan.name}</p>
-              <p className="mt-4 text-4xl font-semibold text-white">${plan.price}<span className="text-base text-slate-400">/mo</span></p>
+              <p className="mt-4 text-4xl font-semibold text-white">{formatINR(plan.price)}<span className="text-base text-slate-400">/mo</span></p>
               <p className="mt-4 text-sm leading-7 text-slate-400">{plan.description}</p>
               <ul className="mt-6 space-y-3 text-sm text-slate-300">
                 {plan.perks.map((perk) => <li key={perk}>{perk}</li>)}

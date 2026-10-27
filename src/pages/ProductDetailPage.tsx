@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Glasses, Heart, ShieldCheck, Star, Truck } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
@@ -7,39 +7,66 @@ import ProductCard from '../components/ui/ProductCard';
 import Button from '../components/ui/Button';
 import { useShop } from '../context/ShopContext';
 import { products, reviews } from '../data/mockData';
+import { formatINR } from '../utils/currency';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-
-const serviceablePinCodes = new Set(['500001', '500032', '560001', '110001', '400001']);
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toggleWishlist, isInWishlist, addToCart } = useShop();
+  const { toggleWishlist, isInWishlist, addToCart, isInCart, setDeliveryPin, validateDeliveryPin } = useShop();
   const [postalCode, setPostalCode] = useState('');
   const [deliveryMessage, setDeliveryMessage] = useState('');
   const [addedToCart, setAddedToCart] = useState(false);
+  const [pinChecking, setPinChecking] = useState(false);
+  const cartTimerRef = useRef<number | null>(null);
   const product = products.find((item) => item.id === Number(id));
   if (!product) return <Navigate to="/shop" replace />;
+
   const supportsPrescription = product.category !== 'Contact Lenses';
+  const isWishlisted = isInWishlist(product.id);
+  const unavailable = product.stock === 'Out of Stock';
+
+  useEffect(() => {
+    return () => {
+      if (cartTimerRef.current) window.clearTimeout(cartTimerRef.current);
+    };
+  }, []);
 
   const handleBuyNow = () => {
-    navigate(`/prescription/${product.id}`);
+    if (unavailable) return;
+    if (!isInCart(product.id)) addToCart(product);
+    navigate('/checkout');
   };
 
   const handleAddToCart = () => {
-    addToCart(product);
+    if (unavailable) return;
+    if (!isInCart(product.id)) addToCart(product);
     setAddedToCart(true);
+    if (cartTimerRef.current) window.clearTimeout(cartTimerRef.current);
+    cartTimerRef.current = window.setTimeout(() => setAddedToCart(false), 1400);
   };
+
   const checkDeliveryCode = () => {
-    if (!/^\d{6}$/.test(postalCode.trim())) {
+    if (pinChecking) return;
+
+    const rawPin = postalCode.trim();
+    if (!/^\d{6}$/.test(rawPin)) {
       setDeliveryMessage('Enter a valid 6-digit PIN code.');
       return;
     }
-    setDeliveryMessage(serviceablePinCodes.has(postalCode.trim())
-      ? 'Great news — delivery is available to this PIN code.'
-      : 'Delivery is not available to this PIN code yet. Try another serviceable area.');
+
+    setPinChecking(true);
+    setDeliveryMessage('');
+    window.setTimeout(() => {
+      const result = validateDeliveryPin(rawPin);
+      setPostalCode(result.normalizedPin);
+      setDeliveryMessage(result.message);
+      setPinChecking(false);
+    }, 300);
   };
+
   const discountPercentage = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
+  const actionButtonBase = 'h-[48px] min-h-[48px] rounded-full px-3 text-sm font-semibold whitespace-nowrap transition-all duration-200 sm:h-[52px] sm:min-h-[52px] sm:px-4';
 
   return (
     <div className="min-h-screen bg-[#050816] text-slate-100">
@@ -60,8 +87,8 @@ export default function ProductDetailPage() {
               <p className="mt-4 text-base leading-8 text-slate-400">{product.description}</p>
             </div>
             <div className="flex items-center gap-4 rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-              <div><p className="text-xs uppercase tracking-[0.2em] text-slate-400">Price</p><p className="mt-1 text-3xl font-semibold text-white">${product.price}</p></div>
-              {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-slate-400">List price</p><p className="mt-1 text-lg text-slate-400 line-through">${product.oldPrice}</p></div> : null}
+              <div><p className="text-xs uppercase tracking-[0.2em] text-slate-400">Price</p><p className="mt-1 text-3xl font-semibold text-white">{formatINR(product.price)}</p></div>
+              {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-slate-400">List price</p><p className="mt-1 text-lg text-slate-400 line-through">{formatINR(product.oldPrice)}</p></div> : null}
               {discountPercentage > 0 ? <span className="rounded-full bg-[var(--brand-green)]/15 px-3 py-1 text-sm font-semibold text-[var(--brand-green-dark)]">{discountPercentage}% off</span> : null}
             </div>
             <div className="rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
@@ -81,15 +108,54 @@ export default function ProductDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              {supportsPrescription ? <>
-                <Button variant="secondary" onClick={() => navigate(`/virtual-try-on?productId=${product.id}`)}><Glasses className="mr-2 h-4 w-4" />Virtual Try-On</Button>
-                <Button variant="secondary" onClick={() => navigate(`/prescription/${product.id}`)}>Add Prescription &amp; Choose Lenses</Button>
-              </> : null}
-              <Button onClick={handleAddToCart} disabled={product.stock === 'Out of Stock'}>{product.stock === 'Out of Stock' ? 'Out of stock' : addedToCart ? 'Added to Cart' : 'Add to Cart'}</Button>
-              <Button onClick={handleBuyNow} disabled={product.stock === 'Out of Stock'}>Buy now</Button>
-              <Button variant="ghost" onClick={() => toggleWishlist(product)}><Heart className={`mr-2 h-4 w-4 ${isInWishlist(product.id) ? 'fill-current text-cyan-300' : ''}`} /> {isInWishlist(product.id) ? 'Saved to wishlist' : 'Add to wishlist'}</Button>
+
+            <div className="flex flex-col gap-3 md:flex-row md:items-stretch">
+              {supportsPrescription ? (
+                <Button variant="secondary" className={`${actionButtonBase} flex-1 w-full`} onClick={() => navigate(`/virtual-try-on?productId=${product.id}`)}>
+                  <Glasses className="mr-2 h-4 w-4" />Virtual Try-On
+                </Button>
+              ) : null}
+
+              {supportsPrescription ? (
+                <Button variant="secondary" className={`${actionButtonBase} flex-1 w-full`} onClick={() => navigate(`/prescription/${product.id}`)}>
+                  Add Prescription &amp; Choose Lenses
+                </Button>
+              ) : null}
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_170px]">
+              <Button
+                type="button"
+                className={`${actionButtonBase} w-full bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
+                onClick={handleAddToCart}
+                disabled={unavailable}
+              >
+                {unavailable ? 'Out of stock' : addedToCart ? 'Added to Cart' : 'Add to Cart'}
+              </Button>
+
+              <Button
+                type="button"
+                className={`${actionButtonBase} w-full bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
+                onClick={handleBuyNow}
+                disabled={unavailable}
+              >
+                Buy Now
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                className={`${actionButtonBase} w-full xl:w-auto ${isWishlisted ? 'border-[var(--brand-green)]/60 bg-[var(--brand-green)]/10 text-[var(--brand-green-dark)]' : ''}`}
+                onClick={() => toggleWishlist(product)}
+                aria-pressed={isWishlisted}
+              >
+                <Heart className={`mr-2 h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
+                {isWishlisted ? 'Saved' : 'Add to Wishlist'}
+              </Button>
+            </div>
+
+            {addedToCart ? <p role="status" className="text-sm font-medium text-[var(--brand-green-dark)]">{product.name} was added to your cart.</p> : null}
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-white"><ShieldCheck className="h-4 w-4 text-cyan-400" /> Product availability</div><p className="mt-2 text-sm text-slate-400">{product.stock}</p></div>
               <div className="rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-white"><Truck className="h-4 w-4 text-cyan-400" /> Delivery details</div><p className="mt-2 text-sm text-slate-400">Delivery options are shown during checkout.</p></div>
@@ -98,13 +164,12 @@ export default function ProductDetailPage() {
               <label htmlFor="delivery-pin" className="text-sm font-semibold text-white">Check a delivery PIN</label>
               <p className="mt-1 text-xs leading-5 text-slate-400">Check mock delivery availability. Live serviceability will be connected later.</p>
               <div className="mt-3 flex gap-2">
-                <input id="delivery-pin" inputMode="numeric" autoComplete="postal-code" maxLength={6} value={postalCode} onChange={(event) => { setPostalCode(event.target.value.replace(/\D/g, '')); setDeliveryMessage(''); }} placeholder="6-digit PIN code" className="min-w-0 flex-1 rounded-full border border-white/10 bg-[#050816] px-4 py-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]" />
-                <Button type="submit">Check</Button>
+                <input id="delivery-pin" inputMode="numeric" autoComplete="postal-code" maxLength={6} value={postalCode} onChange={(event) => { const nextValue = event.target.value.replace(/\D/g, '').slice(0, 6); setPostalCode(nextValue); setDeliveryPin(nextValue); setDeliveryMessage(''); }} placeholder="6-digit PIN code" className="min-w-0 flex-1 rounded-full border border-white/10 bg-[#050816] px-4 py-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]" />
+                <Button type="submit" className="h-[48px] min-h-[48px] rounded-full px-4 text-sm font-semibold sm:h-[52px] sm:min-h-[52px]" disabled={pinChecking || postalCode.trim().length !== 6}>{pinChecking ? 'Checking...' : 'Check'}</Button>
               </div>
-              {deliveryMessage ? <p role="status" className="mt-3 text-sm text-slate-300">{deliveryMessage}</p> : null}
+              {deliveryMessage ? <p role="status" className={`mt-3 text-sm ${deliveryMessage.includes('available') ? 'text-emerald-300' : 'text-slate-300'}`}>{deliveryMessage}</p> : null}
               <p className="mt-2 text-xs text-slate-500">Demo serviceable PINs: 500001, 500032, 560001, 110001, 400001.</p>
             </form>
-            {addedToCart ? <p role="status" className="text-sm font-medium text-[var(--brand-green-dark)]">{product.name} was added to your cart.</p> : null}
           </motion.div>
         </div>
 
@@ -112,22 +177,17 @@ export default function ProductDetailPage() {
           <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Specifications</p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {[
-                ['Category', product.category],
-                ...(product.gender ? [['Audience', product.gender]] : []),
-                ...(product.frameShape ? [['Frame shape', product.frameShape]] : []),
-                ...(product.frameType ? [['Frame type', product.frameType]] : []),
-                ['Material', product.material],
-                ['Brand', product.brand],
-                ['Available colours', product.colors.join(', ')],
-                ['Available sizes', product.sizes.join(', ')],
-                ['Availability', product.stock],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-[18px] border border-white/10 bg-slate-950/60 p-4">
-                  <p className="text-sm text-slate-400">{label}</p>
-                  <p className="mt-2 font-semibold text-white">{value}</p>
-                </div>
-              ))}
+              {{
+                'Category': product.category,
+                ...(product.gender ? {'Audience': product.gender} : {}),
+                ...(product.frameShape ? {'Frame shape': product.frameShape} : {}),
+                ...(product.frameType ? {'Frame type': product.frameType} : {}),
+                'Material': product.material,
+                'Brand': product.brand,
+                'Available colours': product.colors.join(', '),
+                'Available sizes': product.sizes.join(', '),
+                'Availability': product.stock,
+              }[Object.keys(product).find(key => product[key] !== undefined)]}
             </div>
           </div>
           <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[#0f1b37] to-[#060b17] p-8">

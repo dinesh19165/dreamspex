@@ -6,6 +6,7 @@ import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
+import { formatINR } from '../utils/currency';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total } = useShop();
@@ -49,7 +50,7 @@ export default function CartPage() {
                       <span className="min-w-[2rem] text-center font-semibold text-white">{item.quantity}</span>
                       <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity + 1)} aria-label={`Increase ${item.name} quantity`} className="rounded-full border border-white/10 px-3 py-2 text-slate-200">+</button>
                     </div>
-                    <span className="text-lg font-semibold text-white">${(item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity}</span>
+                    <span className="text-lg font-semibold text-white">{formatINR((item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity)}</span>
                   </div>
                 </div>
               ))}
@@ -71,16 +72,16 @@ export default function CartPage() {
                 </div>
                 <div className="rounded-[20px] border border-white/10 bg-white/5 p-4">
                   <p className="text-sm text-slate-400">Subtotal</p>
-                  <p className="mt-2 text-lg font-semibold text-white">${subtotal}</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{formatINR(subtotal)}</p>
                 </div>
                 <div className="rounded-[20px] border border-white/10 bg-white/10 p-4">
                   <label htmlFor="cart-coupon" className="text-sm text-slate-300">Have a coupon code?</label>
                   <div className="mt-3 flex gap-2"><input id="cart-coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Enter coupon code" className="min-w-0 flex-1 rounded-full border border-white/10 bg-[#050816] px-4 py-3 text-sm text-white outline-none" /><button type="button" disabled={couponLoading || !couponCode.trim()} onClick={handleApplyCoupon} className="rounded-full bg-[#7CBF00] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{couponLoading ? 'Applying...' : 'Apply'}</button></div>
                   {couponError ? <p className="mt-2 text-xs text-rose-300" role="alert">{couponError}</p> : null}
-                  {appliedCoupon ? <div className="mt-3 flex items-center justify-between gap-3 text-xs text-cyan-200"><span>✓ Coupon {appliedCoupon.code} applied · You saved ${discount}</span><button type="button" onClick={removeCoupon} className="text-cyan-300 underline">Remove</button></div> : null}
+                  {appliedCoupon ? <div className="mt-3 flex items-center justify-between gap-3 text-xs text-cyan-200"><span>✓ Coupon {appliedCoupon.code} applied · You saved {formatINR(discount)}</span><button type="button" onClick={removeCoupon} className="text-cyan-300 underline">Remove</button></div> : null}
                 </div>
-                {appliedCoupon ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon.code} ({appliedCoupon.discountPercent}% OFF)</span><span>-${discount}</span></div> : null}
-                <div className="flex items-center justify-between border-t border-white/10 pt-4 text-base font-semibold text-white"><span>Total</span><span>${total}</span></div>
+                {appliedCoupon ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon.code} ({appliedCoupon.discountPercent}% OFF)</span><span>-{formatINR(discount)}</span></div> : null}
+                <div className="flex items-center justify-between border-t border-white/10 pt-4 text-base font-semibold text-white"><span>Total</span><span>{formatINR(total)}</span></div>
                 <p className="rounded-[20px] border border-white/10 bg-white/5 p-4 text-sm leading-6 text-slate-400">Delivery options and payment methods are shown in the demo checkout. No real payment is processed.</p>
               </div>
 

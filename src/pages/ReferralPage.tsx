@@ -2,6 +2,7 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
 import Button from '../components/ui/Button';
+import { formatINR } from '../utils/currency';
 
 export default function ReferralPage() {
   return (
@@ -21,7 +22,7 @@ export default function ReferralPage() {
           </div>
           <div className="rounded-[24px] border border-white/10 bg-[#1B1F2B] p-8 text-white shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Reward cards</p>
-            <p className="mt-4 text-3xl font-semibold">Earn up to $120</p>
+            <p className="mt-4 text-3xl font-semibold">Earn up to {formatINR(12000)}</p>
             <p className="mt-4 text-sm leading-7 text-slate-300">For each successful friend referral, enjoy a combination of store credit and exclusive offers.</p>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { ArrowRight, Eye, FileText, Glasses, Heart, ShoppingCart, Star } from 'l
 import { Link } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import type { Product } from '../../types';
+import { formatINR } from '../../utils/currency';
 import LuxuryModal from './LuxuryModal';
 
 type ProductCardProps = {
@@ -57,8 +58,8 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
           {supportsPrescription ? <div className="mt-4 flex flex-wrap gap-3 text-xs font-semibold"><span className="inline-flex items-center gap-1 text-[#9ACD32]"><FileText className="h-3.5 w-3.5" /> Prescription Available</span><Link to={`/virtual-try-on?productId=${product.id}`} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200"><Glasses className="h-3.5 w-3.5" /> Virtual Try-On</Link></div> : null}
           <div className="mt-auto flex items-center justify-between pt-5">
             <div>
-              <p className="text-lg font-semibold text-[var(--text-primary)]">${product.price}</p>
-              {product.oldPrice ? <p className="text-sm text-[var(--text-secondary)] line-through">${product.oldPrice} <span className="ml-1 no-underline text-cyan-600">{Math.round((1 - product.price / product.oldPrice) * 100)}% off</span></p> : null}
+              <p className="text-lg font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p>
+              {product.oldPrice ? <p className="text-sm text-[var(--text-secondary)] line-through">{formatINR(product.oldPrice)} <span className="ml-1 no-underline text-cyan-600">{Math.round((1 - product.price / product.oldPrice) * 100)}% off</span></p> : null}
             </div>
             <button onClick={handleAddToCart} disabled={unavailable} className={`rounded-full p-2.5 text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 ${isInCart(product.id) ? 'bg-emerald-500' : 'bg-gradient-to-r from-cyan-400 to-blue-600'}`} aria-label={unavailable ? `${product.name} is out of stock` : `Add ${product.name} to cart`}>
               <ShoppingCart className="h-4 w-4" />
@@ -79,7 +80,7 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{product.category}</p>
             <p className="mt-3 text-sm leading-7 text-slate-400">{product.description}</p>
             <div className="mt-5 flex items-center justify-between rounded-[16px] border border-white/10 bg-white/5 px-4 py-3">
-              <span className="text-white">${product.price}</span>
+              <span className="text-white">{formatINR(product.price)}</span>
               <span className="text-sm text-cyan-300">{product.stock}</span>
             </div>
           </div>

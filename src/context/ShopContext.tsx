@@ -4,11 +4,44 @@ import type { LensSelection, Prescription, Product } from '../types';
 import { calculateCoupon, findCoupon, type CouponResult } from '../services/couponService';
 import { getCartItemKey } from '../utils/cart';
 
+export const DEMO_SERVICEABLE_PIN_CODES = new Set(['500001', '500032', '560001', '110001', '400001']);
+
+export function validateDemoDeliveryPin(pin: string) {
+  const normalizedPin = pin.replace(/\D/g, '').slice(0, 6);
+
+  if (!/^\d{6}$/.test(normalizedPin)) {
+    return {
+      normalizedPin,
+      isValid: false,
+      message: 'Enter a valid 6-digit Indian PIN code.',
+    };
+  }
+
+  if (!DEMO_SERVICEABLE_PIN_CODES.has(normalizedPin)) {
+    return {
+      normalizedPin,
+      isValid: false,
+      message: 'Delivery is not available for this PIN code yet. Please try another serviceable area.',
+    };
+  }
+
+  return {
+    normalizedPin,
+    isValid: true,
+    message: 'Delivery available for this PIN code.',
+  };
+}
+
 export type CartItem = Product & { quantity: number; configuredId?: string; prescription?: Prescription; lensSelection?: LensSelection };
 
 type ShopContextValue = {
   wishlist: Product[];
   cart: CartItem[];
+  deliveryPin: string;
+  isDeliveryPinValidated: boolean;
+  setDeliveryPin: (pin: string) => void;
+  validateDeliveryPin: (pin: string) => { normalizedPin: string; isValid: boolean; message: string };
+  clearDeliveryPin: () => void;
   isInWishlist: (productId: number) => boolean;
   isInCart: (productId: number) => boolean;
   toggleWishlist: (product: Product) => void;
@@ -44,6 +77,20 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       return [];
     }
   });
+  const [deliveryPin, setDeliveryPinState] = useState<string>(() => {
+    try {
+      return localStorage.getItem('dream-spex-delivery-pin') ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const [isDeliveryPinValidated, setIsDeliveryPinValidated] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('dream-spex-delivery-pin-validated') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(() => {
     try {
       const savedCode = localStorage.getItem('dream-spex-coupon');
@@ -67,9 +114,37 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [cart]);
 
   useEffect(() => {
+    if (deliveryPin) localStorage.setItem('dream-spex-delivery-pin', deliveryPin);
+    else localStorage.removeItem('dream-spex-delivery-pin');
+  }, [deliveryPin]);
+
+  useEffect(() => {
+    if (isDeliveryPinValidated) localStorage.setItem('dream-spex-delivery-pin-validated', 'true');
+    else localStorage.removeItem('dream-spex-delivery-pin-validated');
+  }, [isDeliveryPinValidated]);
+
+  useEffect(() => {
     if (appliedCoupon) localStorage.setItem('dream-spex-coupon', appliedCoupon.code);
     else localStorage.removeItem('dream-spex-coupon');
   }, [appliedCoupon]);
+
+  const setDeliveryPin = useCallback((value: string) => {
+    const nextValue = value.replace(/\D/g, '').slice(0, 6);
+    setDeliveryPinState(nextValue);
+    setIsDeliveryPinValidated(false);
+  }, []);
+
+  const validateDeliveryPin = useCallback((value: string) => {
+    const result = validateDemoDeliveryPin(value);
+    setDeliveryPinState(result.normalizedPin);
+    setIsDeliveryPinValidated(result.isValid);
+    return result;
+  }, []);
+
+  const clearDeliveryPin = useCallback(() => {
+    setDeliveryPinState('');
+    setIsDeliveryPinValidated(false);
+  }, []);
 
   const toggleWishlist = (product: Product) => {
     setWishlist((current) => {
@@ -129,6 +204,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     () => ({
       wishlist,
       cart,
+      deliveryPin,
+      isDeliveryPinValidated,
+      setDeliveryPin,
+      validateDeliveryPin,
+      clearDeliveryPin,
       isInWishlist: (productId: number) => wishlist.some((item) => item.id === productId),
       isInCart: (productId: number) => cart.some((item) => item.id === productId),
       toggleWishlist,
@@ -145,7 +225,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       discount,
       total,
     }),
-    [wishlist, cart, recalculatedCoupon, subtotal, discount, total, applyCoupon]
+    [wishlist, cart, deliveryPin, isDeliveryPinValidated, setDeliveryPin, validateDeliveryPin, clearDeliveryPin, recalculatedCoupon, subtotal, discount, total, applyCoupon]
   );
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

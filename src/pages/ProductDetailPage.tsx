@@ -187,7 +187,12 @@ export default function ProductDetailPage() {
                 'Available colours': product.colors.join(', '),
                 'Available sizes': product.sizes.join(', '),
                 'Availability': product.stock,
-              }[Object.keys(product).find(key => product[key] !== undefined)]}
+              }.map(([label, value]) => (
+                <div key={String(label)} className="rounded-[18px] border border-white/10 bg-slate-950/60 p-4">
+                  <p className="text-sm text-slate-400">{String(label)}</p>
+                  <p className="mt-2 font-semibold text-white">{String(value)}</p>
+                </div>
+              ))}
             </div>
           </div>
           <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[#0f1b37] to-[#060b17] p-8">

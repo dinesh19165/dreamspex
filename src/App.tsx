@@ -119,7 +119,7 @@ function App() {
               </motion.button>
             ) : null}
           </AnimatePresence>
-          <WhatsAppSupport className="fixed bottom-20 right-6 z-[120] shadow-lg shadow-green-500/20" />
+          <WhatsAppSupport />
           <Routes>
             <Route path="/" element={<RootEntry />} />
             <Route path="/shop" element={<ShopPage />} />

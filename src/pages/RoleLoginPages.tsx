@@ -1,29 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, Camera, Eye, EyeOff, Lock, Mail, Moon, ShieldCheck, Sparkles, Sun } from 'lucide-react';
+import { ArrowRight, Camera, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import BrandLogo from '../components/ui/BrandLogo';
 import { useAuth } from '../context/useAuth';
-import { useTheme } from '../context/useTheme';
 import { mockDemoCredentials, getMockFranchiseUserByEmail } from '../data/mockAuth';
 
 const CUSTOMER_PROMO = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80';
 
 function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`relative min-h-screen overflow-hidden px-3 py-2 sm:px-4 lg:px-5 ${isDark ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]' : 'bg-[#f3efe8] text-[#1a221b]'}`}>
-      <button
-        type="button"
-        onClick={toggleTheme}
-        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        className={`absolute right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-black/20 hover:bg-[var(--bg-secondary)]' : 'border-[#dfe4d5] bg-white/70 text-[#1a221b] shadow-black/5 hover:bg-white'}`}
-      >
-        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-      </button>
-
-      <div className={`mx-auto max-w-[1520px] overflow-hidden rounded-[34px] border shadow-[0_32px_90px_rgba(17,24,39,0.12)] ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)]' : 'border-[#dfe4d5] bg-[#f6f3ee]'}`}>
+    <div className="relative min-h-screen overflow-hidden px-3 py-2 sm:px-4 lg:px-5 bg-[#f3efe8] text-[#1a221b]">
+      <div className="mx-auto max-w-[1520px] overflow-hidden rounded-[34px] border border-[#dfe4d5] bg-[#f6f3ee] shadow-[0_32px_90px_rgba(17,24,39,0.12)]">
         <div className="grid min-h-[calc(100vh-1rem)] grid-cols-1 lg:grid-cols-[1.45fr_1fr]">
           <div className="relative block overflow-hidden bg-[var(--bg-secondary)] lg:block">
             <div className="relative h-[270px] overflow-hidden md:h-[320px] lg:h-full lg:min-h-[680px]">
@@ -32,7 +19,7 @@ function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
                 alt="Premium eyewear lifestyle"
                 className="absolute inset-0 h-full w-full object-cover object-center"
               />
-              <div className={`absolute inset-0 ${isDark ? 'bg-[linear-gradient(90deg,rgba(9,15,13,0.68),rgba(9,15,13,0.52),rgba(9,15,13,0.26))]' : 'bg-[linear-gradient(90deg,rgba(244,239,232,0.74),rgba(244,239,232,0.42),rgba(244,239,232,0.18))]'}`} />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(244,239,232,0.74),rgba(244,239,232,0.42),rgba(244,239,232,0.18))]" />
 
               <div className="relative z-10 flex h-full flex-col justify-between p-4 sm:p-6 lg:p-6 xl:p-8">
                 <div className="max-w-[180px] bg-transparent">
@@ -40,13 +27,13 @@ function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="max-w-[580px] pb-2">
-                  <h1 className={`max-w-[420px] text-[clamp(2.5rem,4vw,3.75rem)] font-semibold leading-[0.96] tracking-[-0.06em] ${isDark ? 'text-white' : 'text-[#17211a]'}`}>
+                  <h1 className="max-w-[420px] text-[clamp(2.5rem,4vw,3.75rem)] font-semibold leading-[0.96] tracking-[-0.06em] text-[#17211a]">
                     Glasses that<br />
                     define your<br />
                     <span className="text-[var(--brand-green)]">everyday style.</span>
                   </h1>
 
-                  <p className={`mt-3 max-w-md text-sm leading-6 sm:text-base ${isDark ? 'text-white/80' : 'text-[#2d4033]'}`}>
+                  <p className="mt-3 max-w-md text-sm leading-6 text-[#2d4033] sm:text-base">
                     Curated frames, expert guidance and premium care designed around your look.
                   </p>
 
@@ -56,9 +43,9 @@ function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
                       { icon: Camera, label: 'Virtual\nTry-On' },
                       { icon: ShieldCheck, label: 'Free\nConsultation' },
                     ].map(({ icon: Icon, label }) => (
-                      <div key={label} className={`flex min-w-[92px] flex-col items-center gap-2 text-center ${isDark ? 'text-white' : 'text-[#17211a]'}`}>
-                        <div className={`flex h-11 w-11 items-center justify-center rounded-full border shadow-[0_10px_30px_rgba(0,0,0,0.06)] ${isDark ? 'border-white/15 bg-white/8' : 'border-[#1d2a1d]/20 bg-[#f4faf0]/80'}`}>
-                          <Icon className={`h-4 w-4 ${isDark ? 'text-white' : 'text-[#17211a]'}`} />
+                      <div key={label} className="flex min-w-[92px] flex-col items-center gap-2 text-center text-[#17211a]">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#1d2a1d]/20 bg-[#f4faf0]/80 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+                          <Icon className="h-4 w-4 text-[#17211a]" />
                         </div>
                         <span className="whitespace-pre-line text-center text-[11px] font-medium leading-4">{label}</span>
                       </div>
@@ -69,11 +56,11 @@ function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          <div className={`relative flex items-center justify-center px-4 py-4 sm:px-6 lg:px-7 ${isDark ? 'bg-[var(--bg-primary)]' : 'bg-[#f8f6f2]'}`}>
-            <div className={`absolute -left-10 top-8 h-24 w-24 rounded-full blur-2xl ${isDark ? 'bg-[rgba(124,180,88,0.18)]' : 'bg-[#dfead1]/80'}`} />
-            <div className={`absolute -right-10 bottom-6 h-28 w-28 rounded-full blur-2xl ${isDark ? 'bg-[rgba(124,180,88,0.18)]' : 'bg-[#dfead1]/80'}`} />
+          <div className="relative flex items-center justify-center bg-[#f8f6f2] px-4 py-4 sm:px-6 lg:px-7">
+            <div className="absolute -left-10 top-8 h-24 w-24 rounded-full bg-[#dfead1]/80 blur-2xl" />
+            <div className="absolute -right-10 bottom-6 h-28 w-28 rounded-full bg-[#dfead1]/80 blur-2xl" />
 
-            <div className={`relative z-10 w-full max-w-[470px] rounded-[28px] border p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:p-6 ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)]' : 'border-[#e0e7d8] bg-[#f9f8f5]'}`}>
+            <div className="relative z-10 w-full max-w-[470px] rounded-[28px] border border-[#e0e7d8] bg-[#f9f8f5] p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)] sm:p-6">
               <div className="mb-5 flex items-center justify-center">
                 <div className="max-w-[150px]">
                   <BrandLogo compact />
@@ -82,8 +69,8 @@ function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
 
               <div className="mb-6 text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">WELCOME BACK</p>
-                <h2 className={`mt-3 text-[clamp(2rem,2.6vw,2.5rem)] font-semibold tracking-[-0.04em] ${isDark ? 'text-[var(--text-primary)]' : 'text-[#1b251a]'}`}>Sign in to Dream Spex</h2>
-                <p className={`mt-2 text-sm ${isDark ? 'text-[var(--text-secondary)]' : 'text-[#536456]'}`}>Discover eyewear that fits your style.</p>
+                <h2 className="mt-3 text-[clamp(2rem,2.6vw,2.5rem)] font-semibold tracking-[-0.04em] text-[#1b251a]">Sign in to Dream Spex</h2>
+                <p className="mt-2 text-sm text-[#536456]">Discover eyewear that fits your style.</p>
               </div>
 
               {children}
@@ -96,21 +83,9 @@ function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AdminPortalLayout({ children }: { children: React.ReactNode }) {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-3 sm:px-6 lg:px-8 ${isDark ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]' : 'bg-[#efefeb] text-[#17211a]'}`}>
-      <button
-        type="button"
-        onClick={toggleTheme}
-        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        className={`absolute right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-black/20 hover:bg-[var(--bg-secondary)]' : 'border-[#dfe4d5] bg-white/80 text-[#1a221b] shadow-black/5 hover:bg-white'}`}
-      >
-        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-      </button>
-
-      <div className={`w-full max-w-[560px] rounded-[30px] border p-5 shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-6 ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)]' : 'border-[#e4e8df] bg-[#f5f5f3]'}`}>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#efefeb] px-4 py-3 text-[#17211a] sm:px-6 lg:px-8">
+      <div className="w-full max-w-[560px] rounded-[30px] border border-[#e4e8df] bg-[#f5f5f3] p-5 shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-6">
         <div className="mb-5 flex justify-center">
           <div className="max-w-[200px]">
             <BrandLogo compact />
@@ -119,8 +94,8 @@ function AdminPortalLayout({ children }: { children: React.ReactNode }) {
 
         <div className="text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">ADMIN PORTAL</p>
-          <h1 className={`mt-4 text-[clamp(2.2rem,3vw,2.8rem)] font-semibold tracking-[-0.05em] ${isDark ? 'text-[var(--text-primary)]' : 'text-[#1a221c]'}`}>Admin Login</h1>
-          <p className={`mt-2 text-sm ${isDark ? 'text-[var(--text-secondary)]' : 'text-[#58675d]'}`}>Sign in to access the administrative dashboard.</p>
+          <h1 className="mt-4 text-[clamp(2.2rem,3vw,2.8rem)] font-semibold tracking-[-0.05em] text-[#1a221c]">Admin Login</h1>
+          <p className="mt-2 text-sm text-[#58675d]">Sign in to access the administrative dashboard.</p>
         </div>
 
         <div className="mt-6">
@@ -132,21 +107,9 @@ function AdminPortalLayout({ children }: { children: React.ReactNode }) {
 }
 
 function FranchisePortalLayout({ children }: { children: React.ReactNode }) {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-3 sm:px-6 lg:px-8 ${isDark ? 'bg-[var(--bg-primary)] text-[var(--text-primary)]' : 'bg-[#efefeb] text-[#17211a]'}`}>
-      <button
-        type="button"
-        onClick={toggleTheme}
-        aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        className={`absolute right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border shadow-lg transition ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] shadow-black/20 hover:bg-[var(--bg-secondary)]' : 'border-[#dfe4d5] bg-white/80 text-[#1a221b] shadow-black/5 hover:bg-white'}`}
-      >
-        {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-      </button>
-
-      <div className={`w-full max-w-[560px] rounded-[30px] border p-5 shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-6 ${isDark ? 'border-[var(--border-subtle)] bg-[var(--bg-card)]' : 'border-[#e4e8df] bg-[#f5f5f3]'}`}>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#efefeb] px-4 py-3 text-[#17211a] sm:px-6 lg:px-8">
+      <div className="w-full max-w-[560px] rounded-[30px] border border-[#e4e8df] bg-[#f5f5f3] p-5 shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-6">
         <div className="mb-5 flex justify-center">
           <div className="max-w-[200px]">
             <BrandLogo compact />
@@ -155,8 +118,8 @@ function FranchisePortalLayout({ children }: { children: React.ReactNode }) {
 
         <div className="text-center">
           <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">FRANCHISE ADMIN PORTAL</p>
-          <h1 className={`mt-4 text-[clamp(2.1rem,2.8vw,2.8rem)] font-semibold tracking-[-0.05em] ${isDark ? 'text-[var(--text-primary)]' : 'text-[#1a221c]'}`}>Franchise Admin Login</h1>
-          <p className={`mt-2 text-sm ${isDark ? 'text-[var(--text-secondary)]' : 'text-[#58675d]'}`}>Sign in to manage your franchise store.</p>
+          <h1 className="mt-4 text-[clamp(2.1rem,2.8vw,2.8rem)] font-semibold tracking-[-0.05em] text-[#1a221c]">Franchise Admin Login</h1>
+          <p className="mt-2 text-sm text-[#58675d]">Sign in to manage your franchise store.</p>
         </div>
 
         <div className="mt-6">

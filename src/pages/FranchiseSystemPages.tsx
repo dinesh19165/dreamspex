@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react';
-import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, CircleDollarSign, LayoutGrid, LogOut, MapPin, Moon, PackageCheck, PackageOpen, Search, Settings, ShoppingCart, Store, Sun, TrendingUp, UserRound, Users, Warehouse } from 'lucide-react';
+import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, CircleDollarSign, LayoutGrid, LogOut, MapPin, PackageCheck, PackageOpen, Search, Settings, ShoppingCart, Store, TrendingUp, UserRound, Users, Warehouse } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import { useAuth } from '../context/useAuth';
-import { useTheme } from '../context/useTheme';
 import { adminSalesOverview, franchiseOrders, franchiseProducts, franchiseRegistrations, franchises, franchiseStats, franchiseUsers, topProducts } from '../data/franchiseData';
 
 const formatCurrency = (value: number) =>
@@ -63,7 +62,6 @@ function DashboardShell({
   locationLabel?: string;
 }) {
   const { role, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -122,14 +120,10 @@ function DashboardShell({
       </nav>
 
       <div className="space-y-2 border-t border-[var(--border-subtle)] pt-4">
-        <Link to={profileHref} onClick={() => setMobileOpen(false)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-green)]">
+        <Link to={profileHref} onClick={() => setMobileOpen(false)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-primary)] hover:text-[var,--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-green)]">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--bg-primary)]"><UserRound className="h-4 w-4" /></span>
           Profile
         </Link>
-        <button type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--bg-primary)]">{theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}</span>
-          Switch to {theme === 'light' ? 'dark' : 'light'} mode
-        </button>
         <button type="button" onClick={handleLogout} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-red-500/8 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-500/8"><LogOut className="h-4 w-4" /></span>
           Logout
@@ -307,7 +301,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function TableCard({ children }: { children: React.ReactNode }) {
-  return <div className="overflow-hidden rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)]">{children}</div>;
+  return <div className="overflow-hidden rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card]">{children}</div>;
 }
 
 function buildLinePath(values: number[], width: number, height: number, padding: number) {
@@ -442,7 +436,7 @@ export function SuperAdminDashboardPage() {
                 <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--text-secondary)]">{stat.label}</p>
                 <p className="mt-4 text-3xl font-semibold text-[var(--text-primary)]">{stat.value}</p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--brand-green)]/12 text-[var(--brand-green)]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--brand-green)]/12 text-[var,--brand-green]">
                 <stat.icon className="h-4 w-4" />
               </div>
             </div>
@@ -888,11 +882,11 @@ export function FranchiseDetailPage() {
             <div key={item.label} className="rounded-[22px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--text-secondary)]">{item.label}</p>
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--brand-green)]/12 text-[var(--brand-green)]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--brand-green)]/12 text-[var,--brand-green]">
                   <item.icon className="h-4 w-4" />
                 </div>
               </div>
-              <p className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">{item.value}</p>
+              <p className="mt-3 text-3xl font-semibold text-[var,--text-primary)]">{item.value}</p>
             </div>
           ))}
         </div>
@@ -972,7 +966,7 @@ export function FranchiseProductsPage() {
         {franchiseProducts.map((product) => (
           <div key={product.id} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
             <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">{product.city}</p>
-            <h3 className="mt-3 text-xl font-semibold text-[var(--text-primary)]">{product.name}</h3>
+            <h3 className="mt-3 text-xl font-semibold text-[var,--text-primary)]">{product.name}</h3>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">{product.brand}</p>
             <div className="mt-4 flex items-center justify-between">
               <span className="text-lg font-semibold text-[var(--text-primary)]">{formatCurrency(product.price)}</span>
@@ -1068,7 +1062,7 @@ export function SuperAdminOrdersPage() {
                   <td className="px-4 py-4 font-medium text-[var(--text-primary)]">{order.id}</td>
                   <td className="px-4 py-4 text-[var(--text-primary)]">{order.customer}</td>
                   <td className="px-4 py-4 text-[var(--text-secondary)]">{order.franchise}</td>
-                  <td className="px-4 py-4 text-[var(--text-primary)]">{formatCurrency(order.amount)}</td>
+                  <td className="px-4 py-4 text-[var,--text-primary)]">{formatCurrency(order.amount)}</td>
                   <td className="px-4 py-4"><StatusBadge status={order.status} /></td>
                 </tr>
               ))}
@@ -1139,7 +1133,7 @@ export function StoresPage() {
         {franchises.map((franchise) => (
           <div key={franchise.id} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
             <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--text-secondary)]">{franchise.city}</p>
-            <h3 className="mt-3 text-xl font-semibold text-[var(--text-primary)]">{franchise.name}</h3>
+            <h3 className="mt-3 text-xl font-semibold text-[var,--text-primary)]">{franchise.name}</h3>
             <p className="mt-2 text-sm text-[var,--text-secondary)]">{franchise.address}</p>
             <div className="mt-4 flex items-center justify-between">
               <span className="text-sm text-[var(--text-primary)]">{franchise.phone}</span>

@@ -93,7 +93,7 @@ export default function LocationSelector() {
         className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-sm font-medium text-[var(--text-primary)] shadow-sm transition hover:border-[var(--brand-green)]/60"
         aria-label="Choose store location"
       >
-        <MapPin className="h-4 w-4 text-[var(--brand-green)]" />
+        <MapPin className="h-4 w-4 text-[var(--brand-green-dark)]" />
         <span>{selectedLocation.label}</span>
       </button>
 
@@ -101,10 +101,10 @@ export default function LocationSelector() {
         <div className="absolute right-0 top-full z-[100] mt-3 w-[320px] rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-2xl shadow-black/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--brand-green)]">Select Location</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--brand-green-dark)]">Select Location</p>
               <h3 className="mt-2 text-base font-semibold text-[var(--text-primary)]">Choose your city</h3>
             </div>
-            <Sparkles className="h-4 w-4 text-[var(--brand-green)]" />
+            <Sparkles className="h-4 w-4 text-[var(--brand-green-dark)]" />
           </div>
 
           <button
@@ -121,7 +121,7 @@ export default function LocationSelector() {
             }}
             className="mt-4 flex w-full items-center justify-between rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-left text-sm text-[var(--text-primary)]"
           >
-            <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[var(--brand-green)]" /> Use Current Location</span>
+            <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[var(--brand-green-dark)]" /> Use Current Location</span>
             <span className="text-[var(--text-secondary)]">Demo</span>
           </button>
 

@@ -6,14 +6,14 @@ export default function LuxuryLoader() {
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.45 }}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-[#03050c]"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-[var(--bg-primary)]"
     >
       <div className="w-full max-w-md px-6 text-center">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.4 }}
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-cyan-400/30 bg-gradient-to-br from-cyan-400/20 to-blue-600/20 text-xl font-semibold tracking-[0.3em] text-white"
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-cyan-400/30 bg-gradient-to-br from-cyan-400/20 to-blue-600/20 text-xl font-semibold tracking-[0.3em] text-[var(--text-primary)]"
         >
           DS
         </motion.div>
@@ -29,11 +29,11 @@ export default function LuxuryLoader() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.18 }}
-          className="mt-2 text-sm text-slate-400"
+          className="mt-2 text-sm text-[var(--text-secondary)]"
         >
           Curating cinematic luxury eyewear experiences
         </motion.p>
-        <div className="mt-8 h-1 overflow-hidden rounded-full bg-white/10">
+        <div className="mt-8 h-1 overflow-hidden rounded-full bg-[var(--bg-secondary)]">
           <motion.div
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}

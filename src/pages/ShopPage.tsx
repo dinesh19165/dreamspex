@@ -123,54 +123,54 @@ export default function ShopPage() {
 
   const filterFields = (
     <div className="space-y-4">
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Category
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Category
         <select value={selectedCategory} onChange={(event) => { setSelectedCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All categories</option>
           {categoriesInStock.map((category) => <option key={category} value={categorySlug(category)}>{category}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Brand
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Brand
         <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All brands</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Gender
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Gender
         <select value={selectedGender} onChange={(event) => { setSelectedGender(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All genders</option>{genders.map((gender) => <option key={gender}>{gender}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Frame shape
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Frame shape
         <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All shapes</option>{frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Frame type
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Frame type
         <select value={selectedFrameType} onChange={(event) => { setSelectedFrameType(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All frame types</option>{frameTypes.map((type) => <option key={type}>{type}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Material
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Material
         <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All materials</option>{materials.map((material) => <option key={material}>{material}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Colour
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Colour
         <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All colours</option>{colors.map((color) => <option key={color}>{color}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Product label
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Product label
         <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All labels</option>{[...new Set(products.map((product) => product.badge).filter((badge): badge is string => Boolean(badge)))].map((badge) => <option key={badge} value={badge}>{badge}</option>)}
         </select>
       </label>
       <fieldset>
-        <legend className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Price range</legend>
+        <legend className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Price range</legend>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <label className="text-xs text-slate-500">Min
+          <label className="text-xs text-[var(--text-secondary)]">Min
             <input type="number" min="0" value={minimumPrice} onChange={(event) => { setMinimumPrice(event.target.value); setPage(1); }} placeholder="₹0" className="mt-1 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15" />
           </label>
-          <label className="text-xs text-slate-500">Max
+          <label className="text-xs text-[var(--text-secondary)]">Max
             <input type="number" min="0" value={maximumPrice} onChange={(event) => { setMaximumPrice(event.target.value); setPage(1); }} placeholder="No limit" className="mt-1 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15" />
           </label>
         </div>
@@ -180,7 +180,7 @@ export default function ShopPage() {
         In-stock items only
       </label>
       <div className="flex gap-2 pt-2">
-        <button type="button" onClick={() => setMobileFiltersOpen(false)} className="flex-1 rounded-full bg-[#17300d] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#234815]">Apply</button>
+        <button type="button" onClick={() => setMobileFiltersOpen(false)} className="flex-1 rounded-full bg-[var(--bg-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-primary)]">Apply</button>
         <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[#7CBF00] hover:text-[#17300d]">Clear</button>
       </div>
     </div>
@@ -202,7 +202,7 @@ export default function ShopPage() {
           </div>
           <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[#7CBF00]">Premium collection</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[var(--brand-green-dark)]">Premium collection</p>
               <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#182116] sm:text-4xl">Eyeglasses Frames</h1>
             </div>
             <p className="text-sm text-[#5f6c5b]">{filteredProducts.length} styles ready to explore</p>
@@ -243,13 +243,13 @@ export default function ShopPage() {
               <button key={suggestion} onClick={() => { setQuery(suggestion); setPage(1); }} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2 text-sm text-[#4d5c4c] transition hover:border-[#7CBF00]/40 hover:text-[#17300d]">{suggestion}</button>
             ))}
           </div>
-          <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#17300d]"><FileText className="h-4 w-4 text-[#7CBF00]" /> Prescription available on selected eyewear</div>
+          <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#17300d]"><FileText className="h-4 w-4 text-[var(--brand-green-dark)]" /> Prescription available on selected eyewear</div>
         </motion.div>
 
         <div className={`mt-10 grid gap-8 ${cartQuantity > 0 ? 'xl:grid-cols-[280px_1fr_320px]' : 'xl:grid-cols-[280px_1fr]'}`}>
           <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="hidden xl:block self-start rounded-[28px] border border-[#dfe7d7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)]">
             <div className="flex items-center justify-between gap-3 pb-4">
-              <h3 className="flex items-center gap-2 text-lg font-semibold text-[#182116]"><SlidersHorizontal className="h-4 w-4 text-[#7CBF00]" /> Refine filters</h3>
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-[#182116]"><SlidersHorizontal className="h-4 w-4 text-[var(--brand-green-dark)]" /> Refine filters</h3>
               <span className="rounded-full bg-[#edf7d9] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#17300d]">{filteredProducts.length}</span>
             </div>
             {filterFields}
@@ -270,7 +270,7 @@ export default function ShopPage() {
                   <ProductCard product={product} layout={viewMode} />
                 </motion.div>
               ))}
-              {!pagedProducts.length ? <div className="rounded-[24px] border border-[#dfe7d7] bg-white p-8 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4"><p className="font-serif text-2xl text-[#182116]">No frames match your current selection.</p><p className="mt-2 text-sm text-[#5f6c5b]">Try broadening your search or resetting the filters.</p><button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="mt-5 rounded-full bg-[#17300d] px-4 py-2.5 text-sm font-semibold text-white">Reset filters</button></div> : null}
+              {!pagedProducts.length ? <div className="rounded-[24px] border border-[#dfe7d7] bg-white p-8 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4"><p className="font-serif text-2xl text-[#182116]">No frames match your current selection.</p><p className="mt-2 text-sm text-[#5f6c5b]">Try broadening your search or resetting the filters.</p><button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="mt-5 rounded-full bg-[var(--bg-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)]">Reset filters</button></div> : null}
             </div>
 
             <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#dfe7d7] bg-white px-4 py-4 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">
@@ -278,7 +278,7 @@ export default function ShopPage() {
               <div className="flex items-center gap-2">
                 <button onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2.5 text-[#17300d]"><ChevronLeft className="h-4 w-4" /></button>
                 {Array.from({ length: totalPages }, (_, index) => index + 1).map((value) => (
-                  <button key={value} onClick={() => setPage(value)} className={`h-10 w-10 rounded-full text-sm ${page === value ? 'bg-[#17300d] text-white' : 'border border-[#dfe7d7] bg-[#f7f5f0] text-[#182116]'}`}>{value}</button>
+                  <button key={value} onClick={() => setPage(value)} className={`h-10 w-10 rounded-full text-sm ${page === value ? 'bg-[var(--bg-secondary)] text-[var(--text-primary)]' : 'border border-[#dfe7d7] bg-[#f7f5f0] text-[#182116]'}`}>{value}</button>
                 ))}
                 <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2.5 text-[#17300d]"><ChevronRight className="h-4 w-4" /></button>
               </div>
@@ -290,7 +290,7 @@ export default function ShopPage() {
               <div className="sticky top-24 rounded-[28px] border border-[#dfe7d7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)]">
                 <div className="flex items-center justify-between gap-3 rounded-[20px] border border-[#dfe7d7] bg-[#f7f5f0] p-4">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#7CBF00]">Order preview</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--brand-green-dark)]">Order preview</p>
                     <p className="mt-2 text-lg font-semibold text-[#182116]">{cartQuantity} item{cartQuantity === 1 ? '' : 's'}</p>
                   </div>
                   <ShoppingCart className="h-6 w-6 text-[#17300d]" />
@@ -320,7 +320,7 @@ export default function ShopPage() {
                     <div className="flex items-center justify-between"><span>Subtotal</span><span className="font-semibold text-[#182116]">{formatINR(subtotal)}</span></div>
                     <div className="mt-3 rounded-full border border-[#dfe7d7] bg-white px-4 py-3 text-sm text-[#5f6c5b]">Free delivery on orders over ₹1,500</div>
                   </div>
-                  <Link to="/checkout" className="inline-flex w-full items-center justify-center rounded-full bg-[#17300d] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#224615]">Checkout <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                  <Link to="/checkout" className="inline-flex w-full items-center justify-center rounded-full bg-[var(--bg-secondary)] px-4 py-3 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-primary)]">Checkout <ArrowRight className="ml-2 h-4 w-4" /></Link>
                 </div>
               </div>
             </aside>
@@ -329,11 +329,11 @@ export default function ShopPage() {
       </main>
 
       {mobileFiltersOpen ? (
-        <div className="fixed inset-0 z-50 bg-[#0d1710]/45 backdrop-blur-[2px] xl:hidden">
+        <div className="fixed inset-0 z-50 bg-[var(--bg-primary)]/90 backdrop-blur-[2px] xl:hidden">
           <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-xl rounded-t-[28px] border-t border-[#dfe7d7] bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[#7CBF00]">Filters</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--brand-green-dark)]">Filters</p>
                 <h3 className="mt-1 text-xl font-semibold text-[#182116]">Refine your search</h3>
               </div>
               <button type="button" onClick={() => setMobileFiltersOpen(false)} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2 text-[#17300d]">

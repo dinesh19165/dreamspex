@@ -111,7 +111,7 @@ function DashboardShell({
             onClick={() => setMobileOpen(false)}
             className={`group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-green)] ${active ? 'bg-[var(--brand-green)]/12 text-[var(--text-primary)] shadow-[inset_0_0_0_1px_rgba(154,219,108,0.2)] ring-1 ring-[var(--brand-green)]/20' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)]'}`}
           >
-            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${active ? 'bg-[var(--brand-green)]/15 text-[var(--brand-green)]' : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
+            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${active ? 'bg-[var(--brand-green)]/15 text-[var(--brand-green-dark)]' : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
               <Icon className="h-4 w-4" />
             </span>
             {label}
@@ -161,14 +161,14 @@ function DashboardShell({
 
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="hidden items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-secondary)] sm:flex">
-                <Search className="h-4 w-4 text-[var(--brand-green)]" />
+                <Search className="h-4 w-4 text-[var(--brand-green-dark)]" />
                 <input className="w-36 bg-transparent text-sm outline-none placeholder:text-[var(--text-secondary)]" placeholder="Search..." />
               </div>
               <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var,--text-primary)]">
                 <Bell className="h-4 w-4" />
               </button>
               <button type="button" className="hidden items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var,--text-primary)] sm:flex">
-                <Store className="h-4 w-4 text-[var(--brand-green)]" />
+                <Store className="h-4 w-4 text-[var(--brand-green-dark)]" />
                 <span>All Franchises</span>
                 <ChevronDown className="h-4 w-4 text-[var(--text-secondary)]" />
               </button>
@@ -271,7 +271,7 @@ function SectionTitle({ eyebrow, title, description }: { eyebrow: string; title:
   return (
     <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--brand-green)]">{eyebrow}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--brand-green-dark)]">{eyebrow}</p>
         <h1 className="mt-2 text-3xl font-semibold text-[var,--text-primary)]">{title}</h1>
       </div>
       <p className="max-w-xl text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
@@ -294,7 +294,7 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${palette[status] ?? 'bg-slate-500/15 text-slate-300 border-slate-500/30'}`}>
+    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${palette[status] ?? 'bg-slate-500/15 text-[var(--text-secondary)] border-slate-500/30'}`}>
       {status}
     </span>
   );
@@ -485,7 +485,7 @@ export function SuperAdminDashboardPage() {
               <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--text-secondary)]">Franchise performance</p>
               <h3 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Regional revenue</h3>
             </div>
-            <Link to="/admin/franchises" className="text-sm font-semibold text-[var(--brand-green)]">View all</Link>
+            <Link to="/admin/franchises" className="text-sm font-semibold text-[var(--brand-green-dark)]">View all</Link>
           </div>
 
           <div className="space-y-3">
@@ -514,7 +514,7 @@ export function SuperAdminDashboardPage() {
                 </div>
                 <div className="mt-4 flex items-center justify-between rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs text-[var(--text-secondary)]">
                   <span>Trend</span>
-                  <span className="font-semibold text-[var(--brand-green)]">{franchise.trend}</span>
+                  <span className="font-semibold text-[var(--brand-green-dark)]">{franchise.trend}</span>
                 </div>
               </div>
             ))}
@@ -582,7 +582,7 @@ export function SuperAdminDashboardPage() {
         <div className="min-w-0 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
           <div className="mb-5 flex items-center justify-between gap-3">
             <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--text-secondary)]">Top selling products</p>
-            <ArrowRight className="h-4 w-4 text-[var(--brand-green)]" />
+            <ArrowRight className="h-4 w-4 text-[var(--brand-green-dark)]" />
           </div>
 
           <div className="space-y-4">
@@ -606,7 +606,7 @@ export function SuperAdminDashboardPage() {
       <div className="mt-8 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--text-secondary)]">Recent registrations</p>
-          <Link to="/admin/franchises" className="text-sm font-semibold text-[var(--brand-green)]">Open list</Link>
+          <Link to="/admin/franchises" className="text-sm font-semibold text-[var(--brand-green-dark)]">Open list</Link>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {franchiseRegistrations.map((entry) => (
@@ -820,9 +820,9 @@ export function FranchiseDetailPage() {
       <div className="mb-6 rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-green)]">Franchise</p>
+            <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-green-dark)]">Franchise</p>
             <h1 className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">{franchise.name}</h1>
-            <p className="mt-2 flex items-center gap-2 text-sm text-[var(--text-secondary)]"><MapPin className="h-4 w-4 text-[var(--brand-green)]" /> {franchise.city} Franchise</p>
+            <p className="mt-2 flex items-center gap-2 text-sm text-[var(--text-secondary)]"><MapPin className="h-4 w-4 text-[var(--brand-green-dark)]" /> {franchise.city} Franchise</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link to="/admin/franchises"><Button variant="ghost">Back to all</Button></Link>
@@ -874,7 +874,7 @@ export function FranchiseDetailPage() {
       <div className="mt-8 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--text-secondary)]">Franchise performance</p>
-          <Link to="/admin/franchises" className="text-sm font-semibold text-[var(--brand-green)]">View all</Link>
+          <Link to="/admin/franchises" className="text-sm font-semibold text-[var(--brand-green-dark)]">View all</Link>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -970,7 +970,7 @@ export function FranchiseProductsPage() {
             <p className="mt-2 text-sm text-[var(--text-secondary)]">{product.brand}</p>
             <div className="mt-4 flex items-center justify-between">
               <span className="text-lg font-semibold text-[var(--text-primary)]">{formatCurrency(product.price)}</span>
-              <span className="rounded-full bg-[var(--brand-green)]/10 px-2 py-1 text-[10px] font-semibold text-[var(--brand-green)]">{product.stock} left</span>
+              <span className="rounded-full bg-[var(--brand-green)]/10 px-2 py-1 text-[10px] font-semibold text-[var(--brand-green-dark)]">{product.stock} left</span>
             </div>
           </div>
         ))}
@@ -1085,7 +1085,7 @@ export function SuperAdminProductsPage() {
             <p className="mt-2 text-sm text-[var(--text-secondary)]">{product.brand}</p>
             <div className="mt-4 flex items-center justify-between">
               <span className="text-lg font-semibold text-[var(--text-primary)]">{formatCurrency(product.price)}</span>
-              <span className="rounded-full bg-[var(--brand-green)]/10 px-2 py-1 text-[10px] font-semibold text-[var(--brand-green)]">{product.stock} left</span>
+              <span className="rounded-full bg-[var(--brand-green)]/10 px-2 py-1 text-[10px] font-semibold text-[var(--brand-green-dark)]">{product.stock} left</span>
             </div>
           </div>
         ))}

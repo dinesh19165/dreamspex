@@ -17,7 +17,7 @@ export default function ScrollProgressBar() {
   }, []);
 
   return (
-    <div className="fixed left-0 top-0 z-[120] h-1 w-full bg-white/10">
+    <div className="fixed left-0 top-0 z-[120] h-1 w-full bg-[var(--bg-secondary)]">
       <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-600" style={{ width: `${progress}%` }} />
     </div>
   );

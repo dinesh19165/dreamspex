@@ -27,11 +27,11 @@ export default function CountdownTimer({ targetDate }: CountdownTimerProps) {
   }, [targetDate]);
 
   return (
-    <div className="mt-6 flex flex-wrap gap-3 text-center text-sm text-slate-200">
+    <div className="mt-6 flex flex-wrap gap-3 text-center text-sm text-[var(--text-secondary)]">
       {Object.entries(timeLeft).map(([label, value]) => (
-        <div key={label} className="min-w-[72px] rounded-2xl border border-white/10 bg-white/10 px-3 py-3 backdrop-blur">
-          <p className="text-xl font-semibold text-white">{String(value).padStart(2, '0')}</p>
-          <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-slate-400">{label}</p>
+        <div key={label} className="min-w-[72px] rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3 py-3 backdrop-blur">
+          <p className="text-xl font-semibold text-[var(--text-primary)]">{String(value).padStart(2, '0')}</p>
+          <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-[var(--text-secondary)]">{label}</p>
         </div>
       ))}
     </div>

@@ -69,41 +69,41 @@ export default function ProductDetailPage() {
   const actionButtonBase = 'h-[48px] min-h-[48px] rounded-full px-3 text-sm font-semibold whitespace-nowrap transition-all duration-200 sm:h-[52px] sm:min-h-[52px] sm:px-4';
 
   return (
-    <div className="min-h-screen bg-[#050816] text-slate-100">
+    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-10 grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[32px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl">
             <img src={product.image} alt={product.name} fetchPriority="high" className="h-[min(560px,60vh)] w-full rounded-[24px] object-cover" />
-            <p className="mt-3 text-xs text-slate-400">One product image is available in this sample catalogue.</p>
+            <p className="mt-3 text-xs text-[var(--text-secondary)]">One product image is available in this sample catalogue.</p>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">{product.brand}</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--text-secondary)]">{product.brand}</p>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{product.category}</p>
-              <h1 className="mt-3 text-4xl font-semibold text-white">{product.name}</h1>
-              <p className="mt-3 flex items-center gap-2 text-sm text-slate-300" aria-label={`Sample catalogue rating ${product.rating} out of 5`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-white">{product.rating.toFixed(1)}</strong><span>sample catalogue rating · {product.reviews} demo ratings</span></p>
-              <p className="mt-4 text-base leading-8 text-slate-400">{product.description}</p>
+              <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">{product.name}</h1>
+              <p className="mt-3 flex items-center gap-2 text-sm text-[var(--text-secondary)]" aria-label={`Sample catalogue rating ${product.rating} out of 5`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{product.rating.toFixed(1)}</strong><span>sample catalogue rating · {product.reviews} demo ratings</span></p>
+              <p className="mt-4 text-base leading-8 text-[var(--text-secondary)]">{product.description}</p>
             </div>
-            <div className="flex items-center gap-4 rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl">
-              <div><p className="text-xs uppercase tracking-[0.2em] text-slate-400">Price</p><p className="mt-1 text-3xl font-semibold text-white">{formatINR(product.price)}</p></div>
-              {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-slate-400">List price</p><p className="mt-1 text-lg text-slate-400 line-through">{formatINR(product.oldPrice)}</p></div> : null}
+            <div className="flex items-center gap-4 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl">
+              <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Price</p><p className="mt-1 text-3xl font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p></div>
+              {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">List price</p><p className="mt-1 text-lg text-[var(--text-secondary)] line-through">{formatINR(product.oldPrice)}</p></div> : null}
               {discountPercentage > 0 ? <span className="rounded-full bg-[var(--brand-green)]/15 px-3 py-1 text-sm font-semibold text-[var(--brand-green-dark)]">{discountPercentage}% off</span> : null}
             </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-              <h2 className="text-lg font-semibold text-white">Available options</h2>
+            <div className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 backdrop-blur-xl">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Available options</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div>
-                  <p className="text-sm font-semibold text-slate-300">Frame color</p>
+                  <p className="text-sm font-semibold text-[var(--text-secondary)]">Frame color</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {product.colors.map((color) => <span key={color} className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300">{color}</span>)}
+                    {product.colors.map((color) => <span key={color} className="rounded-full border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)]">{color}</span>)}
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-300">Size</p>
+                  <p className="text-sm font-semibold text-[var(--text-secondary)]">Size</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {product.sizes.map((size) => <span key={size} className="rounded-full border border-white/10 px-3 py-2 text-sm text-slate-300">{size}</span>)}
+                    {product.sizes.map((size) => <span key={size} className="rounded-full border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)]">{size}</span>)}
                   </div>
                 </div>
               </div>
@@ -157,24 +157,24 @@ export default function ProductDetailPage() {
             {addedToCart ? <p role="status" className="text-sm font-medium text-[var(--brand-green-dark)]">{product.name} was added to your cart.</p> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-white"><ShieldCheck className="h-4 w-4 text-cyan-400" /> Product availability</div><p className="mt-2 text-sm text-slate-400">{product.stock}</p></div>
-              <div className="rounded-[20px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-white"><Truck className="h-4 w-4 text-cyan-400" /> Delivery details</div><p className="mt-2 text-sm text-slate-400">Delivery options are shown during checkout.</p></div>
+              <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-[var(--text-primary)]"><ShieldCheck className="h-4 w-4 text-cyan-400" /> Product availability</div><p className="mt-2 text-sm text-[var(--text-secondary)]">{product.stock}</p></div>
+              <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-[var(--text-primary)]"><Truck className="h-4 w-4 text-cyan-400" /> Delivery details</div><p className="mt-2 text-sm text-[var(--text-secondary)]">Delivery options are shown during checkout.</p></div>
             </div>
-            <form className="rounded-[20px] border border-white/10 bg-white/5 p-5" onSubmit={(event) => { event.preventDefault(); checkDeliveryCode(); }}>
-              <label htmlFor="delivery-pin" className="text-sm font-semibold text-white">Check a delivery PIN</label>
-              <p className="mt-1 text-xs leading-5 text-slate-400">Check mock delivery availability. Live serviceability will be connected later.</p>
+            <form className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5" onSubmit={(event) => { event.preventDefault(); checkDeliveryCode(); }}>
+              <label htmlFor="delivery-pin" className="text-sm font-semibold text-[var(--text-primary)]">Check a delivery PIN</label>
+              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Check mock delivery availability. Live serviceability will be connected later.</p>
               <div className="mt-3 flex gap-2">
-                <input id="delivery-pin" inputMode="numeric" autoComplete="postal-code" maxLength={6} value={postalCode} onChange={(event) => { const nextValue = event.target.value.replace(/\D/g, '').slice(0, 6); setPostalCode(nextValue); setDeliveryPin(nextValue); setDeliveryMessage(''); }} placeholder="6-digit PIN code" className="min-w-0 flex-1 rounded-full border border-white/10 bg-[#050816] px-4 py-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]" />
+                <input id="delivery-pin" inputMode="numeric" autoComplete="postal-code" maxLength={6} value={postalCode} onChange={(event) => { const nextValue = event.target.value.replace(/\D/g, '').slice(0, 6); setPostalCode(nextValue); setDeliveryPin(nextValue); setDeliveryMessage(''); }} placeholder="6-digit PIN code" className="min-w-0 flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]" />
                 <Button type="submit" className="h-[48px] min-h-[48px] rounded-full px-4 text-sm font-semibold sm:h-[52px] sm:min-h-[52px]" disabled={pinChecking || postalCode.trim().length !== 6}>{pinChecking ? 'Checking...' : 'Check'}</Button>
               </div>
-              {deliveryMessage ? <p role="status" className={`mt-3 text-sm ${deliveryMessage.includes('available') ? 'text-emerald-300' : 'text-slate-300'}`}>{deliveryMessage}</p> : null}
-              <p className="mt-2 text-xs text-slate-500">Demo serviceable PINs: 500001, 500032, 560001, 110001, 400001.</p>
+              {deliveryMessage ? <p role="status" className={`mt-3 text-sm ${deliveryMessage.includes('available') ? 'text-emerald-300' : 'text-[var(--text-secondary)]'}`}>{deliveryMessage}</p> : null}
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">Demo serviceable PINs: 500001, 500032, 560001, 110001, 400001.</p>
             </form>
           </motion.div>
         </div>
 
         <div className="mt-16 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
+          <div className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 backdrop-blur-xl">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Specifications</p>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               {([
@@ -188,39 +188,39 @@ export default function ProductDetailPage() {
                 ['Available sizes', product.sizes.join(', ')],
                 ['Availability', product.stock],
               ] as Array<[string, string]>).map(([label, value]) => (
-                <div key={String(label)} className="rounded-[18px] border border-white/10 bg-slate-950/60 p-4">
-                  <p className="text-sm text-slate-400">{String(label)}</p>
-                  <p className="mt-2 font-semibold text-white">{String(value)}</p>
+                <div key={String(label)} className="rounded-[18px] border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
+                  <p className="text-sm text-[var(--text-secondary)]">{String(label)}</p>
+                  <p className="mt-2 font-semibold text-[var(--text-primary)]">{String(value)}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[#0f1b37] to-[#060b17] p-8">
+          <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-8">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Lens selection</p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">Make it yours</h2>
-            <p className="mt-3 text-sm leading-7 text-slate-400">Review the available lens options and enter your prescription in the guided order flow.</p>
-            {supportsPrescription ? <Link to={`/prescription/${product.id}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-slate-300">Lens selection is not available for this item.</p>}
+            <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">Make it yours</h2>
+            <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">Review the available lens options and enter your prescription in the guided order flow.</p>
+            {supportsPrescription ? <Link to={`/prescription/${product.id}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-[var(--text-secondary)]">Lens selection is not available for this item.</p>}
           </div>
         </div>
 
-        <section className="mt-16 rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl" aria-labelledby="customer-reviews">
+        <section className="mt-16 rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 backdrop-blur-xl" aria-labelledby="customer-reviews">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Sample review data</p>
-              <h2 id="customer-reviews" className="mt-2 text-2xl font-semibold text-white">Review UI preview</h2>
+              <h2 id="customer-reviews" className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">Review UI preview</h2>
             </div>
-            <p className="flex items-center gap-2 text-sm text-slate-300"><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-white">{product.rating.toFixed(1)}</strong> sample rating · {product.reviews} demo ratings</p>
+            <p className="flex items-center gap-2 text-sm text-[var(--text-secondary)]"><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{product.rating.toFixed(1)}</strong> sample rating · {product.reviews} demo ratings</p>
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-400">The entries below are frontend mock data only; they are not verified customer reviews.</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">The entries below are frontend mock data only; they are not verified customer reviews.</p>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {reviews.map((review) => (
-              <article key={review.id} className="rounded-2xl border border-white/10 bg-[#050816]/50 p-5">
+              <article key={review.id} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
                 <p className="flex items-center gap-1 text-amber-400" aria-label={`${review.rating} out of 5 stars`}>
                   {Array.from({ length: review.rating }, (_, index) => <Star key={index} className="h-4 w-4 fill-current" />)}
                 </p>
-                <h3 className="mt-3 font-semibold text-white">{review.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{review.content}</p>
-                <p className="mt-4 text-xs font-semibold text-slate-300">{review.name}</p>
+                <h3 className="mt-3 font-semibold text-[var(--text-primary)]">{review.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{review.content}</p>
+                <p className="mt-4 text-xs font-semibold text-[var(--text-secondary)]">{review.name}</p>
               </article>
             ))}
           </div>
@@ -228,7 +228,7 @@ export default function ProductDetailPage() {
 
         <div className="mt-16">
           <div className="flex items-end justify-between gap-4">
-            <h2 className="text-2xl font-semibold text-white">Related products</h2>
+            <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Related products</h2>
             <Link to="/shop" className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition hover:text-cyan-200">Discover more <ArrowRight className="h-4 w-4" /></Link>
           </div>
           <div className="mt-8 grid gap-8 md:grid-cols-2 xl:grid-cols-4">

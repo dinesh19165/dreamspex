@@ -15,8 +15,6 @@
   --text-secondary: #5C665F;
   --border-subtle: #E2E6DF;
   --control-border: #7b877e;
-  --text-on-dark: #f8fafc;
-  --text-on-dark-muted: #c4cec2;
   --control-surface: #ffffff;
   --control-surface-hover: #F3F5F0;
   --home-hero-bg: #F7F6EF;
@@ -39,27 +37,9 @@
 .bg-cyan-400, .bg-cyan-500\/90 { background-color: var(--brand-green) !important; }
 .bg-cyan-400\/10, .bg-cyan-400\/20 { background-color: color-mix(in srgb, var(--brand-green) 14%, transparent) !important; }
 .from-cyan-400 { --tw-gradient-from: var(--brand-green) var(--tw-gradient-from-position) !important; }
-.to-blue-600, .to-blue-700 { --tw-gradient-to: var(--brand-green-dark) var(--tw-gradient-to-position) !important; }
+.to-blue-600, .to-blue-700 { --tw-gradient-to: var(--brand-green-light) var(--tw-gradient-to-position) !important; }
 .bg-slate-50 { background-color: var(--bg-primary) !important; }
 .text-slate-800 { color: var(--text-primary) !important; }
-
-:root[data-theme='light'] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #F3F5F0;
-  --bg-card: #ffffff;
-  --text-primary: #17231C;
-  --text-secondary: #5C665F;
-  --border-subtle: #E2E6DF;
-  --control-border: #7b877e;
-  --text-on-dark: #f8fafc;
-  --text-on-dark-muted: #c4cec2;
-  --control-surface: #ffffff;
-  --control-surface-hover: #f3f5f0;
-  --home-hero-bg: #F7F6EF;
-  --focus-ring: #355E17;
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
-}
 
 html {
   scroll-behavior: smooth;
@@ -102,7 +82,7 @@ img {
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -157,8 +137,8 @@ img {
   width: 3rem;
   height: 3rem;
   border-radius: 9999px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-top-color: rgba(56, 189, 248, 0.8);
+  border: 4px solid var(--border-subtle);
+  border-top-color: var(--brand-green);
   animation: spin 1.1s linear infinite;
 }
 
@@ -175,7 +155,7 @@ img {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(14, 116, 144, 0.12), transparent 35%, rgba(13, 59, 106, 0.3));
+  background: linear-gradient(135deg, rgba(120, 190, 32, 0.12), transparent 35%, rgba(53, 94, 23, 0.12));
   pointer-events: none;
 }
 
@@ -184,9 +164,9 @@ img {
   width: 100%;
   height: 100%;
   border-radius: 24px;
-  background: radial-gradient(circle at 30% 30%, rgba(56, 189, 248, 0.16), transparent 26%),
-    radial-gradient(circle at 70% 30%, rgba(59, 130, 246, 0.12), transparent 24%),
-    linear-gradient(180deg, rgba(7, 12, 33, 0.95), rgba(4, 7, 18, 0.98));
+  background: radial-gradient(circle at 30% 30%, rgba(120, 190, 32, 0.12), transparent 26%),
+    radial-gradient(circle at 70% 30%, rgba(167, 216, 104, 0.12), transparent 24%),
+    linear-gradient(180deg, #ffffff, #f3f5f0);
   overflow: hidden;
   animation: rotate3D 8s ease-in-out infinite;
   transform-style: preserve-3d;

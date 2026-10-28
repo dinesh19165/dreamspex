@@ -18,5 +18,5 @@ export default function TryOnPreview({ videoRef, imageUrl, landmarks, frame, con
     if (imageRef.current?.complete && imageRef.current.naturalWidth > 0) onImageLoad(imageRef.current);
   }, [imageUrl, onImageLoad]);
 
-  return <div className="relative aspect-video overflow-hidden rounded-[28px] border border-white/10 bg-[#0a1022]"><video ref={videoRef} autoPlay playsInline muted className={`${imageUrl ? 'hidden' : 'block'} h-full w-full object-cover`} />{imageUrl ? <img ref={imageRef} src={imageUrl} alt="Uploaded try-on" onLoad={(event) => onImageLoad(event.currentTarget)} className="h-full w-full object-cover" /> : null}{frame ? <FrameOverlay landmarks={landmarks} frame={frame} controls={controls} debug={debug} /> : null}</div>;
+  return <div className="relative aspect-video overflow-hidden rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)]"><video ref={videoRef} autoPlay playsInline muted className={`${imageUrl ? 'hidden' : 'block'} h-full w-full object-cover`} />{imageUrl ? <img ref={imageRef} src={imageUrl} alt="Uploaded try-on" onLoad={(event) => onImageLoad(event.currentTarget)} className="h-full w-full object-cover" /> : null}{frame ? <FrameOverlay landmarks={landmarks} frame={frame} controls={controls} debug={debug} /> : null}</div>;
 }

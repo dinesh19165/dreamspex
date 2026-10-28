@@ -111,7 +111,7 @@ function App() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 12 }}
-                className="fixed bottom-6 right-6 z-[120] rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 p-3 text-white shadow-lg shadow-cyan-500/20"
+                className="fixed bottom-6 right-6 z-[120] rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 p-3 text-[var(--text-primary)] shadow-lg shadow-cyan-500/20"
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 aria-label="Back to top"
               >

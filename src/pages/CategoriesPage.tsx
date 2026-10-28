@@ -39,9 +39,9 @@ export default function CategoriesPage() {
                     <h2 className="text-xl font-semibold">{name}</h2>
                     <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-[var(--brand-green)]/10 px-3 py-1 text-xs font-semibold text-[var(--brand-green)]">{matchingProducts.length} {matchingProducts.length === 1 ? 'style' : 'styles'}</span>
+                  <span className="shrink-0 rounded-full bg-[var(--brand-green)]/10 px-3 py-1 text-xs font-semibold text-[var(--brand-green-dark)]">{matchingProducts.length} {matchingProducts.length === 1 ? 'style' : 'styles'}</span>
                 </div>
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-green)]">Shop category <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-green-dark)]">Shop category <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
               </div>
             </Link>
           ))}

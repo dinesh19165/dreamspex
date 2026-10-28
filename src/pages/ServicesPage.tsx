@@ -24,10 +24,10 @@ export default function ServicesPage() {
         <section className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {services.map(({ icon: Icon, title, description, href, action }) => (
             <article key={title} className="flex flex-col rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-sm">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-green)]/12 text-[var(--brand-green)]"><Icon className="h-5 w-5" /></span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-green)]/12 text-[var(--brand-green-dark)]"><Icon className="h-5 w-5" /></span>
               <h2 className="mt-5 text-lg font-semibold">{title}</h2>
               <p className="mt-2 flex-1 text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
-              <Link to={href} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-green)] hover:underline">
+              <Link to={href} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-green-dark)] hover:underline">
                 {action} <ArrowRight className="h-4 w-4" />
               </Link>
             </article>
@@ -36,10 +36,10 @@ export default function ServicesPage() {
 
         <section id="appointments" className="mt-14 grid scroll-mt-28 gap-8 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-9 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-green)]">Appointment enquiry</p>
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--brand-green-dark)]">Appointment enquiry</p>
             <h2 className="mt-3 font-serif text-3xl">Plan an eye-care visit</h2>
             <p className="mt-4 text-sm leading-7 text-[var(--text-secondary)]">Choose a service and preferred time to prepare an enquiry preview. Appointment scheduling is not connected to a booking system in this frontend demo.</p>
-            <Link to="/stores" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-green)] hover:underline">Check sample store locations <ArrowRight className="h-4 w-4" /></Link>
+            <Link to="/stores" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-green-dark)] hover:underline">Check sample store locations <ArrowRight className="h-4 w-4" /></Link>
           </div>
 
           <div>

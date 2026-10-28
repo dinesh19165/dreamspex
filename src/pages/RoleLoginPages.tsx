@@ -30,7 +30,7 @@ function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
                   <h1 className="max-w-[420px] text-[clamp(2.5rem,4vw,3.75rem)] font-semibold leading-[0.96] tracking-[-0.06em] text-[#17211a]">
                     Glasses that<br />
                     define your<br />
-                    <span className="text-[var(--brand-green)]">everyday style.</span>
+                    <span className="text-[var(--brand-green-dark)]">everyday style.</span>
                   </h1>
 
                   <p className="mt-3 max-w-md text-sm leading-6 text-[#2d4033] sm:text-base">
@@ -68,7 +68,7 @@ function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="mb-6 text-center">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">WELCOME BACK</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green-dark)]">WELCOME BACK</p>
                 <h2 className="mt-3 text-[clamp(2rem,2.6vw,2.5rem)] font-semibold tracking-[-0.04em] text-[#1b251a]">Sign in to Dream Spex</h2>
                 <p className="mt-2 text-sm text-[#536456]">Discover eyewear that fits your style.</p>
               </div>
@@ -93,7 +93,7 @@ function AdminPortalLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">ADMIN PORTAL</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green-dark)]">ADMIN PORTAL</p>
           <h1 className="mt-4 text-[clamp(2.2rem,3vw,2.8rem)] font-semibold tracking-[-0.05em] text-[#1a221c]">Admin Login</h1>
           <p className="mt-2 text-sm text-[#58675d]">Sign in to access the administrative dashboard.</p>
         </div>
@@ -117,7 +117,7 @@ function FranchisePortalLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green)]">FRANCHISE ADMIN PORTAL</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-[var(--brand-green-dark)]">FRANCHISE ADMIN PORTAL</p>
           <h1 className="mt-4 text-[clamp(2.1rem,2.8vw,2.8rem)] font-semibold tracking-[-0.05em] text-[#1a221c]">Franchise Admin Login</h1>
           <p className="mt-2 text-sm text-[#58675d]">Sign in to manage your franchise store.</p>
         </div>
@@ -174,14 +174,14 @@ function RoleLoginForm({
       <label className="block text-sm text-[var(--text-secondary)]">
         <span className="mb-2 inline-block">Email</span>
         <div className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3">
-          <Mail className="h-4 w-4 text-[var(--brand-green)]" />
+          <Mail className="h-4 w-4 text-[var(--brand-green-dark)]" />
           <input
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             type="email"
             autoComplete="email"
             placeholder="Enter your email"
-            className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
+            className="w-full bg-[var(--control-surface)] text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
           />
         </div>
       </label>
@@ -189,14 +189,14 @@ function RoleLoginForm({
       <label className="block text-sm text-[var(--text-secondary)]">
         <span className="mb-2 inline-block">Password</span>
         <div className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3">
-          <Lock className="h-4 w-4 text-[var(--brand-green)]" />
+          <Lock className="h-4 w-4 text-[var(--brand-green-dark)]" />
           <input
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
             placeholder="Enter your password"
-            className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
+            className="w-full bg-[var(--control-surface)] text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
           />
           <button type="button" onClick={() => setShowPassword((current) => !current)} className="text-[var(--text-secondary)]" aria-label="Toggle password visibility">
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -209,7 +209,7 @@ function RoleLoginForm({
           <input type="checkbox" checked={rememberMe} onChange={() => setRememberMe((current) => !current)} className="h-4 w-4 accent-[var(--brand-green)]" />
           <span>Remember Me</span>
         </label>
-        <Link to="/forgot-password" className="font-medium text-[var(--brand-green)]">Forgot Password?</Link>
+        <Link to="/forgot-password" className="font-medium text-[var(--brand-green-dark)]">Forgot Password?</Link>
       </div>
 
       {error ? <p className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p> : null}
@@ -220,7 +220,7 @@ function RoleLoginForm({
 
       <div className="flex items-center justify-between gap-3 pt-1 text-sm text-[var(--text-secondary)]">
         <Link to="/" className="font-medium text-[var(--text-secondary)]">Back to Dream Spex</Link>
-        {kind === 'customer' ? <Link to="/register" className="font-medium text-[var(--brand-green)]">Create account</Link> : null}
+        {kind === 'customer' ? <Link to="/register" className="font-medium text-[var(--brand-green-dark)]">Create account</Link> : null}
       </div>
     </form>
   );
@@ -310,7 +310,7 @@ export function AdminLoginPage() {
 
 export function DemoAccessBadge() {
   return (
-    <div className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs font-medium text-[var(--brand-green)]">
+    <div className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-xs font-medium text-[var(--brand-green-dark)]">
       <ShieldCheck className="h-4 w-4" />
       DEMO ACCOUNT
     </div>

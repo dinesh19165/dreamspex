@@ -1,29 +1,37 @@
-export type CouponDefinition = {
-  code: string;
-  discountPercent: number;
-};
+import { apiFetch as fetch } from './apiClient';
+
+import { apiBaseUrl } from '../config/api';
 
 export type CouponResult = {
   code: string;
-  discountPercent: number;
-  discountAmount: number;
-  total: number;
+  discount: number;
 };
 
-export const couponDefinitions: CouponDefinition[] = [
-  { code: 'LUXE20', discountPercent: 20 },
-  { code: 'GLOW15', discountPercent: 15 },
-  { code: 'BANK10', discountPercent: 10 },
-];
+export class CouponApiError extends Error {
+  readonly status: number;
 
-export function findCoupon(code: string) {
-  const normalizedCode = code.trim().toUpperCase();
-  return couponDefinitions.find((coupon) => coupon.code === normalizedCode);
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'CouponApiError';
+    this.status = status;
+  }
 }
 
-export function calculateCoupon(code: string, subtotal: number): CouponResult | null {
-  const coupon = findCoupon(code);
-  if (!coupon) return null;
-  const discountAmount = Math.round(subtotal * coupon.discountPercent) / 100;
-  return { code: coupon.code, discountPercent: coupon.discountPercent, discountAmount, total: subtotal - discountAmount };
-}
+export const couponService = {
+  async validate(accessToken: string, code: string): Promise<CouponResult | null> {
+    const response = await fetch(`${apiBaseUrl}/api/v1/coupons/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ code: code.trim(), subtotal: 0 }),
+    });
+    if (!response.ok) {
+      const problem = await response.json().catch(() => ({})) as { message?: string };
+      throw new CouponApiError(problem.message ?? `Coupon validation failed (${response.status}).`, response.status);
+    }
+    const result = await response.json() as { code: string; valid: boolean; discount: number };
+    return result.valid ? { code: result.code, discount: result.discount } : null;
+  },
+};

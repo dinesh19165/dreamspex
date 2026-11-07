@@ -1,0 +1,10 @@
+ALTER TABLE coupons
+    MODIFY COLUMN code VARCHAR(64) NULL,
+    ADD COLUMN subtitle VARCHAR(500) NULL,
+    ADD COLUMN image_url VARCHAR(1000) NULL,
+    ADD COLUMN offer_category VARCHAR(120) NOT NULL DEFAULT 'COUPON_OFFERS',
+    ADD COLUMN display_order INT NOT NULL DEFAULT 0,
+    ADD COLUMN published BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN customer_eligibility VARCHAR(32) NOT NULL DEFAULT 'ALL',
+    ADD COLUMN applicable_product_ids JSON NULL,
+    ADD COLUMN applicable_category_ids JSON NULL;

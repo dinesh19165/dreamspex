@@ -11,18 +11,23 @@ export type AuthUser = {
   franchiseName?: string;
   city?: string;
   state?: string;
+  accessToken?: string;
+  accessTokenExpiresAt?: number;
+  refreshToken?: string;
 };
 
 type AuthContextValue = {
   isAuthenticated: boolean;
   role: AuthRole | null;
   user: AuthUser | null;
-  setAuthenticated: (role?: AuthRole) => void;
+  setAuthenticated: (role?: AuthRole, user?: Partial<AuthUser>) => void;
   loginAsCustomer: () => void;
   loginAsFranchiseAdmin: (franchiseId?: string) => void;
   loginAsSuperAdmin: () => void;
   clearAuthenticated: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
+  refreshAccessToken: (rejectedAccessToken?: string) => Promise<string | null>;
+  refreshSession: () => Promise<boolean>;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);

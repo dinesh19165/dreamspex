@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
-import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, CircleDollarSign, LayoutGrid, LogOut, MapPin, PackageCheck, PackageOpen, Search, Settings, ShoppingCart, Store, TrendingUp, UserRound, Users, Warehouse } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Glasses, LayoutGrid, LogOut, MapPin, PackageCheck, PackageOpen, PanelLeftClose, PanelLeftOpen, Printer, RefreshCw, Search, Settings, ShoppingCart, Store, TrendingUp, UserRound, Users, Warehouse, PanelsTopLeft, Tags, RotateCcw, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import Button from '../components/ui/Button';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
+import Button from '../components/ui/Button';
 import { adminSalesOverview, franchiseOrders, franchiseProducts, franchiseRegistrations, franchises, franchiseStats, franchiseUsers, topProducts } from '../data/franchiseData';
+import { adminProductService, type AdminCategory, type AdminProduct, type AdminProductRequest } from '../services/adminProductService';
+import { AdminApiError, adminService, type AdminReport, type AdminSettings, type AdminStore, type AdminStoreRequest } from '../services/adminService';
+import { resolveCmsMediaUrl } from '../config/api';
+import CustomerLocationPicker from '../components/addresses/CustomerLocationPicker';
+import { isValidCoordinates, type Coordinates } from '../utils/deliveryNavigation';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -18,38 +23,54 @@ const formatDate = (value: string) => new Date(value).toLocaleDateString('en-IN'
 type PageProps = { children: React.ReactNode };
 
 type DashboardNavItem = { label: string; href: string; icon: LucideIcon; active?: boolean };
+type DashboardNavGroup = { label: string; items: DashboardNavItem[] };
 
-function getDefaultNavigationItems(role: 'SUPER_ADMIN' | 'FRANCHISE_ADMIN' | 'CUSTOMER' | null): DashboardNavItem[] {
+function getDefaultNavigationGroups(role: 'SUPER_ADMIN' | 'FRANCHISE_ADMIN' | 'CUSTOMER' | null): DashboardNavGroup[] {
   if (role === 'SUPER_ADMIN') {
     return [
-      { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid },
-      { label: 'Franchises', href: '/admin/franchises', icon: Building2 },
-      { label: 'Products', href: '/admin/products', icon: PackageOpen },
-      { label: 'Inventory', href: '/admin/inventory', icon: Warehouse },
-      { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
-      { label: 'Customers', href: '/admin/customers', icon: Users },
-      { label: 'Reports', href: '/admin/reports', icon: TrendingUp },
-      { label: 'Users', href: '/admin/users', icon: UserRound },
-      { label: 'Settings', href: '/admin/settings', icon: Settings },
+      { label: 'Workspace', items: [{ label: 'Dashboard', href: '/admin/dashboard', icon: LayoutGrid }, { label: 'Reports', href: '/admin/reports', icon: TrendingUp }] },
+      { label: 'Commerce', items: [
+        { label: 'Products', href: '/admin/products', icon: PackageOpen },
+        { label: 'Categories', href: '/admin/categories', icon: Tags },
+        { label: 'Inventory', href: '/admin/inventory', icon: Warehouse },
+        { label: 'Lens management', href: '/admin/lenses', icon: Glasses },
+        { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+        { label: 'Returns & refunds', href: '/admin/returns', icon: RotateCcw },
+      ] },
+      { label: 'Growth', items: [
+        { label: 'Offers', href: '/admin/offers', icon: CircleDollarSign },
+        { label: 'Membership', href: '/admin/membership', icon: CheckCircle2 },
+        { label: 'Customers', href: '/admin/customers', icon: Users },
+        { label: 'Homepage', href: '/admin/content', icon: PanelsTopLeft },
+      ] },
+      { label: 'Organization', items: [
+        { label: 'Franchises', href: '/admin/franchises', icon: Building2 },
+        { label: 'Users', href: '/admin/users', icon: UserRound },
+        { label: 'Settings', href: '/admin/settings', icon: Settings },
+      ] },
     ];
   }
 
   if (role === 'FRANCHISE_ADMIN') {
     return [
-      { label: 'Dashboard', href: '/franchise/dashboard', icon: LayoutGrid },
-      { label: 'Products', href: '/franchise/products', icon: PackageOpen },
-      { label: 'Inventory', href: '/franchise/inventory', icon: Warehouse },
-      { label: 'Orders', href: '/franchise/orders', icon: ShoppingCart },
-      { label: 'Customers', href: '/franchise/customers', icon: Users },
-      { label: 'Reports', href: '/franchise/reports', icon: TrendingUp },
-      { label: 'Store Profile', href: '/franchise/profile', icon: Store },
+      { label: 'Workspace', items: [
+        { label: 'Dashboard', href: '/franchise/dashboard', icon: LayoutGrid },
+        { label: 'Reports', href: '/franchise/reports', icon: TrendingUp },
+      ] },
+      { label: 'Store operations', items: [
+        { label: 'Products', href: '/franchise/products', icon: PackageOpen },
+        { label: 'Inventory', href: '/franchise/inventory', icon: Warehouse },
+        { label: 'Orders', href: '/franchise/orders', icon: ShoppingCart },
+        { label: 'Customers', href: '/franchise/customers', icon: Users },
+      ] },
+      { label: 'Account', items: [{ label: 'Store profile', href: '/franchise/profile', icon: Store }] },
     ];
   }
 
   return [];
 }
 
-function DashboardShell({
+export function DashboardShell({
   children,
   navItems = [],
   heading = 'Dream Spex',
@@ -61,151 +82,226 @@ function DashboardShell({
   subheading?: string;
   locationLabel?: string;
 }) {
-  const { role, logout } = useAuth();
+  const { role, user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
-  const resolvedNavItems = useMemo(() => {
-    const sourceItems = navItems.length > 0 ? navItems : getDefaultNavigationItems(role);
-
-    return sourceItems.map((item) => ({
-      ...item,
-      active: item.active ?? (location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)),
-    }));
-  }, [location.pathname, navItems, role]);
+  const navGroups = useMemo<DashboardNavGroup[]>(() => navItems.length > 0
+    ? [{ label: 'Workspace', items: navItems }]
+    : getDefaultNavigationGroups(role), [navItems, role]);
+  const resolvedNavItems = useMemo(() => navGroups.flatMap((group) => group.items.map((item) => ({
+    ...item,
+    active: item.active ?? (location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)),
+  }))), [location.pathname, navGroups]);
+  const matchingPages = resolvedNavItems.filter((item) => item.label.toLowerCase().includes(search.trim().toLowerCase()));
+  const activePage = [...resolvedNavItems].filter((item) => item.active).sort((left, right) => right.href.length - left.href.length)[0];
 
   const profileHref = role === 'SUPER_ADMIN' ? '/admin/profile' : role === 'FRANCHISE_ADMIN' ? '/franchise/profile' : '/account';
 
   const handleLogout = () => {
-    logout();
-
-    if (role === 'SUPER_ADMIN') {
-      navigate('/admin/login', { replace: true });
-      return;
-    }
-
-    if (role === 'FRANCHISE_ADMIN') {
-      navigate('/franchise/login', { replace: true });
-      return;
-    }
-
-    navigate('/login', { replace: true });
+    const loginPath = role === 'SUPER_ADMIN' ? '/admin/login' : role === 'FRANCHISE_ADMIN' ? '/franchise/login' : '/login';
+    void logout().catch(() => console.error('Unable to complete sign out.'));
+    navigate(loginPath, { replace: true });
+    setProfileOpen(false);
   };
 
-  const sidebar = (
-    <div className="flex h-full flex-col">
-      <div className="mb-5 flex items-center gap-3 px-2">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--brand-green)] text-sm font-bold text-[#101810]">DS</div>
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.32em] text-[var(--text-secondary)]">Dream Spex</p>
-          <h2 className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{locationLabel}</h2>
-        </div>
+  const renderSidebar = (collapsed: boolean, mobile = false) => (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className={`flex h-14 shrink-0 items-center gap-3 border-b border-[var(--border-subtle)] px-2 ${collapsed ? 'justify-center' : ''}`}>
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-green)] text-sm font-bold text-[#17231c]">DS</div>
+        {!collapsed ? <div className="min-w-0"><p className="text-sm font-semibold tracking-tight text-[var(--text-primary)]">Dream Spex</p><p className="text-[11px] text-[var(--text-secondary)]">{locationLabel}</p></div> : null}
+        {mobile ? <button type="button" onClick={() => setMobileOpen(false)} className="ml-auto rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] lg:hidden" aria-label="Close navigation"><X className="h-4 w-4" /></button> : null}
       </div>
-
-      <nav className="flex-1 space-y-1.5 overflow-y-auto pb-4">
-        {resolvedNavItems.map(({ label, href, icon: Icon, active }) => (
-          <Link
-            key={label}
-            to={href}
-            onClick={() => setMobileOpen(false)}
-            className={`group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-green)] ${active ? 'bg-[var(--brand-green)]/12 text-[var(--text-primary)] shadow-[inset_0_0_0_1px_rgba(154,219,108,0.2)] ring-1 ring-[var(--brand-green)]/20' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-primary)] hover:text-[var(--text-primary)]'}`}
-          >
-            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${active ? 'bg-[var(--brand-green)]/15 text-[var(--brand-green-dark)]' : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
-              <Icon className="h-4 w-4" />
-            </span>
-            {label}
-          </Link>
-        ))}
+      <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto py-5" aria-label="Admin navigation">
+        {navGroups.map((group) => <div key={group.label}>
+          {!collapsed ? <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">{group.label}</p> : null}
+          <div className="space-y-1">
+            {group.items.map(({ label, href, icon: Icon }) => {
+              const active = location.pathname === href || location.pathname.startsWith(`${href}/`);
+              return <Link key={href} to={href} onClick={() => setMobileOpen(false)} title={collapsed ? label : undefined} aria-current={active ? 'page' : undefined}
+                className={`group flex min-h-10 items-center gap-3 rounded-lg px-2.5 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] ${collapsed ? 'justify-center' : ''} ${active ? 'bg-[#eaf2e8] text-[#285033]' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'}`}>
+                <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-[var(--brand-green-dark)]' : ''}`} />
+                {!collapsed ? <><span className="min-w-0 flex-1 truncate">{label}</span>{active ? <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-green-dark)]" /> : null}</> : <span className="sr-only">{label}</span>}
+              </Link>;
+            })}
+          </div>
+        </div>)}
       </nav>
-
-      <div className="space-y-2 border-t border-[var(--border-subtle)] pt-4">
-        <Link to={profileHref} onClick={() => setMobileOpen(false)} className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-primary)] hover:text-[var,--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-green)]">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--bg-primary)]"><UserRound className="h-4 w-4" /></span>
-          Profile
+      <div className={`shrink-0 border-t border-[var(--border-subtle)] pt-3 ${collapsed ? 'flex justify-center' : ''}`}>
+        <Link to={profileHref} onClick={() => setMobileOpen(false)} title={collapsed ? 'Profile' : undefined} className={`flex min-h-10 items-center gap-3 rounded-lg px-2.5 text-[13px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)] ${collapsed ? 'justify-center' : ''}`}>
+          <UserRound className="h-[18px] w-[18px] shrink-0" />{!collapsed ? 'Profile' : <span className="sr-only">Profile</span>}
         </Link>
-        <button type="button" onClick={handleLogout} className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm text-[var(--text-secondary)] transition hover:bg-red-500/8 hover:text-red-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-500/8"><LogOut className="h-4 w-4" /></span>
-          Logout
-        </button>
+        {!collapsed ? <button type="button" onClick={handleLogout} className="mt-1 flex min-h-10 w-full items-center gap-3 rounded-lg px-2.5 text-[13px] font-medium text-[var(--text-secondary)] hover:bg-red-50 hover:text-red-700">
+          <LogOut className="h-[18px] w-[18px]" />Sign out
+        </button> : null}
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
-      <div className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-[var(--border-subtle)] bg-[var(--bg-card)]/95 p-5 backdrop-blur-xl lg:block">
-        {sidebar}
-      </div>
+    <div className="admin-workspace min-h-screen bg-[var(--admin-canvas)] text-[var(--text-primary)]">
+      <aside className={`fixed inset-y-0 left-0 z-30 hidden border-r border-[var(--border-subtle)] bg-white px-3 pb-4 pt-3 transition-[width] duration-200 lg:block ${sidebarCollapsed ? 'w-[76px]' : 'w-[256px] px-4'}`}>
+        {renderSidebar(sidebarCollapsed)}
+      </aside>
 
       {mobileOpen ? (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
+        <button type="button" className="fixed inset-0 z-40 cursor-default bg-slate-950/35 backdrop-blur-[1px] lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation" />
       ) : null}
 
-      <div className={`fixed inset-y-0 left-0 z-50 w-72 -translate-x-full border-r border-[var(--border-subtle)] bg-[var(--bg-card)]/95 p-5 backdrop-blur-xl transition-transform duration-200 lg:hidden ${mobileOpen ? 'translate-x-0' : ''}`}>
-        {sidebar}
-      </div>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[min(84vw,280px)] border-r border-[var(--border-subtle)] bg-white px-4 pb-4 pt-3 shadow-2xl transition-transform duration-200 lg:hidden ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`} aria-label="Mobile navigation">
+        {renderSidebar(false, true)}
+      </aside>
 
-      <div className="lg:pl-72">
-        <header className="sticky top-0 z-20 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/90 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-            <button type="button" onClick={() => setMobileOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] lg:hidden" aria-label="Open navigation">
+      <div className={`min-h-screen transition-[padding] duration-200 ${sidebarCollapsed ? 'lg:pl-[76px]' : 'lg:pl-[256px]'}`}>
+        <header className="sticky top-0 z-20 border-b border-[var(--border-subtle)] bg-white/95 backdrop-blur">
+          <div className="flex min-h-[72px] items-center justify-between gap-3 px-4 sm:px-6 xl:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+            <button type="button" onClick={() => setMobileOpen(true)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-white text-[var(--text-primary)] lg:hidden" aria-label="Open navigation">
               <span className="sr-only">Open menu</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5"><path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" /></svg>
+              <span className="flex flex-col gap-1"><span className="h-0.5 w-4 bg-current" /><span className="h-0.5 w-4 bg-current" /><span className="h-0.5 w-4 bg-current" /></span>
             </button>
-
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.32em] text-[var(--text-secondary)]">{heading}</p>
-              <h1 className="mt-1 text-2xl font-semibold text-[var(--text-primary)] sm:text-[28px]">{subheading}</h1>
+            <button type="button" onClick={() => setSidebarCollapsed((current) => !current)} className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] lg:flex" aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+              {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </button>
+            <div className="min-w-0">
+              <p className="flex items-center gap-1 text-[11px] text-[var(--text-secondary)]"><span className="hidden sm:inline">{heading}</span><ChevronRight className="hidden h-3 w-3 sm:block" /> <span className="truncate">{activePage?.label ?? subheading}</span></p>
+              <h1 className="mt-0.5 truncate text-base font-semibold tracking-tight text-[var(--text-primary)] sm:text-lg">{activePage?.label ?? subheading}</h1>
+            </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var(--text-secondary)] sm:flex">
-                <Search className="h-4 w-4 text-[var(--brand-green-dark)]" />
-                <input className="w-36 bg-transparent text-sm outline-none placeholder:text-[var(--text-secondary)]" placeholder="Search..." />
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <div className="relative hidden w-52 md:block xl:w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-secondary)]" />
+                <input value={search} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} onFocus={() => setSearchOpen(true)} onKeyDown={(event) => {
+                  if (event.key === 'Escape') setSearchOpen(false);
+                  if (event.key === 'Enter' && matchingPages[0]) { navigate(matchingPages[0].href); setSearch(''); setSearchOpen(false); }
+                }} className="h-9 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--admin-canvas)] pl-9 pr-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)] focus:border-[var(--brand-green-dark)] focus:ring-2 focus:ring-[var(--brand-green)]/15" placeholder="Find a page..." aria-label="Find an admin page" aria-expanded={searchOpen && Boolean(search.trim())} />
+                {searchOpen && search.trim() ? <div className="absolute right-0 top-11 z-40 w-full overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-white p-1.5 shadow-xl" role="listbox" aria-label="Matching pages">
+                  {matchingPages.length ? matchingPages.slice(0, 6).map(({ label, href, icon: Icon }) => <button key={href} type="button" onClick={() => { navigate(href); setSearch(''); setSearchOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]"><Icon className="h-4 w-4 text-[var(--brand-green-dark)]" />{label}</button>) : <p className="px-3 py-2 text-sm text-[var(--text-secondary)]">No matching pages</p>}
+                </div> : null}
               </div>
-              <button type="button" className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var,--text-primary)]">
-                <Bell className="h-4 w-4" />
-              </button>
-              <button type="button" className="hidden items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-2 text-sm text-[var,--text-primary)] sm:flex">
-                <Store className="h-4 w-4 text-[var(--brand-green-dark)]" />
-                <span>All Franchises</span>
-                <ChevronDown className="h-4 w-4 text-[var(--text-secondary)]" />
-              </button>
-              <div className="flex items-center gap-3 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2.5 py-1.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-green)] text-xs font-semibold text-[#101810]">AR</div>
-                <div className="hidden sm:block">
-                  <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--text-secondary)]">Admin</p>
-                  <p className="text-sm font-medium">Amit</p>
+              <div className="relative">
+                <button type="button" onClick={() => { setNotificationsOpen((open) => !open); setProfileOpen(false); }} className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]" aria-label="Open operations shortcuts" aria-expanded={notificationsOpen}>
+                  <Bell className="h-4 w-4" />
+                </button>
+                {notificationsOpen ? <div className="absolute right-0 top-11 z-40 w-56 rounded-xl border border-[var(--border-subtle)] bg-white p-2 shadow-xl">
+                  <p className="px-2.5 py-2 text-xs font-semibold text-[var(--text-secondary)]">Operations shortcuts</p>
+                  {(role === 'SUPER_ADMIN' ? [
+                    { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+                    { label: 'Returns & refunds', href: '/admin/returns', icon: RotateCcw },
+                    { label: 'Inventory', href: '/admin/inventory', icon: Warehouse },
+                  ] : [
+                    { label: 'Orders', href: '/franchise/orders', icon: ShoppingCart },
+                    { label: 'Inventory', href: '/franchise/inventory', icon: Warehouse },
+                  ]).map(({ label, href, icon: Icon }) => <Link key={href} to={href} onClick={() => setNotificationsOpen(false)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]"><Icon className="h-4 w-4 text-[var(--brand-green-dark)]" />{label}</Link>)}
+                </div> : null}
+              </div>
+              <div className="relative">
+                <button type="button" onClick={() => { setProfileOpen((open) => !open); setNotificationsOpen(false); }} className="flex h-9 items-center gap-2 rounded-lg border border-[var(--border-subtle)] px-2 hover:bg-[var(--bg-secondary)]" aria-label="Open account menu" aria-expanded={profileOpen}>
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eaf2e8] text-[11px] font-semibold text-[#285033]">{(user?.name?.trim()[0] ?? 'A').toUpperCase()}</span>
+                  <span className="hidden max-w-32 text-left sm:block"><span className="block truncate text-xs font-semibold text-[var(--text-primary)]">{user?.name ?? 'Administrator'}</span><span className="block text-[10px] text-[var(--text-secondary)]">{role === 'SUPER_ADMIN' ? 'Super admin' : role === 'FRANCHISE_ADMIN' ? 'Franchise admin' : 'Admin'}</span></span>
+                  <ChevronDown className="hidden h-3.5 w-3.5 text-[var(--text-secondary)] sm:block" />
+                </button>
+                {profileOpen ? <div className="absolute right-0 top-11 z-40 w-48 rounded-xl border border-[var(--border-subtle)] bg-white p-1.5 shadow-xl">
+                  <Link to={profileHref} onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]"><UserRound className="h-4 w-4" />Profile</Link>
+                  <Link to={role === 'SUPER_ADMIN' ? '/admin/settings' : '/franchise/profile'} onClick={() => setProfileOpen(false)} className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]"><Settings className="h-4 w-4" />Settings</Link>
+                  <button type="button" onClick={handleLogout} className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-red-700 hover:bg-red-50"><LogOut className="h-4 w-4" />Sign out</button>
                 </div>
+                : null}
               </div>
             </div>
           </div>
         </header>
 
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 sm:py-7 xl:px-8">{children}</main>
       </div>
     </div>
   );
 }
 
 export function SuperAdminInventoryPage() {
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const lowStockOnly = searchParams.get('filter') === 'low-stock';
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      if (!user?.accessToken) throw new Error('Your administrator session has expired. Please sign in again.');
+      setProducts(await adminProductService.list());
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load inventory.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.accessToken]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const stockItems = products.flatMap((product) => product.variants.map((variant) => {
+    const available = variant.availableQuantity ?? Math.max(0, variant.quantity - (variant.reservedQuantity ?? 0));
+    return { product, variant, available };
+  }));
+  const filteredItems = stockItems.filter(({ product, variant }) => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return !normalizedQuery
+      || product.name.toLowerCase().includes(normalizedQuery)
+      || product.sku.toLowerCase().includes(normalizedQuery)
+      || variant.sku.toLowerCase().includes(normalizedQuery);
+  }).filter(({ available }) => !lowStockOnly || (available > 0 && available <= 5));
+  const lowStockCount = stockItems.filter(({ available }) => available > 0 && available <= 5).length;
+  const totalAvailable = stockItems.reduce((sum, item) => sum + item.available, 0);
+
   return (
     <DashboardShell>
-      <SectionTitle eyebrow="Inventory" title="Network inventory overview" description="Monitor enterprise stock levels, replenishment priorities, and fulfillment readiness across all franchise locations." />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: 'Ready stock', value: '86%' },
-          { label: 'Low stock', value: '44 items' },
-          { label: 'Fast movers', value: '128 items' },
-          { label: 'Restock due', value: '6 days' },
-        ].map((item) => (
-          <div key={item.label} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-            <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">{item.label}</p>
-            <p className="mt-3 text-3xl font-semibold text-[var,--text-primary)]">{item.value}</p>
-          </div>
-        ))}
+      <SectionTitle eyebrow="Commerce" title="Inventory" description="Review current catalogue stock and availability by product variant." />
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-[var(--text-secondary)]">Inventory figures are based on current product variant stock.</p>
+        <Button type="button" variant="secondary" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Refresh inventory</Button>
       </div>
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        {[
+          { label: 'Products', value: products.length },
+          { label: 'Tracked variants', value: stockItems.length },
+          { label: 'Available units', value: totalAvailable },
+        ].map((metric) => <div key={metric.label} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+          <p className="text-xs font-medium text-[var(--text-secondary)]">{metric.label}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">{metric.value.toLocaleString('en-IN')}</p>
+        </div>)}
+      </div>
+      {error ? <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert"><span>{error}</span><button type="button" onClick={() => void load()} className="font-semibold underline">Try again</button></div> : null}
+      <section className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]" aria-label="Product inventory">
+        <div className="flex flex-col gap-3 border-b border-[var(--border-subtle)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div><h2 className="font-semibold">Stock by variant</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{lowStockOnly ? `Showing ${filteredItems.length} low-stock variants` : `${lowStockCount} variants have 1–5 available units`}</p></div>
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search products or SKUs" aria-label="Search inventory" className="h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-white px-3 text-sm sm:max-w-xs" />
+        </div>
+        {loading ? <p className="p-6 text-sm text-[var(--text-secondary)]" role="status">Loading inventory…</p>
+          : filteredItems.length ? <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead><tr>{['Product', 'Product SKU', 'Variant', 'Status', 'Available', 'Reserved'].map((label) => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead>
+              <tbody>{filteredItems.map(({ product, variant, available }) => <tr key={variant.id ?? variant.sku} className="border-t border-[var(--border-subtle)]">
+                <td className="px-4 py-3 font-medium">{product.name}</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{product.sku}</td>
+                <td className="px-4 py-3">{variant.sku}</td>
+                <td className="px-4 py-3"><StatusBadge status={available === 0 ? 'Out of Stock' : available <= 5 ? 'Low Stock' : variant.status} /></td>
+                <td className="px-4 py-3 font-semibold">{available}</td>
+                <td className="px-4 py-3 text-[var(--text-secondary)]">{variant.reservedQuantity ?? 0}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+          : <p className="p-6 text-sm text-[var(--text-secondary)]">{query ? 'No inventory matches your search.' : lowStockOnly ? 'No low-stock variants are available.' : 'No product variants are available.'}</p>}
+      </section>
     </DashboardShell>
   );
 }
@@ -1075,54 +1171,451 @@ export function SuperAdminOrdersPage() {
 }
 
 export function SuperAdminProductsPage() {
+  const { user, refreshSession } = useAuth();
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [returnabilityByProductId, setReturnabilityByProductId] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<AdminProduct | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [productQuery, setProductQuery] = useState('');
+  const [productStatus, setProductStatus] = useState('ALL');
+  const [productCategory, setProductCategory] = useState('ALL');
+  const [productPage, setProductPage] = useState(0);
+
+  const refresh = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [nextProducts, nextCategories, returnability] = await Promise.all([
+        adminProductService.list(),
+        adminProductService.categories(),
+        adminProductService.returnability(),
+      ]);
+      setProducts(nextProducts);
+      setCategories(nextCategories.filter((category) => category.status === 'ACTIVE'));
+      setReturnabilityByProductId(Object.fromEntries(returnability.map((item) => [item.productId, item.returnable])));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load products.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const filteredProducts = useMemo(() => products.filter((product) => {
+    const query = productQuery.trim().toLowerCase();
+    const matchesQuery = !query || product.name.toLowerCase().includes(query) || product.sku.toLowerCase().includes(query) || product.brand.toLowerCase().includes(query);
+    const matchesStatus = productStatus === 'ALL' || product.status === productStatus;
+    const matchesCategory = productCategory === 'ALL' || product.categories.some((category) => category.id === productCategory);
+    return matchesQuery && matchesStatus && matchesCategory;
+  }), [productCategory, productQuery, productStatus, products]);
+  const productsPerPage = 9;
+  const pagedProducts = filteredProducts.slice(productPage * productsPerPage, (productPage + 1) * productsPerPage);
+  const productPageCount = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage));
+
+  const storedMediaPath = (upload: { url: string; storageKey: string }) => ({
+    ...upload,
+    url: new URL(upload.url).pathname,
+  });
+
+  const uploadTryOnImage = async (file: File) => {
+    if (!user?.accessToken) throw new Error('Your admin session has expired. Please sign in again.');
+    try {
+      return storedMediaPath(await adminService.uploadCmsImage(user.accessToken, file));
+    } catch (reason) {
+      if (!(reason instanceof AdminApiError) || reason.status !== 401 || !(await refreshSession())) throw reason;
+      const session = JSON.parse(window.localStorage.getItem('dream-spex-auth-session') ?? '{}') as { accessToken?: string };
+      if (!session.accessToken) throw new Error('Your admin session has expired. Please sign in again.');
+      return storedMediaPath(await adminService.uploadCmsImage(session.accessToken, file));
+    }
+  };
+
+  const save = async (request: AdminProductRequest, returnable: boolean) => {
+    setError('');
+    setNotice('');
+    setSaving(true);
+    try {
+      const savedProduct = selected
+        ? await adminProductService.update(selected.id, request)
+        : await adminProductService.create(request);
+      setSelected(savedProduct);
+      try {
+        await adminProductService.setReturnable(savedProduct.id, returnable);
+      } catch (reason) {
+        await refresh();
+        setError(`Product was saved, but its return setting could not be updated: ${reason instanceof Error ? reason.message : 'Please try again.'}`);
+        return;
+      }
+      setReturnabilityByProductId((current) => ({ ...current, [savedProduct.id]: returnable }));
+      setNotice(selected ? 'Product and return setting updated successfully.' : 'Product created successfully.');
+      setSelected(null);
+      setEditorOpen(false);
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to save product.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const changeStatus = async (product: AdminProduct, status: string) => {
+    setError('');
+    setNotice('');
+    try {
+      await adminProductService.setStatus(product.id, status);
+      setNotice(`${product.name} is now ${status.toLowerCase().replace('_', ' ')}.`);
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to change product status.');
+    }
+  };
+
+  const deleteProduct = async (product: AdminProduct) => {
+    if (!window.confirm(`Delete "${product.name}"? This will remove it from the catalog.`)) return;
+    setError('');
+    setNotice('');
+    setDeletingId(product.id);
+    try {
+      await adminProductService.delete(product.id);
+      setNotice(`${product.name} was deleted successfully.`);
+      if (selected?.id === product.id) {
+        setSelected(null);
+        setEditorOpen(false);
+      }
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to delete product.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <DashboardShell>
-      <SectionTitle eyebrow="Products" title="Network products" description="Review product assortment and status across all franchise stores." />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {franchiseProducts.map((product) => (
-          <div key={product.id} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-            <h3 className="text-xl font-semibold text-[var(--text-primary)]">{product.name}</h3>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">{product.brand}</p>
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-lg font-semibold text-[var(--text-primary)]">{formatCurrency(product.price)}</span>
-              <span className="rounded-full bg-[var(--brand-green)]/10 px-2 py-1 text-[10px] font-semibold text-[var(--brand-green-dark)]">{product.stock} left</span>
-            </div>
-          </div>
-        ))}
+      <SectionTitle eyebrow="Products" title="Network products" description="Manage the catalog, inventory and publishing status from the live backend." />
+      {error ? <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
+      {notice ? <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{notice}</div> : null}
+      {editorOpen ? (
+        <ProductEditor
+          product={selected}
+          returnable={selected ? returnabilityByProductId[selected.id] ?? false : false}
+          categories={categories}
+          saving={saving}
+          onUploadTryOnImage={uploadTryOnImage}
+          onCancel={() => { setSelected(null); setEditorOpen(false); }}
+          onSave={save}
+        />
+      ) : null}
+      <div className="mb-5 flex justify-end">
+        <Button onClick={() => { setSelected(null); setEditorOpen(true); }}>Create Product</Button>
       </div>
+      <div className="mb-5 flex flex-wrap gap-3 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+        <input value={productQuery} onChange={(event) => { setProductQuery(event.target.value); setProductPage(0); }} placeholder="Search name, SKU or brand" className="min-w-[220px] flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" />
+        <select value={productStatus} onChange={(event) => { setProductStatus(event.target.value); setProductPage(0); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
+          <option value="ALL">All statuses</option>
+          {['DRAFT', 'PUBLISHED', 'INACTIVE'].map((value) => <option key={value}>{value}</option>)}
+        </select>
+        <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductPage(0); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
+          <option value="ALL">All categories</option>
+          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+        </select>
+      </div>
+      {loading && products.length === 0 ? (
+        <div className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-sm text-[var(--text-secondary)]">Loading products...</div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-sm text-[var(--text-secondary)]">No products match the selected filters.</div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {pagedProducts.map((product) => (
+            <div key={product.id} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
+              {product.images[0]?.imageUrl ? <img src={product.images[0].imageUrl} alt={product.images[0].altText ?? product.name} className="mb-4 h-40 w-full rounded-2xl object-cover" /> : null}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-semibold text-[var(--text-primary)]">{product.name}</h3>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">{product.brand} · {product.sku}</p>
+                </div>
+                <StatusBadge status={product.status} />
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-lg font-semibold text-[var(--text-primary)]">{formatCurrency(product.basePrice)}</span>
+                <span className="text-xs text-[var(--text-secondary)]">
+                  {product.variants.reduce((total, variant) => total + (variant.availableQuantity ?? Math.max(0, variant.quantity - (variant.reservedQuantity ?? 0))), 0)} available
+                </span>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button variant="ghost" onClick={() => { setSelected(product); setEditorOpen(true); }}>Edit</Button>
+                <Button variant="ghost" onClick={() => void changeStatus(product, product.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}>
+                  {product.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+                </Button>
+                <Button variant="ghost" disabled={deletingId === product.id} onClick={() => void deleteProduct(product)}>
+                  {deletingId === product.id ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {!loading && filteredProducts.length > 0 ? <div className="mt-5 flex items-center justify-between gap-4 text-sm text-[var(--text-secondary)]"><span>Showing {productPage * productsPerPage + 1}-{Math.min((productPage + 1) * productsPerPage, filteredProducts.length)} of {filteredProducts.length}</span><div className="flex gap-2"><Button type="button" variant="ghost" disabled={productPage === 0} onClick={() => setProductPage((page) => page - 1)}>Previous</Button><Button type="button" variant="ghost" disabled={productPage + 1 >= productPageCount} onClick={() => setProductPage((page) => page + 1)}>Next</Button></div></div> : null}
     </DashboardShell>
   );
 }
 
-export function SuperAdminCustomersPage() {
+type ProductEditorProps = {
+  product: AdminProduct | null;
+  returnable: boolean;
+  categories: AdminCategory[];
+  saving: boolean;
+  onUploadTryOnImage: (file: File) => Promise<{ url: string; storageKey: string }>;
+  onCancel: () => void;
+  onSave: (request: AdminProductRequest, returnable: boolean) => Promise<void>;
+};
+
+function ProductEditor({ product, returnable: initialReturnable, categories, saving, onUploadTryOnImage, onCancel, onSave }: ProductEditorProps) {
+  const [form, setForm] = useState<AdminProductRequest>(() => productRequest(product));
+  const [returnable, setReturnable] = useState(initialReturnable);
+  const [validationError, setValidationError] = useState('');
+  const [tryOnFile, setTryOnFile] = useState<File | null>(null);
+  const [tryOnPreviewUrl, setTryOnPreviewUrl] = useState<string | null>(null);
+  const [uploadingTryOnImage, setUploadingTryOnImage] = useState(false);
+
+  useEffect(() => {
+    setForm(productRequest(product));
+    setReturnable(initialReturnable);
+    setTryOnFile(null);
+    setValidationError('');
+  }, [initialReturnable, product]);
+
+  useEffect(() => {
+    if (!tryOnFile) {
+      setTryOnPreviewUrl(null);
+      return undefined;
+    }
+    const previewUrl = URL.createObjectURL(tryOnFile);
+    setTryOnPreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [tryOnFile]);
+
+  const update = <K extends keyof AdminProductRequest>(key: K, value: AdminProductRequest[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!form.sku.trim() || !form.name.trim() || !form.slug.trim() || !form.brand.trim() || !form.description.trim()) {
+      setValidationError('SKU, name, slug, brand and description are required.');
+      return;
+    }
+    if (form.basePrice < 0 || form.variants.some((variant) => !variant.sku.trim() || variant.quantity < 0 || variant.additionalPrice < 0 || variant.reservedQuantity < 0 || variant.reservedQuantity > variant.quantity)) {
+      setValidationError('Prices and inventory must be non-negative, every variant needs a SKU, and reserved inventory cannot exceed quantity.');
+      return;
+    }
+    if (form.images.some((image) => !image.imageUrl.trim())) {
+      setValidationError('Every image needs an image URL.');
+      return;
+    }
+    setValidationError('');
+    let tryOnImageUrl = form.tryOnImageUrl;
+    if (tryOnFile) {
+      setUploadingTryOnImage(true);
+      try {
+        const uploaded = await onUploadTryOnImage(tryOnFile);
+        tryOnImageUrl = uploaded.url;
+      } catch (reason) {
+        setValidationError(reason instanceof Error ? reason.message : 'Unable to upload the Virtual Try-On image.');
+        return;
+      } finally {
+        setUploadingTryOnImage(false);
+      }
+    }
+    await onSave({
+      ...form,
+      sku: form.sku.trim(),
+      name: form.name.trim(),
+      slug: form.slug.trim(),
+      brand: form.brand.trim(),
+      description: form.description.trim(),
+      tryOnImageUrl,
+    }, returnable);
+  };
+
   return (
-    <DashboardShell>
-      <SectionTitle eyebrow="Customers" title="Network customers" description="Track customer engagement and value generated through the wider Dream Spex network." />
-      <TableCard>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-[var(--bg-primary)] text-[var(--text-secondary)]">
-              <tr>
-                {['Name', 'Role', 'Franchise', 'Status'].map((header) => (
-                  <th key={header} className="px-4 py-4 font-medium whitespace-nowrap">{header}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {franchiseUsers.map((user) => (
-                <tr key={user.id} className="border-t border-[var(--border-subtle)]">
-                  <td className="px-4 py-4 font-medium text-[var(--text-primary)]">{user.name}</td>
-                  <td className="px-4 py-4 text-[var(--text-primary)]">{user.role}</td>
-                  <td className="px-4 py-4 text-[var(--text-secondary)]">{user.franchise ?? 'Network-wide'}</td>
-                  <td className="px-4 py-4"><StatusBadge status={user.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <form onSubmit={submit} className="mb-6 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--brand-green-dark)]">{product ? 'Edit product' : 'New product'}</p>
+          <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{product ? product.name : 'Create a catalog product'}</h3>
         </div>
-      </TableCard>
-    </DashboardShell>
+        <Button type="button" variant="ghost" onClick={onCancel}>Close</Button>
+      </div>
+      {validationError ? <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{validationError}</div> : null}
+      <div className="grid gap-4 md:grid-cols-2">
+        <ProductInput label="SKU" value={form.sku} onChange={(value) => update('sku', value)} required />
+        <ProductInput label="Name" value={form.name} onChange={(value) => update('name', value)} required />
+        <ProductInput label="Slug" value={form.slug} onChange={(value) => update('slug', value)} required />
+        <ProductInput label="Brand" value={form.brand} onChange={(value) => update('brand', value)} required />
+        <ProductInput label="Base price" type="number" min="0" step="0.01" value={String(form.basePrice)} onChange={(value) => update('basePrice', Number(value))} required />
+        <ProductInput label="Compare-at price" type="number" min="0" step="0.01" value={form.compareAtPrice == null ? '' : String(form.compareAtPrice)} onChange={(value) => update('compareAtPrice', value === '' ? null : Number(value))} />
+        <ProductInput label="Material" value={form.material ?? ''} onChange={(value) => update('material', value || null)} />
+        <ProductInput label="Gender" value={form.gender ?? ''} onChange={(value) => update('gender', value || null)} />
+        <ProductInput label="Frame shape" value={form.frameShape ?? ''} onChange={(value) => update('frameShape', value || null)} />
+        <ProductInput label="Frame type" value={form.frameType ?? ''} onChange={(value) => update('frameType', value || null)} />
+        <ProductInput label="Badge" value={form.badge ?? ''} onChange={(value) => update('badge', value || null)} />
+        <label className="text-sm text-[var(--text-secondary)]">
+          <span>Status</span>
+          <select className={inputClass} value={form.status} onChange={(event) => update('status', event.target.value)}>
+            {['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'PUBLISHED', 'INACTIVE'].map((status) => <option key={status}>{status}</option>)}
+          </select>
+        </label>
+      </div>
+      <label className="mt-5 flex items-start gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 text-sm">
+        <input type="checkbox" checked={returnable} onChange={(event) => setReturnable(event.target.checked)} className="mt-0.5 h-4 w-4 accent-[#7CBF00]" />
+        <span><span className="block font-semibold text-[var(--text-primary)]">{returnable ? 'Returnable' : 'Non-returnable'}</span><span className="mt-1 block text-xs text-[var(--text-secondary)]">Customers can request a return or replacement for this product only when enabled and when the order meets the configured return policy.</span></span>
+      </label>
+      <label className="mt-4 block text-sm text-[var(--text-secondary)]">
+        <span>Description</span>
+        <textarea className={`${inputClass} min-h-24 rounded-2xl`} value={form.description} onChange={(event) => update('description', event.target.value)} />
+      </label>
+      <section className="mt-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
+        <h4 className="font-semibold text-[var(--text-primary)]">Virtual Try-On image</h4>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">Optional. Upload a transparent PNG or WebP containing only the glasses, without a background. This image is stored separately and does not replace the catalogue image.</p>
+        {tryOnPreviewUrl || form.tryOnImageUrl ? <img
+          src={tryOnPreviewUrl ?? resolveCmsMediaUrl(form.tryOnImageUrl) ?? ''}
+          alt="Virtual Try-On frame preview"
+          className="mt-3 h-28 w-full rounded-xl border border-[var(--border-subtle)] bg-[linear-gradient(45deg,#d1d5db_25%,transparent_25%,transparent_75%,#d1d5db_75%),linear-gradient(45deg,#d1d5db_25%,#fff_25%,#fff_75%,#d1d5db_75%)] bg-[length:16px_16px] bg-[position:0_0,8px_8px] object-contain"
+        /> : null}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:border-[var(--brand-green)]">
+            {tryOnFile || form.tryOnImageUrl ? 'Replace image' : 'Upload image'}
+            <input
+              type="file"
+              accept="image/png,image/webp,.png,.webp"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (!file) return;
+                if (!['image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+                  setValidationError('Choose a PNG or WebP image no larger than 10 MB.');
+                  return;
+                }
+                setValidationError('');
+                setTryOnFile(file);
+              }}
+            />
+          </label>
+          {form.tryOnImageUrl || tryOnFile ? <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setTryOnFile(null);
+              update('tryOnImageUrl', '');
+            }}
+          >Remove image</Button> : null}
+          {uploadingTryOnImage ? <span role="status" className="text-sm text-[var(--text-secondary)]">Uploading image...</span> : null}
+        </div>
+      </section>
+      <div className="mt-6">
+        <EditorHeading title="Categories" action={<Button type="button" variant="ghost" onClick={() => update('categoryIds', [...form.categoryIds, ''])}>Add category</Button>} />
+        <div className="space-y-2">
+          {form.categoryIds.map((categoryId, index) => (
+            <div key={`${categoryId}-${index}`} className="flex gap-2">
+              <select className={inputClass} value={categoryId} onChange={(event) => update('categoryIds', form.categoryIds.map((id, itemIndex) => itemIndex === index ? event.target.value : id))}>
+                <option value="">Select category</option>
+                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+              </select>
+              <Button type="button" variant="ghost" onClick={() => update('categoryIds', form.categoryIds.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6">
+        <EditorHeading title="Variants and inventory" action={<Button type="button" variant="ghost" onClick={() => update('variants', [...form.variants, emptyVariant()])}>Add variant</Button>} />
+        <div className="space-y-3">
+          {form.variants.map((variant, index) => (
+            <div key={index} className="grid gap-2 rounded-2xl border border-[var(--border-subtle)] p-3 md:grid-cols-8">
+              <ProductInput label="SKU" value={variant.sku} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, sku: value } : item))} />
+              <ProductInput label="Color" value={variant.color ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, color: value || null } : item))} />
+              <ProductInput label="Size" value={variant.size ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, size: value || null } : item))} />
+              <ProductInput label="Lens type" value={variant.lensType ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, lensType: value || null } : item))} />
+              <ProductInput label="Adjustment" type="number" min="0" step="0.01" value={String(variant.additionalPrice)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, additionalPrice: Number(value) } : item))} />
+              <ProductInput label="Quantity" type="number" min="0" value={String(variant.quantity)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(value) } : item))} />
+              <ProductInput label="Reserved" type="number" min="0" max={String(variant.quantity)} value={String(variant.reservedQuantity)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, reservedQuantity: Number(value) } : item))} />
+              <div className="flex items-end"><Button type="button" variant="ghost" onClick={() => update('variants', form.variants.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6">
+        <EditorHeading title="Images" action={<Button type="button" variant="ghost" onClick={() => update('images', [...form.images, emptyImage(form.images.length)])}>Add image</Button>} />
+        <div className="space-y-3">
+          {form.images.map((image, index) => (
+            <div key={index} className="grid gap-2 rounded-2xl border border-[var(--border-subtle)] p-3 md:grid-cols-5">
+              <ProductInput label="Image URL" value={image.imageUrl} onChange={(value) => update('images', form.images.map((item, itemIndex) => itemIndex === index ? { ...item, imageUrl: value } : item))} />
+              <ProductInput label="Storage key" value={image.storageKey ?? ''} onChange={(value) => update('images', form.images.map((item, itemIndex) => itemIndex === index ? { ...item, storageKey: value || null } : item))} />
+              <ProductInput label="Alt text" value={image.altText ?? ''} onChange={(value) => update('images', form.images.map((item, itemIndex) => itemIndex === index ? { ...item, altText: value || null } : item))} />
+              <ProductInput label="Sort order" type="number" min="0" value={String(image.sortOrder)} onChange={(value) => update('images', form.images.map((item, itemIndex) => itemIndex === index ? { ...item, sortOrder: Number(value) } : item))} />
+              <div className="flex items-end gap-2"><label className="flex items-center gap-2 pb-3 text-xs text-[var(--text-secondary)]"><input type="checkbox" checked={image.primaryImage} onChange={(event) => update('images', form.images.map((item, itemIndex) => ({ ...item, primaryImage: itemIndex === index ? event.target.checked : event.target.checked ? false : item.primaryImage })))} /> Primary</label><Button type="button" variant="ghost" onClick={() => update('images', form.images.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end gap-3">
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" disabled={saving || uploadingTryOnImage}>{uploadingTryOnImage ? 'Uploading image...' : saving ? 'Saving...' : product ? 'Save changes' : 'Create product'}</Button>
+      </div>
+    </form>
   );
+}
+
+const inputClass = 'mt-2 w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none';
+
+function ProductInput({ label, value, onChange, type = 'text', min, max, step, required = false }: { label: string; value: string; onChange: (value: string) => void; type?: string; min?: string; max?: string; step?: string; required?: boolean }) {
+  return <label className="block text-sm text-[var(--text-secondary)]"><span>{label}</span><input className={inputClass} type={type} min={min} max={max} step={step} required={required} value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+}
+
+function EditorHeading({ title, action }: { title: string; action: React.ReactNode }) {
+  return <div className="mb-3 flex items-center justify-between"><h4 className="font-semibold text-[var(--text-primary)]">{title}</h4>{action}</div>;
+}
+
+function emptyVariant() {
+  return { sku: '', color: null, size: null, lensType: null, additionalPrice: 0, quantity: 0, reservedQuantity: 0, status: 'ACTIVE' };
+}
+
+function emptyImage(sortOrder: number) {
+  return { imageUrl: '', storageKey: null, altText: null, sortOrder, primaryImage: sortOrder === 0 };
+}
+
+function productRequest(product: AdminProduct | null): AdminProductRequest {
+  if (!product) {
+    return { sku: '', name: '', slug: '', brand: '', description: '', material: null, gender: null, frameShape: null, frameType: null, basePrice: 0, compareAtPrice: null, badge: null, tryOnImageUrl: null, status: 'DRAFT', categoryIds: [], variants: [emptyVariant()], images: [emptyImage(0)] };
+  }
+  return {
+    sku: product.sku,
+    name: product.name,
+    slug: product.slug,
+    brand: product.brand,
+    description: product.description,
+    material: product.material,
+    gender: product.gender,
+    frameShape: product.frameShape,
+    frameType: product.frameType,
+    basePrice: product.basePrice,
+    compareAtPrice: product.compareAtPrice,
+    badge: product.badge,
+    tryOnImageUrl: product.tryOnImageUrl,
+    status: product.status,
+    categoryIds: product.categories.map((category) => category.id),
+    variants: product.variants.map(({ id, sku, color, size, lensType, additionalPrice, quantity, reservedQuantity, status }) => ({ id, sku, color, size, lensType, additionalPrice, quantity, reservedQuantity: reservedQuantity ?? 0, status })),
+    images: product.images.map(({ imageUrl, storageKey, altText, sortOrder, primaryImage }) => ({ imageUrl, storageKey, altText, sortOrder, primaryImage })),
+  };
 }
 
 export function StoresPage() {
@@ -1337,71 +1830,520 @@ export function FranchiseProfilePage() {
 }
 
 export function ReportsPage({ scope = 'super-admin' }: { scope?: 'super-admin' | 'franchise-admin' }) {
+  const { user } = useAuth();
+  const [period, setPeriod] = useState('last30');
+  const today = toReportDate(new Date());
+  const [startDate, setStartDate] = useState(() => reportRange('last30', today).start);
+  const [endDate, setEndDate] = useState(today);
+  const [report, setReport] = useState<AdminReport | null>(null);
+  const [loading, setLoading] = useState(scope === 'super-admin');
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    if (scope !== 'super-admin') return;
+    if (!user?.accessToken) {
+      setError('Your administrator session has expired. Please sign in again.');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      setReport(await adminService.reports(user.accessToken, startDate, endDate));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load reports.');
+      setReport(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [endDate, scope, startDate, user?.accessToken]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const changePeriod = (value: string) => {
+    setPeriod(value);
+    if (value !== 'custom') {
+      const range = reportRange(value, toReportDate(new Date()));
+      setStartDate(range.start);
+      setEndDate(range.end);
+    }
+  };
+
+  const exportCsv = () => {
+    if (!report) return;
+    const rows: Array<Array<string | number>> = [
+      ['Dream Spex Admin Report', `${report.startDate} to ${report.endDate}`],
+      [],
+      ['Revenue', 'Amount'],
+      ['Paid revenue', report.revenue.paidRevenue],
+      ['Refund deductions', report.revenue.refundDeductions],
+      ['Net revenue', report.revenue.netRevenue],
+      ['Today', report.revenue.today],
+      ['Last 7 days', report.revenue.last7Days],
+      ['Last 30 days', report.revenue.last30Days],
+      ['This month', report.revenue.thisMonth],
+      ['This year', report.revenue.thisYear],
+      [],
+      ['Orders', 'Count'],
+      ['Total orders', report.orders.total],
+      ['Paid orders', report.orders.paid],
+      ['Pending orders', report.orders.pending],
+      ['Cancelled orders', report.orders.cancelled],
+      ['Delivered orders', report.orders.delivered],
+      ['Average order value', report.orders.averageOrderValue],
+      [],
+      ['Customers', 'Count'],
+      ['Registered customers', report.customers.totalRegistered],
+      ['New customers', report.customers.newCustomers],
+      ['Repeat customers', report.customers.repeatCustomers],
+      [],
+      ['Returns & refunds', 'Value'],
+      ['Return requests', report.returns.total],
+      ['Approved returns', report.returns.approved],
+      ['Rejected returns', report.returns.rejected],
+      ['Processed refunds', report.returns.processedRefunds],
+      ['Refunded amount', report.returns.refundedAmount],
+      [],
+      ['Best-selling product', 'Quantity', 'Revenue'],
+      ...report.products.bestSelling.map((item) => [item.name, item.quantity, item.revenue]),
+      [],
+      ['Revenue trend date', 'Paid revenue'],
+      ...report.revenue.trend.map((item) => [item.date, item.value]),
+      [],
+      ['Order trend date', 'Orders'],
+      ...report.orders.trend.map((item) => [item.date, item.count]),
+      [],
+      ['Customer trend date', 'New customers'],
+      ...report.customers.trend.map((item) => [item.date, item.count]),
+      [],
+      ['Category', 'Quantity', 'Revenue'],
+      ...report.products.categorySales.map((item) => [item.name, item.quantity, item.revenue]),
+      [],
+      ['Low-stock product', 'SKU', 'Low-stock variants', 'Available units'],
+      ...report.products.lowStock.map((item) => [item.name, item.sku, item.lowStockVariants, item.availableUnits]),
+    ];
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `dream-spex-report-${report.startDate}-to-${report.endDate}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (scope === 'franchise-admin') {
+    return (
+      <DashboardShell>
+        <SectionTitle eyebrow="Reports" title="Franchise reports" description="Review sales, fulfillment, customer behavior, inventory efficiency, and store performance snapshots." />
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 text-sm text-[var(--text-secondary)]">Franchise reporting is not available from the current reporting data service.</div>
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
-      <SectionTitle
-        eyebrow="Reports"
-        title={scope === 'franchise-admin' ? 'Franchise reports' : 'Network reports'}
-        description="Review sales, fulfillment, customer behavior, inventory efficiency, and store performance snapshots."
-      />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[{
-          label: 'Revenue',
-          value: formatCurrency(2148000),
-        },
-        {
-          label: 'Orders',
-          value: '924',
-        },
-        {
-          label: 'Conversion',
-          value: '4.8%',
-        },
-        {
-          label: 'Retention',
-          value: '68%',
-        }].map((item) => (
-          <div key={item.label} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-            <p className="text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">{item.label}</p>
-            <p className="mt-4 text-3xl font-semibold text-[var,--text-primary)]">{item.value}</p>
-          </div>
-        ))}
+      <SectionTitle eyebrow="Reports" title="Network reports" description="Live revenue, order, customer, product, inventory, and returns analytics from Dream Spex records." />
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="text-xs font-medium text-[var(--text-secondary)]">Date range
+            <select value={period} onChange={(event) => changePeriod(event.target.value)} className="mt-1 block h-10 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)]">
+              <option value="today">Today</option><option value="last7">Last 7 days</option><option value="last30">Last 30 days</option><option value="month">This month</option><option value="year">This year</option><option value="custom">Custom range</option>
+            </select>
+          </label>
+          {period === 'custom' ? <>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">From<input type="date" value={startDate} max={endDate} onChange={(event) => setStartDate(event.target.value)} className="mt-1 block h-10 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)]" /></label>
+            <label className="text-xs font-medium text-[var(--text-secondary)]">To<input type="date" value={endDate} min={startDate} max={today} onChange={(event) => setEndDate(event.target.value)} className="mt-1 block h-10 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)]" /></label>
+          </> : null}
+          <Button type="button" variant="secondary" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Refresh</Button>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" onClick={exportCsv} disabled={!report || loading}><Download className="mr-2 h-4 w-4" />Download CSV</Button>
+          <Button type="button" variant="secondary" onClick={() => window.print()} disabled={!report || loading}><Printer className="mr-2 h-4 w-4" />Print / PDF</Button>
+        </div>
       </div>
+      {loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]" role="status">Loading report data…</p> : error ? <div className="mt-6 rounded-xl border border-red-300/40 bg-red-50 p-4 text-sm text-red-800" role="alert">{error}<Button type="button" variant="secondary" className="ml-3" onClick={() => void load()}>Retry</Button></div> : null}
+      {!loading && !error && report ? <>
+        <p className="mt-5 text-xs text-[var(--text-secondary)]">Reporting period: {report.startDate} – {report.endDate}</p>
+        <section className="mt-3" aria-labelledby="report-revenue-heading">
+          <h2 id="report-revenue-heading" className="mb-3 text-lg font-semibold">Revenue</h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {[['Paid revenue', report.revenue.paidRevenue], ['Refund deductions', report.revenue.refundDeductions], ['Net revenue', report.revenue.netRevenue], ['Today', report.revenue.today], ['Last 7 days', report.revenue.last7Days], ['Last 30 days', report.revenue.last30Days], ['This month', report.revenue.thisMonth], ['This year', report.revenue.thisYear]].map(([label, amount]) => <ReportMetric key={String(label)} label={String(label)} value={formatCurrency(Number(amount))} />)}
+          </div>
+          <ReportChart title="Revenue trend" points={report.revenue.trend} valueLabel="Paid revenue" formatValue={(value) => formatCurrency(value)} />
+        </section>
+        <section className="mt-7" aria-labelledby="report-orders-heading">
+          <h2 id="report-orders-heading" className="mb-3 text-lg font-semibold">Orders</h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            {[
+              ['Total orders', report.orders.total], ['Paid orders', report.orders.paid], ['Pending orders', report.orders.pending],
+              ['Cancelled orders', report.orders.cancelled], ['Delivered orders', report.orders.delivered],
+              ['Average order value', formatCurrency(report.orders.averageOrderValue)],
+            ].map(([label, value]) => <ReportMetric key={String(label)} label={String(label)} value={String(value)} />)}
+          </div>
+          <ReportChart title="Order trend" points={report.orders.trend} valueLabel="Orders" formatValue={(value) => value.toLocaleString('en-IN')} />
+        </section>
+        <section className="mt-7" aria-labelledby="report-customers-heading">
+          <h2 id="report-customers-heading" className="mb-3 text-lg font-semibold">Customers</h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <ReportMetric label="Registered customers" value={report.customers.totalRegistered.toLocaleString('en-IN')} />
+            <ReportMetric label="New customers" value={report.customers.newCustomers.toLocaleString('en-IN')} />
+            <ReportMetric label="Repeat customers" value={report.customers.repeatCustomers.toLocaleString('en-IN')} />
+          </div>
+          <ReportChart title="New customer trend" points={report.customers.trend} valueLabel="Customers" formatValue={(value) => value.toLocaleString('en-IN')} />
+        </section>
+        <section className="mt-7 grid gap-5 xl:grid-cols-2" aria-labelledby="report-products-heading">
+          <div>
+            <h2 id="report-products-heading" className="mb-3 text-lg font-semibold">Best-selling products</h2>
+            <ReportTable headers={['Product', 'Quantity sold', 'Revenue']} rows={report.products.bestSelling.map((item) => [item.name, item.quantity.toLocaleString('en-IN'), formatCurrency(item.revenue)])} empty="No paid product sales for this period." />
+          </div>
+          <div>
+            <h2 className="mb-3 text-lg font-semibold">Category-wise sales</h2>
+            <ReportTable headers={['Category', 'Quantity sold', 'Revenue']} rows={report.products.categorySales.map((item) => [item.name, item.quantity.toLocaleString('en-IN'), formatCurrency(item.revenue)])} empty="No category sales for this period." />
+          </div>
+        </section>
+        <section className="mt-7 grid gap-5 xl:grid-cols-2">
+          <div>
+            <h2 className="mb-3 text-lg font-semibold">Low-stock products</h2>
+            <ReportTable headers={['Product', 'SKU', 'Low-stock variants', 'Available']} rows={report.products.lowStock.map((item) => [item.name, item.sku, item.lowStockVariants.toLocaleString('en-IN'), item.availableUnits.toLocaleString('en-IN')])} empty="No low-stock products." />
+          </div>
+          <div>
+            <h2 className="mb-3 text-lg font-semibold">Returns & refunds</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ReportMetric label="Return requests" value={report.returns.total.toLocaleString('en-IN')} />
+              <ReportMetric label="Approved returns" value={report.returns.approved.toLocaleString('en-IN')} />
+              <ReportMetric label="Rejected returns" value={report.returns.rejected.toLocaleString('en-IN')} />
+              <ReportMetric label="Processed refunds" value={report.returns.processedRefunds.toLocaleString('en-IN')} />
+              <ReportMetric label="Refunded amount" value={formatCurrency(report.returns.refundedAmount)} />
+            </div>
+          </div>
+        </section>
+      </> : null}
     </DashboardShell>
   );
 }
 
-export function SuperAdminSettingsPage() {
-  return (
-    <DashboardShell>
-      <SectionTitle
-        eyebrow="Settings"
-        title="System configuration"
-        description="Control operational policies, brand settings, and administrative preferences for the network."
-      />
-      <div className="grid gap-4 md:grid-cols-2">
-        {[{
-          title: 'Brand Settings',
-          body: 'Theme, pricing, and catalog defaults',
-        },
-        {
-          title: 'Security',
-          body: 'Admin permissions and login policies',
-        },
-        {
-          title: 'Notifications',
-          body: 'Email, SMS, and push communication',
-        },
-        {
-          title: 'Integrations',
-          body: 'ERP, payments, and support services',
-        }].map((setting) => (
-          <div key={setting.title} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-            <p className="text-lg font-semibold text-[var,--text-primary)]">{setting.title}</p>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">{setting.body}</p>
-          </div>
-        ))}
+function toReportDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function reportRange(period: string, today: string) {
+  const date = new Date(`${today}T00:00:00`);
+  if (period === 'today') return { start: today, end: today };
+  if (period === 'month') return { start: toReportDate(new Date(date.getFullYear(), date.getMonth(), 1)), end: today };
+  if (period === 'year') return { start: toReportDate(new Date(date.getFullYear(), 0, 1)), end: today };
+  const days = period === 'last7' ? 6 : 29;
+  date.setDate(date.getDate() - days);
+  return { start: toReportDate(date), end: today };
+}
+
+function ReportMetric({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-sm"><p className="text-xs font-medium text-[var(--text-secondary)]">{label}</p><p className="mt-2 text-xl font-semibold tracking-tight text-[var(--text-primary)]">{value}</p></div>;
+}
+
+function ReportChart({ title, points, valueLabel, formatValue }: { title: string; points: AdminReport['revenue']['trend']; valueLabel: string; formatValue: (value: number) => string }) {
+  const groupedPoints = useMemo(() => {
+    if (points.length <= 31) return points;
+    const grouping: 'week' | 'month' = points.length > 100 ? 'month' : 'week';
+    const groups = new Map<string, { date: string; value: number; count: number }>();
+    points.forEach((point) => {
+      const date = new Date(`${point.date}T00:00:00`);
+      if (grouping === 'week') date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+      else date.setDate(1);
+      const key = toReportDate(date);
+      const current = groups.get(key) ?? { date: key, value: 0, count: 0 };
+      current.value += point.value;
+      current.count += point.count;
+      groups.set(key, current);
+    });
+    return [...groups.values()];
+  }, [points]);
+  const maximum = Math.max(1, ...groupedPoints.map((point) => point.value));
+  return <section className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5" aria-label={`${title}: ${valueLabel}`}>
+    <h3 className="font-semibold">{title}</h3>
+    {groupedPoints.length ? <div className="mt-5 flex h-52 items-end gap-1 overflow-x-auto border-b border-[var(--border-subtle)] px-1 sm:gap-2">
+      {groupedPoints.map((point) => <div key={point.date} className="group flex h-full min-w-5 flex-1 flex-col items-center justify-end gap-2 sm:min-w-8" title={`${point.date}: ${formatValue(point.value)}`}>
+        <span className="hidden text-[10px] text-[var(--text-secondary)] group-hover:block">{formatValue(point.value)}</span>
+        <div className="w-full max-w-12 rounded-t bg-[#6b946d] transition-opacity group-hover:opacity-75" style={{ height: `${point.value > 0 ? Math.max(3, (point.value / maximum) * 145) : 2}px` }} />
+        <span className="max-w-full truncate text-[9px] text-[var(--text-secondary)]">{point.date.slice(5)}</span>
+      </div>)}
+    </div> : <p className="mt-4 rounded-lg bg-[var(--bg-primary)] p-5 text-sm text-[var(--text-secondary)]">No {valueLabel.toLowerCase()} data for this period.</p>}
+  </section>;
+}
+
+function ReportTable({ headers, rows, empty }: { headers: string[]; rows: string[][]; empty: string }) {
+  return <div className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
+    {rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-left text-sm"><thead className="bg-[var(--bg-primary)] text-xs text-[var(--text-secondary)]"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={`${row[0]}-${index}`} className="border-t border-[var(--border-subtle)]">{row.map((cell, cellIndex) => <td key={`${cellIndex}-${cell}`} className="px-4 py-3 text-[var(--text-primary)]">{cell}</td>)}</tr>)}</tbody></table></div> : <p className="p-5 text-sm text-[var(--text-secondary)]">{empty}</p>}
+  </div>;
+}
+
+type StoreDeliveryForm = AdminStoreRequest;
+
+function emptyStoreDeliveryForm(): StoreDeliveryForm {
+  return {
+    name: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    latitude: null,
+    longitude: null,
+    deliveryRadiusKm: null,
+    status: 'ACTIVE',
+  };
+}
+
+function storeDeliveryForm(store: AdminStore): StoreDeliveryForm {
+  return {
+    name: store.name,
+    phone: store.phone ?? '',
+    address: store.address,
+    city: store.city,
+    state: store.state,
+    postalCode: store.postalCode,
+    latitude: store.latitude,
+    longitude: store.longitude,
+    deliveryRadiusKm: store.deliveryRadiusKm,
+    status: store.status,
+  };
+}
+
+function StoreDeliverySettingsPanel({ accessToken }: { accessToken: string }) {
+  const [stores, setStores] = useState<AdminStore[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [form, setForm] = useState<StoreDeliveryForm>(emptyStoreDeliveryForm);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const field = 'mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]';
+
+  const loadStores = useCallback(async () => {
+    if (!accessToken) return;
+    setLoading(true);
+    setError('');
+    try {
+      const loaded = await adminService.stores(accessToken);
+      setStores(loaded);
+      const current = loaded[0];
+      if (current) {
+        setSelectedId(current.id);
+        setForm(storeDeliveryForm(current));
+      } else {
+        setSelectedId('');
+        setForm(emptyStoreDeliveryForm());
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load store delivery settings.');
+    } finally {
+      setLoading(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => { void loadStores(); }, [loadStores]);
+
+  const setField = <K extends keyof StoreDeliveryForm>(key: K, value: StoreDeliveryForm[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setMessage('');
+  };
+
+  const coordinates: Coordinates | null = form.latitude !== null && form.longitude !== null
+    ? { latitude: form.latitude, longitude: form.longitude }
+    : null;
+  const radiusPresets = ['50', '100', '200', '300'];
+  const radiusPreset = form.deliveryRadiusKm !== null && radiusPresets.includes(String(form.deliveryRadiusKm))
+    ? String(form.deliveryRadiusKm)
+    : 'custom';
+
+  const saveStore = async () => {
+    setError('');
+    setMessage('');
+    if ([form.name, form.address, form.city, form.state, form.postalCode].some((value) => !value.trim())) {
+      setError('Enter the store name and complete address.');
+      return;
+    }
+    if (!coordinates || !isValidCoordinates(coordinates.latitude, coordinates.longitude)) {
+      setError('Select a valid store location on the map or use the current location.');
+      return;
+    }
+    if (form.deliveryRadiusKm === null || !Number.isFinite(form.deliveryRadiusKm)
+      || form.deliveryRadiusKm <= 0 || form.deliveryRadiusKm > 10000) {
+      setError('Enter a delivery radius greater than 0 and no more than 10000 km.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = selectedId
+        ? await adminService.updateStore(accessToken, selectedId, form)
+        : await adminService.createStore(accessToken, form);
+      setStores((current) => current.some((item) => item.id === saved.id)
+        ? current.map((item) => item.id === saved.id ? saved : item)
+        : [...current, saved]);
+      setSelectedId(saved.id);
+      setForm(storeDeliveryForm(saved));
+      setMessage('Store delivery settings saved.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to save store delivery settings.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 lg:col-span-2">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 className="text-xl font-semibold">Store Delivery Settings</h2>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">Active store locations are checked independently. Distance is straight-line, not road distance.</p>
       </div>
-    </DashboardShell>
-  );
+      <div className="flex gap-2">
+        <Button type="button" variant="ghost" onClick={() => void loadStores()} disabled={loading}>Reload stores</Button>
+        <Button type="button" variant="ghost" onClick={() => {
+          setSelectedId('');
+          setForm(emptyStoreDeliveryForm());
+          setError('');
+          setMessage('');
+        }}>Add store</Button>
+      </div>
+    </div>
+    {loading ? <p className="mt-4 text-sm text-[var(--text-secondary)]" role="status">Loading stores…</p> : null}
+    {stores.length > 0 ? <label className="mt-5 block max-w-xl text-sm text-[var(--text-secondary)]">
+      Edit store
+      <select value={selectedId} onChange={(event) => {
+        const selected = stores.find((store) => store.id === event.target.value);
+        if (selected) {
+          setSelectedId(selected.id);
+          setForm(storeDeliveryForm(selected));
+          setError('');
+          setMessage('');
+        }
+      }} className={field}>
+        {stores.map((store) => <option key={store.id} value={store.id}>{store.name} · {store.status}</option>)}
+      </select>
+    </label> : null}
+    {error ? <p className="mt-4 text-sm text-rose-300" role="alert">{error}</p> : null}
+    {message ? <p className="mt-4 text-sm text-emerald-300" role="status">{message}</p> : null}
+    {!loading ? <div className="mt-5 grid gap-5 lg:grid-cols-2">
+      <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm text-[var(--text-secondary)]">Store name<input className={field} value={form.name} onChange={(event) => setField('name', event.target.value)} /></label>
+          <label className="text-sm text-[var(--text-secondary)]">Phone (optional)<input className={field} value={form.phone ?? ''} onChange={(event) => setField('phone', event.target.value)} /></label>
+          <label className="text-sm text-[var(--text-secondary)] sm:col-span-2">Street / building address<input className={field} value={form.address} onChange={(event) => setField('address', event.target.value)} /></label>
+          <label className="text-sm text-[var(--text-secondary)]">City<input className={field} value={form.city} onChange={(event) => setField('city', event.target.value)} /></label>
+          <label className="text-sm text-[var(--text-secondary)]">State<input className={field} value={form.state} onChange={(event) => setField('state', event.target.value)} /></label>
+          <label className="text-sm text-[var(--text-secondary)]">PIN / postal code<input className={field} value={form.postalCode} onChange={(event) => setField('postalCode', event.target.value)} /></label>
+          <label className="text-sm text-[var(--text-secondary)]">Status<select className={field} value={form.status} onChange={(event) => setField('status', event.target.value)}>{!['ACTIVE', 'INACTIVE'].includes(form.status) ? <option value={form.status}>{form.status}</option> : null}<option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label>
+          <label className="text-sm text-[var(--text-secondary)] sm:col-span-2">Maximum delivery radius
+            <select className={field} value={radiusPreset} onChange={(event) => setField('deliveryRadiusKm', event.target.value === 'custom' ? null : Number(event.target.value))}>
+              <option value="50">50 km</option><option value="100">100 km</option><option value="200">200 km</option><option value="300">300 km</option><option value="custom">Custom radius</option>
+            </select>
+            {radiusPreset === 'custom' ? <input type="number" min="0.01" max="10000" step="0.01" aria-label="Custom delivery radius in kilometres" placeholder="Enter radius in kilometres" className={field} value={form.deliveryRadiusKm ?? ''} onChange={(event) => setField('deliveryRadiusKm', event.target.value === '' ? null : Number(event.target.value))} /> : null}
+          </label>
+        </div>
+        <Button type="button" onClick={() => void saveStore()} disabled={saving || loading}>{saving ? 'Saving…' : selectedId ? 'Save store delivery settings' : 'Create store'}</Button>
+      </div>
+      <div className="space-y-3">
+        <CustomerLocationPicker
+          title="Store location"
+          description="Use GPS or click/drag the pin to mark the store location."
+          value={coordinates}
+          onChange={(value) => {
+            setForm((current) => ({ ...current, latitude: value.latitude, longitude: value.longitude }));
+            setMessage('');
+          }}
+        />
+        {coordinates ? <p className="text-xs text-[var(--text-secondary)]">Store pin: {coordinates.latitude.toFixed(6)}, {coordinates.longitude.toFixed(6)}</p> : null}
+      </div>
+    </div> : null}
+  </section>;
+}
+
+export function SuperAdminSettingsPage() {
+  const { user, refreshSession } = useAuth();
+  const [form, setForm] = useState<AdminSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [smtpPassword, setSmtpPassword] = useState('');
+  const [testRecipient, setTestRecipient] = useState('');
+  const token = user?.accessToken ?? '';
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    setLoading(true); setError('');
+    try { const result = await adminService.settings(token); setForm(result); }
+    catch (reason) { if ((reason as { status?: number }).status === 401) { await refreshSession(); } setError(reason instanceof Error ? reason.message : 'Unable to load settings.'); }
+    finally { setLoading(false); }
+  }, [refreshSession, token]);
+  useEffect(() => { void load(); }, [load]);
+
+  if (loading) return <DashboardShell><SectionTitle eyebrow="Settings" title="System configuration" description="Manage secure Dream Spex operational settings." /><p className="mt-8 text-sm text-[var(--text-secondary)]">Loading settings...</p></DashboardShell>;
+  if (!form) return <DashboardShell><SectionTitle eyebrow="Settings" title="System configuration" description="Manage secure Dream Spex operational settings." /><div className="mt-6 rounded-2xl border border-red-300/30 bg-red-400/10 p-5 text-sm text-red-200">{error || 'Settings are unavailable.'}<Button type="button" variant="ghost" className="mt-4" onClick={() => void load()}>Retry</Button></div></DashboardShell>;
+
+  const update = (patch: Partial<AdminSettings>) => setForm((current) => current ? { ...current, ...patch } : current);
+  const updateNotifications = (key: keyof AdminSettings['notifications']) => setForm((current) => current ? { ...current, notifications: { ...current.notifications, [key]: !current.notifications[key] } } : current);
+  const save = async () => {
+    setSaving(true); setMessage(''); setError('');
+    try { const result = await adminService.saveSettings(token, form); setForm(result); setMessage('Settings saved successfully.'); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to save settings.'); }
+    finally { setSaving(false); }
+  };
+  const changePassword = async (event: React.FormEvent) => {
+    event.preventDefault(); setMessage(''); setError('');
+    try { await adminService.changeAdminPassword(token, currentPassword, newPassword); setCurrentPassword(''); setNewPassword(''); setMessage('Password changed. Existing sessions were revoked.'); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to change password.'); }
+  };
+  const test = async (integration: string) => {
+    try { const result = await adminService.testIntegration(token, integration); setMessage(`${integration}: ${result.message} ${result.configured ? 'Configured.' : 'Not configured.'}`); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Connection test failed.'); }
+  };
+  const testSmtpConnection = async () => {
+    try { const result = await adminService.testSmtpConnection(token); setMessage(result.message); } catch (reason) { setError(reason instanceof Error ? reason.message : 'SMTP connection test failed.'); }
+  };
+  const sendTestEmail = async () => {
+    try { await adminService.sendTestEmail(token, testRecipient); setMessage('Test email sent.'); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Test email could not be sent.'); }
+  };
+  const saveEmail = async () => {
+    setSaving(true); setMessage(''); setError('');
+    try {
+      const result = await adminService.saveSettings(token, { ...form, email: { ...form.email, smtpPassword } });
+      setForm(result); setSmtpPassword(''); setMessage('Email configuration saved.');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to save email configuration.'); }
+    finally { setSaving(false); }
+  };
+  const field = 'mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm outline-none';
+  return <DashboardShell>
+    <SectionTitle eyebrow="Settings" title="System configuration" description="Manage secure Dream Spex operational settings." />
+    {message ? <p className="mt-5 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{message}</p> : null}
+    {error ? <p className="mt-5 rounded-2xl border border-red-300/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
+    <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6"><h2 className="text-xl font-semibold">Brand settings</h2><div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <label className="text-sm">Store name<input className={field} value={form.storeName} onChange={(e) => update({ storeName: e.target.value })} /></label>
+        <label className="text-sm">Currency<input className={field} value={form.currency} readOnly /></label>
+        <label className="text-sm">Logo URL<input className={field} value={form.logoUrl ?? ''} onChange={(e) => update({ logoUrl: e.target.value })} /></label>
+        <label className="text-sm">Favicon URL<input className={field} value={form.faviconUrl ?? ''} onChange={(e) => update({ faviconUrl: e.target.value })} /></label>
+        <label className="text-sm">Primary colour<input type="color" className="mt-2 h-11 w-full rounded-xl" value={form.primaryColor} onChange={(e) => update({ primaryColor: e.target.value })} /></label>
+        <label className="text-sm">Secondary colour<input type="color" className="mt-2 h-11 w-full rounded-xl" value={form.secondaryColor} onChange={(e) => update({ secondaryColor: e.target.value })} /></label>
+        <label className="text-sm">Default shipping fee<input type="number" min="0" className={field} value={form.shippingFee} onChange={(e) => update({ shippingFee: Number(e.target.value) })} /></label>
+        <label className="text-sm">Free shipping threshold<input type="number" min="0" className={field} value={form.freeShippingThreshold} onChange={(e) => update({ freeShippingThreshold: Number(e.target.value) })} /></label>
+      </div><Button className="mt-5" disabled={saving} onClick={() => void save()}>{saving ? 'Saving...' : 'Save brand settings'}</Button></section>
+      <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6"><h2 className="text-xl font-semibold">Security</h2><p className="mt-3 text-sm text-[var(--text-secondary)]">{form.security.adminName} · {form.security.adminEmail ?? 'No email'}<br />{form.security.passwordPolicy}</p><label className="mt-5 block text-sm">Session timeout (minutes)<input type="number" min="5" max="1440" className={field} value={form.sessionTimeoutMinutes} onChange={(e) => update({ sessionTimeoutMinutes: Number(e.target.value) })} /></label><form onSubmit={changePassword} className="mt-5 space-y-3 border-t border-[var(--border-subtle)] pt-5"><h3 className="font-medium">Change admin password</h3><input required type="password" placeholder="Current password" className={field} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} /><input required minLength={12} type="password" placeholder="New password (12+ characters)" className={field} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /><Button type="submit">Change password</Button></form></section>
+      <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6"><h2 className="text-xl font-semibold">Notifications</h2><div className="mt-4 space-y-3">{([['emailNotifications', 'Email notifications'], ['orderConfirmationAlerts', 'Order confirmation alerts'], ['paymentAlerts', 'Payment success/failure alerts'], ['newCustomerAlerts', 'New customer registration alerts'], ['lowStockAlerts', 'Low-stock alerts']] as const).map(([key, label]) => <label key={key} className="flex items-center justify-between gap-4 rounded-2xl bg-[var(--bg-primary)] p-4 text-sm">{label}<input type="checkbox" checked={form.notifications[key]} onChange={() => updateNotifications(key)} /></label>)}</div><Button className="mt-5" onClick={() => void save()}>Save notification settings</Button></section>
+      <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6"><h2 className="text-xl font-semibold">Integrations</h2><div className="mt-4 space-y-3">{([['razorpay', 'Razorpay payment gateway', form.integrations.razorpayConfigured], ['smtp', 'Email SMTP', form.integrations.smtpConfigured], ['sms', 'SMS provider', form.integrations.smsConfigured], ['whatsapp', 'WhatsApp support', form.integrations.whatsappConfigured]] as const).map(([key, label, configured]) => <div key={key} className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--bg-primary)] p-4 text-sm"><div><p>{label}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">{configured ? 'Configured' : 'Not configured'}</p></div><Button type="button" variant="ghost" onClick={() => void test(key)}>Test connection</Button></div>)}</div><p className="mt-4 text-xs text-[var(--text-secondary)]">Secrets remain server-side environment configuration and are never returned to the browser.</p></section>
+      <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 lg:col-span-2"><h2 className="text-xl font-semibold">Email &amp; SMTP</h2><p className="mt-2 text-sm text-[var(--text-secondary)]">Saved SMTP credentials override environment fallback without restarting the server.</p><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="text-sm">SMTP host<input className={field} value={form.email.smtpHost ?? ''} onChange={(e) => update({ email: { ...form.email, smtpHost: e.target.value } })} /></label>
+        <label className="text-sm">SMTP port<input type="number" min="1" max="65535" className={field} value={form.email.smtpPort ?? 587} onChange={(e) => update({ email: { ...form.email, smtpPort: Number(e.target.value) } })} /></label>
+        <label className="text-sm">SMTP username<input className={field} value={form.email.smtpUsername ?? ''} onChange={(e) => update({ email: { ...form.email, smtpUsername: e.target.value } })} /></label>
+        <label className="text-sm">SMTP password / App Password<input type="password" autoComplete="new-password" placeholder={form.email.passwordConfigured ? 'Configured — enter to replace' : 'Required for saved SMTP'} className={field} value={smtpPassword} onChange={(e) => setSmtpPassword(e.target.value)} /></label>
+        <label className="text-sm">From email<input type="email" className={field} value={form.email.fromEmail ?? ''} onChange={(e) => update({ email: { ...form.email, fromEmail: e.target.value } })} /></label>
+        <label className="text-sm">Sender display name<input className={field} value={form.email.senderDisplayName ?? ''} onChange={(e) => update({ email: { ...form.email, senderDisplayName: e.target.value } })} /></label>
+      </div><div className="mt-4 flex flex-wrap gap-5 text-sm"><label><input type="checkbox" checked={form.email.tlsEnabled} onChange={(e) => update({ email: { ...form.email, tlsEnabled: e.target.checked } })} /> TLS enabled</label><label><input type="checkbox" checked={form.email.sslEnabled} onChange={(e) => update({ email: { ...form.email, sslEnabled: e.target.checked } })} /> SSL enabled</label><label><input type="checkbox" checked={form.email.enabled} onChange={(e) => update({ email: { ...form.email, enabled: e.target.checked } })} /> Email notifications enabled</label></div><div className="mt-5 flex flex-wrap gap-3"><Button disabled={saving} onClick={() => void saveEmail()}>Save configuration</Button><Button type="button" variant="ghost" onClick={() => void testSmtpConnection()}>Test SMTP connection</Button></div><div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-5"><input type="email" placeholder="Test recipient email" className={`${field} max-w-sm`} value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} /><Button type="button" variant="ghost" disabled={!testRecipient} onClick={() => void sendTestEmail()}>Send test email</Button></div><p className="mt-4 text-xs text-[var(--text-secondary)]">Password configured: {form.email.passwordConfigured ? 'Yes' : 'No'}. Passwords are encrypted at rest and never returned.</p></section>
+      <StoreDeliverySettingsPanel accessToken={token} />
+    </div>
+  </DashboardShell>;
 }

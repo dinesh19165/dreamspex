@@ -1,0 +1,21 @@
+CREATE TABLE membership_payments (
+    id VARCHAR(255) NOT NULL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    plan_id VARCHAR(255) NOT NULL,
+    membership_id VARCHAR(255) NULL,
+    provider VARCHAR(32) NOT NULL,
+    provider_order_id VARCHAR(120) NOT NULL,
+    provider_payment_id VARCHAR(120) NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    currency CHAR(3) NOT NULL DEFAULT 'INR',
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    signature_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    UNIQUE KEY uk_membership_payments_provider_order (provider, provider_order_id),
+    UNIQUE KEY uk_membership_payments_provider_payment (provider, provider_payment_id),
+    KEY ix_membership_payments_user (user_id, created_at),
+    CONSTRAINT fk_membership_payments_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_membership_payments_plan FOREIGN KEY (plan_id) REFERENCES membership_plans(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_membership_payments_membership FOREIGN KEY (membership_id) REFERENCES memberships(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

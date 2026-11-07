@@ -1,5 +1,7 @@
 export interface Product {
   id: number;
+  backendId?: string;
+  variantId?: string;
   name: string;
   category: string;
   gender?: string;
@@ -9,6 +11,7 @@ export interface Product {
   price: number;
   oldPrice?: number;
   image: string;
+  tryOnImageUrl?: string;
   badge?: string;
   rating: number;
   reviews: number;
@@ -76,6 +79,7 @@ export interface Prescription {
   leftPd?: string;
   patientName?: string;
   prescriptionDate?: string;
+  expiryDate?: string;
 }
 
 export interface LensSelection {
@@ -83,6 +87,7 @@ export interface LensSelection {
   material: string;
   coatings: string[];
   additionalPrice: number;
+  codes?: string[];
 }
 
 export interface Franchise {

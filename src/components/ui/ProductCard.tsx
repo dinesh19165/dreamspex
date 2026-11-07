@@ -17,7 +17,7 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
   const [open, setOpen] = useState(false);
   const [added, setAdded] = useState(false);
   const supportsPrescription = product.category !== 'Contact Lenses';
-  const unavailable = product.stock === 'Out of Stock';
+  const unavailable = product.stock === 'Out of Stock' || !product.variantId;
 
   const handleAddToCart = () => {
     if (unavailable) return;
@@ -49,7 +49,7 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
           <div className="flex items-center">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">{product.category}</p>
           </div>
-          <Link to={`/product/${product.id}`} className="mt-2 block text-lg font-semibold text-[var(--text-primary)] hover:text-cyan-300">
+          <Link to={`/product/${product.backendId ?? product.id}`} className="mt-2 block text-lg font-semibold text-[var(--text-primary)] hover:text-cyan-300">
             {product.name}
           </Link>
           <p className="mt-1 text-[11px] text-[var(--text-secondary)]">{product.brand}</p>
@@ -67,7 +67,7 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
           </div>
           <div className="mt-4 flex items-center justify-between text-xs text-[var(--text-secondary)]">
             <span>{product.stock}</span>
-            <Link to={`/product/${product.id}`} className="inline-flex items-center gap-2 font-semibold text-[var(--text-primary)] hover:text-cyan-300">
+            <Link to={`/product/${product.backendId ?? product.id}`} className="inline-flex items-center gap-2 font-semibold text-[var(--text-primary)] hover:text-cyan-300">
               View <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -86,7 +86,7 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
           </div>
           <div className="flex flex-col gap-3">
             <button disabled={unavailable} onClick={() => { addToCart(product); setOpen(false); }} className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-4 py-3 text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50">{unavailable ? 'Out of stock' : 'Add to bag'}</button>
-            <Link to={`/product/${product.id}`} className="rounded-full border border-[var(--border-subtle)] px-4 py-3 text-center text-sm font-semibold text-[var(--text-secondary)]">View details</Link>
+            <Link to={`/product/${product.backendId ?? product.id}`} className="rounded-full border border-[var(--border-subtle)] px-4 py-3 text-center text-sm font-semibold text-[var(--text-secondary)]">View details</Link>
           </div>
         </div>
       </LuxuryModal>

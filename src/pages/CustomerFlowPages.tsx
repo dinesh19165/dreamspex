@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
-import { CheckCircle, Camera, CircleAlert, CreditCard, ExternalLink, PackageCheck, Upload, Video, Wrench } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { CheckCircle, Camera, CircleAlert, CreditCard, ExternalLink, PackageCheck, RefreshCw, Upload, Video, Wrench } from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
@@ -9,6 +9,8 @@ import WhatsAppSupport from '../components/ui/WhatsAppSupport';
 import { products } from '../data/mockData';
 import { useShop } from '../context/ShopContext';
 import { formatINR } from '../utils/currency';
+import { useAuth } from '../context/useAuth';
+import { orderService, type OrderResponse, OrderApiError } from '../services/orderService';
 
 function FlowShell({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">{children}</main><Footer /></div>;
@@ -44,12 +46,86 @@ export function PrescriptionPage() {
 }
 
 export function OrderConfirmationPage() {
-  return <FlowShell><div className="mx-auto max-w-3xl rounded-[32px] border border-emerald-400/20 bg-emerald-400/10 p-10 text-center"><CheckCircle className="mx-auto h-14 w-14 text-emerald-300" /><p className="mt-6 text-sm uppercase tracking-[0.3em] text-emerald-300">Order confirmation</p><h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">Your order is on its way</h1><p className="mt-4 text-[var(--text-secondary)]">Order confirmation and payment status will appear here after the payment gateway confirms the transaction.</p><div className="mt-8 flex flex-wrap justify-center gap-3"><Link to="/order-tracking" className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Track order</Link><WhatsAppSupport message="Hello, I need help with my recent Dream Spex order." /></div></div></FlowShell>;
+  const [searchParams] = useSearchParams();
+  const orderId = searchParams.get('orderId');
+  return <OrderDataPage orderId={orderId} success />;
 }
 
 export function OrderTrackingPage() {
-  const statuses = ['Order placed', 'Payment confirmed', 'Processing', 'Lens preparation', 'Packed', 'Shipped', 'Out for delivery', 'Delivered'];
-  return <FlowShell><SectionTitle eyebrow="Orders" title="Track your order" description="Stay close to every step from atelier to doorstep." /><div className="mx-auto mt-10 max-w-3xl rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-6"><div><p className="text-sm text-[var(--text-secondary)]">Order number</p><p className="mt-1 font-semibold text-[var(--text-primary)]">DS-2026-1048</p></div><div><p className="text-sm text-[var(--text-secondary)]">Estimated delivery</p><p className="mt-1 font-semibold text-cyan-300">Awaiting confirmation</p></div></div><div className="mt-8 space-y-5">{statuses.map((status, index) => <div key={status} className="flex items-center gap-4"><span className={`flex h-8 w-8 items-center justify-center rounded-full border text-xs ${index === 0 ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>{index + 1}</span><span className={index === 0 ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}>{status}</span></div>)}</div><div className="mt-8 flex flex-wrap gap-3"><WhatsAppSupport message="Hello, I need help with Order DS-2026-1048." /><Link to="/after-sales" className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold text-[var(--text-secondary)]"><Wrench className="h-4 w-4" /> After-sales support</Link></div></div></FlowShell>;
+  const { id } = useParams();
+  return <OrderDataPage orderId={id ?? null} />;
+}
+
+function OrderDataPage({ orderId, success = false }: { orderId: string | null; success?: boolean }) {
+  const { user, refreshSession } = useAuth();
+  const [order, setOrder] = useState<OrderResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadOrder = useCallback(async () => {
+    if (!orderId) {
+      setLoading(false);
+      setError('The order ID is missing from this link.');
+      return;
+    }
+    if (!user?.accessToken) {
+      setLoading(false);
+      setError('Your session has expired. Please sign in again.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      let accessToken = user.accessToken;
+      try {
+        setOrder(await orderService.get(accessToken, orderId));
+      } catch (reason) {
+        if (!(reason instanceof OrderApiError) || reason.status !== 401 || !(await refreshSession())) throw reason;
+        const stored = JSON.parse(window.localStorage.getItem('dream-spex-auth-session') ?? '{}') as { accessToken?: string };
+        accessToken = stored.accessToken ?? accessToken;
+        setOrder(await orderService.get(accessToken, orderId));
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load this order.');
+    } finally {
+      setLoading(false);
+    }
+  }, [orderId, refreshSession, user?.accessToken]);
+
+  useEffect(() => { void loadOrder(); }, [loadOrder]);
+
+  if (loading) return <FlowShell><p className="mx-auto max-w-3xl py-10 text-sm text-[var(--text-secondary)]">Loading order details...</p></FlowShell>;
+  if (error || !order) return <FlowShell><div className="mx-auto max-w-3xl rounded-[28px] border border-red-400/30 bg-red-400/10 p-10 text-center"><p className="text-sm text-red-200" role="alert">{error || 'Order was not found.'}</p><button type="button" onClick={() => void loadOrder()} className="mt-6 rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Retry</button></div></FlowShell>;
+
+  const paymentConfirmed = order.paymentStatus.toUpperCase() === 'PAID';
+  const statuses = (order.history.length ? order.history : [{ status: order.status, note: null, createdAt: order.createdAt }])
+    .slice()
+    .sort((first, second) => Date.parse(first.createdAt) - Date.parse(second.createdAt));
+  const lensItems = order.items.filter((item) => item.lensPreparation);
+  return <FlowShell><SectionTitle eyebrow={success && paymentConfirmed ? 'Payment confirmed' : 'Order details'} title={success && paymentConfirmed ? 'Your order is confirmed' : `Order ${order.orderNumber}`} description={success && paymentConfirmed ? 'Your payment was confirmed by Dream Spex.' : 'Review your products, payment status, and order progress.'} />{success && !paymentConfirmed ? <div className="mx-auto mt-8 max-w-3xl rounded-[24px] border border-amber-400/30 bg-amber-400/10 p-6 text-sm text-amber-100" role="alert">Payment has not been confirmed by the backend yet. This order will not be marked as successful until confirmation is received.</div> : null}<div className="mx-auto mt-8 max-w-3xl space-y-6"><section className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm text-[var(--text-secondary)]">Order number</p><p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{order.orderNumber}</p><p className="mt-2 text-sm text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p></div><div className="text-right text-sm"><p className="text-[var(--text-secondary)]">Payment: <span className="font-semibold text-[var(--text-primary)]">{order.paymentStatus}</span></p><p className="mt-2 text-[var(--text-secondary)]">Order: <span className="font-semibold text-[var(--text-primary)]">{order.status}</span></p><p className="mt-3 text-lg font-semibold text-[var(--text-primary)]">{formatINR(order.total)}</p></div></div><div className="mt-6 space-y-3 border-t border-[var(--border-subtle)] pt-6">{order.items.map((item) => <div key={item.id} className="flex items-center justify-between gap-4 text-sm"><div><p className="font-semibold text-[var(--text-primary)]">{item.productName}</p><p className="mt-1 text-[var(--text-secondary)]">Qty {item.quantity} · {item.sku}</p></div><p className="font-semibold text-[var(--text-primary)]">{formatINR(item.lineTotal)}</p></div>)}</div></section>{lensItems.length ? <section className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8"><div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-xl font-semibold text-[var(--text-primary)]">Lens Preparation</h2><Button type="button" variant="ghost" className="h-12 w-[160px] flex-none px-3 py-2" onClick={() => void loadOrder()}><RefreshCw className="mr-2 h-4 w-4" />Refresh status</Button></div><div className="mt-6 space-y-6">{lensItems.map((item) => <div key={item.id} className="border-t border-[var(--border-subtle)] pt-5 first:border-0 first:pt-0"><p className="font-semibold text-[var(--text-primary)]">{item.productName}</p><LensPreparationProgress status={item.lensPreparation!.status} updatedAt={item.lensPreparation!.updatedAt} /></div>)}</div></section> : null}<section className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8"><h2 className="text-xl font-semibold text-[var(--text-primary)]">Order progress</h2><div className="mt-6 space-y-4">{statuses.map((history) => <div key={`${history.status}-${history.createdAt}`} className="flex items-start gap-4"><span className="mt-1 h-3 w-3 rounded-full bg-cyan-300" /><div><p className="font-semibold text-[var(--text-primary)]">{history.status}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{new Date(history.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}{history.note ? ` · ${history.note}` : ''}</p></div></div>)}</div></section><div className="flex flex-wrap gap-3"><Link to="/orders" className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Back to orders</Link><WhatsAppSupport message={`Hello, I need help with order ${order.orderNumber}.`} />{!success ? <Link to="/after-sales" className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold text-[var(--text-secondary)]"><Wrench className="h-4 w-4" /> After-sales support</Link> : null}</div></div></FlowShell>;
+}
+
+function LensPreparationProgress({ status, updatedAt }: { status: NonNullable<OrderResponse['items'][number]['lensPreparation']>['status']; updatedAt: string | null }) {
+  const stages = [
+    { status: 'PENDING', label: 'Pending' },
+    { status: 'IN_PREPARATION', label: 'In Preparation' },
+    { status: 'READY_FOR_DISPATCH', label: 'Ready for Dispatch' },
+  ] as const;
+  const currentIndex = stages.findIndex((stage) => stage.status === status);
+
+  return <div className="mt-4">
+    <ol aria-label="Lens preparation stages" className="grid gap-3 sm:grid-cols-3">
+      {stages.map((stage, index) => {
+        const complete = index < currentIndex;
+        const current = index === currentIndex;
+        return <li key={stage.status} aria-current={current ? 'step' : undefined} className={`rounded-2xl border px-4 py-3 text-sm ${current ? 'border-cyan-300/50 bg-cyan-400/10 text-[var(--text-primary)]' : complete ? 'border-emerald-300/30 text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'}`}>
+          <span className="font-semibold">{stage.label}</span>
+          <span className="mt-1 block text-xs">{current ? 'Current status' : complete ? 'Complete' : 'Upcoming'}</span>
+        </li>;
+      })}
+    </ol>
+    <p className="mt-3 text-sm text-[var(--text-secondary)]">{updatedAt ? `Last updated ${new Date(updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : 'Preparation has not been updated yet.'}</p>
+  </div>;
 }
 
 export function AfterSalesPage() {

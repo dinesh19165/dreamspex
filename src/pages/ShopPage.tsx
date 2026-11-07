@@ -1,18 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight, SlidersHorizontal, X, Home, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
-import { products } from '../data/mockData';
+import { catalogService, toProduct, type CatalogCategory } from '../services/catalogService';
 import { useShop } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
 import { formatINR } from '../utils/currency';
 
 const PAGE_SIZE = 6;
 const normalize = (value: string) => value.trim().toLowerCase().replaceAll('-', ' ').replaceAll('_', ' ');
-const categorySlug = (value: string) => normalize(value).replaceAll(' ', '-');
 
 export default function ShopPage() {
   const location = useLocation();
@@ -28,6 +27,7 @@ export default function ShopPage() {
   const frameShapeFilter = searchParams.get('shape') ?? '';
   const frameTypeFilter = searchParams.get('frameType') ?? '';
   const sortFilter = searchParams.get('sort') ?? 'relevance';
+  const pageFilter = Number(searchParams.get('page') ?? '1');
   const [query, setQuery] = useState(searchFilter);
   const [selectedCategory, setSelectedCategory] = useState(categoryFilter);
   const [selectedBrand, setSelectedBrand] = useState(brandFilter);
@@ -37,13 +37,27 @@ export default function ShopPage() {
   const [selectedGender, setSelectedGender] = useState(genderFilter);
   const [selectedFrameShape, setSelectedFrameShape] = useState(frameShapeFilter);
   const [selectedFrameType, setSelectedFrameType] = useState(frameTypeFilter);
-  const [availableOnly, setAvailableOnly] = useState(false);
-  const [minimumPrice, setMinimumPrice] = useState('');
-  const [maximumPrice, setMaximumPrice] = useState('');
+  const [availableOnly, setAvailableOnly] = useState(searchParams.get('available') === 'true');
+  const [minimumPrice, setMinimumPrice] = useState(searchParams.get('minPrice') ?? '');
+  const [maximumPrice, setMaximumPrice] = useState(searchParams.get('maxPrice') ?? '');
   const [sortBy, setSortBy] = useState(sortFilter);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(Number.isInteger(pageFilter) && pageFilter > 0 ? pageFilter : 1);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [products, setProducts] = useState<import('../types').Product[]>([]);
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
+  const [filterOptions, setFilterOptions] = useState({
+    brands: [] as string[],
+    materials: [] as string[],
+    genders: [] as string[],
+    frameShapes: [] as string[],
+    frameTypes: [] as string[],
+    colors: [] as string[],
+    badges: [] as string[],
+  });
+  const [catalogTotal, setCatalogTotal] = useState(0);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
 
   useEffect(() => {
     setQuery(searchFilter);
@@ -56,66 +70,110 @@ export default function ShopPage() {
     setSelectedFrameShape(frameShapeFilter);
     setSelectedFrameType(frameTypeFilter);
     setSortBy(sortFilter);
-    setPage(1);
-  }, [categoryFilter, searchFilter, brandFilter, materialFilter, colorFilter, badgeFilter, genderFilter, frameShapeFilter, frameTypeFilter, sortFilter]);
+    setAvailableOnly(searchParams.get('available') === 'true');
+    setMinimumPrice(searchParams.get('minPrice') ?? '');
+    setMaximumPrice(searchParams.get('maxPrice') ?? '');
+    setPage(Number.isInteger(pageFilter) && pageFilter > 0 ? pageFilter : 1);
+  }, [searchParams, categoryFilter, searchFilter, brandFilter, materialFilter, colorFilter, badgeFilter, genderFilter, frameShapeFilter, frameTypeFilter, sortFilter, pageFilter]);
 
-  const categoriesInStock = useMemo(() => [...new Set(products.map((product) => product.category))], []);
-  const brands = useMemo(() => [...new Set(products.map((product) => product.brand))], []);
-  const materials = useMemo(() => [...new Set(products.map((product) => product.material))], []);
-  const colors = useMemo(() => [...new Set(products.flatMap((product) => product.colors))], []);
-  const genders = useMemo(() => [...new Set(products.map((product) => product.gender).filter((gender): gender is string => Boolean(gender)))], []);
-  const frameShapes = useMemo(() => [...new Set(products.map((product) => product.frameShape).filter((shape): shape is string => Boolean(shape)))], []);
-  const frameTypes = useMemo(() => [...new Set(products.map((product) => product.frameType).filter((type): type is string => Boolean(type)))], []);
+  useEffect(() => {
+    const controller = new AbortController();
+    Promise.all([catalogService.categories('CATALOG', controller.signal), catalogService.filterOptions(controller.signal)])
+      .then(([nextCategories, nextFilterOptions]) => {
+        setCategories(nextCategories.filter((category) => category.status === 'ACTIVE'));
+        setFilterOptions(nextFilterOptions);
+      })
+      .catch((reason) => {
+        if (!controller.signal.aborted) setCatalogError(reason instanceof Error ? reason.message : 'Unable to load catalogue filters.');
+      });
+    return () => controller.abort();
+  }, []);
 
-  const filteredProducts = useMemo(() => {
-    const searchTerms = normalize(query).split(/\s+/).filter(Boolean);
-    const minimum = minimumPrice === '' ? 0 : Number(minimumPrice);
-    const maximum = maximumPrice === '' ? Number.POSITIVE_INFINITY : Number(maximumPrice);
-    const matching = products.filter((product) => {
-      const searchable = normalize([
-        product.name,
-        product.category,
-        product.description,
-        product.material,
-        product.brand,
-        product.gender ?? '',
-        product.frameShape ?? '',
-        product.frameType ?? '',
-        ...product.colors,
-      ].join(' '));
-      return searchTerms.every((term) => searchable.includes(term))
-        && (!selectedCategory || categorySlug(product.category) === categorySlug(selectedCategory))
-        && (!selectedBrand || product.brand === selectedBrand)
-        && (!selectedMaterial || product.material === selectedMaterial)
-        && (!selectedColor || product.colors.includes(selectedColor))
-        && (!selectedBadge || product.badge?.toLowerCase() === selectedBadge.toLowerCase())
-        && (!selectedGender || product.gender === selectedGender)
-        && (!selectedFrameShape || product.frameShape === selectedFrameShape)
-        && (!selectedFrameType || product.frameType === selectedFrameType)
-        && (!availableOnly || product.stock !== 'Out of Stock')
-        && product.price >= minimum
-        && product.price <= maximum;
+  useEffect(() => {
+    const match = categories.find((category) => category.slug.toLowerCase() === selectedCategory.toLowerCase()
+      || category.id.toLowerCase() === selectedCategory.toLowerCase()
+      || normalize(category.name) === normalize(selectedCategory));
+    const canonical = match ?? (normalize(selectedCategory) === 'frames'
+      ? categories.find((category) => category.slug.toLowerCase() === 'eyeglasses' || normalize(category.name) === 'eyeglasses')
+      : undefined);
+    if (canonical && selectedCategory !== canonical.slug) setSelectedCategory(canonical.slug);
+  }, [categories, selectedCategory]);
+
+  useEffect(() => {
+    const params = new URLSearchParams({
+      page: String(page - 1),
+      pageSize: String(PAGE_SIZE),
+      sort: sortBy === 'price-asc' ? 'price_asc' : sortBy === 'price-desc' ? 'price_desc' : sortBy === 'name' ? 'name' : 'newest',
     });
+    if (query.trim()) params.set('q', query.trim());
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedBrand) params.set('brand', selectedBrand);
+    if (selectedMaterial) params.set('material', selectedMaterial);
+    if (selectedColor) params.set('color', selectedColor);
+    if (selectedBadge) params.set('badge', selectedBadge);
+    if (selectedGender) params.set('gender', selectedGender);
+    if (selectedFrameShape) params.set('frameShape', selectedFrameShape);
+    if (selectedFrameType) params.set('frameType', selectedFrameType);
+    if (availableOnly) params.set('availableOnly', 'true');
+    if (minimumPrice) params.set('minPrice', minimumPrice);
+    if (maximumPrice) params.set('maxPrice', maximumPrice);
+    const controller = new AbortController();
+    setCatalogLoading(true);
+    setCatalogError('');
+    catalogService.search(params, controller.signal)
+      .then((result) => {
+        setProducts(result.items.map(toProduct));
+        setCatalogTotal(result.total);
+      })
+      .catch((reason) => {
+        if (!controller.signal.aborted) setCatalogError(reason instanceof Error ? reason.message : 'Unable to load the catalogue.');
+      })
+      .finally(() => { if (!controller.signal.aborted) setCatalogLoading(false); });
+    return () => controller.abort();
+  }, [page, query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy]);
 
-    if (sortBy === 'price-asc') return matching.sort((a, b) => a.price - b.price);
-    if (sortBy === 'price-desc') return matching.sort((a, b) => b.price - a.price);
-    if (sortBy === 'popularity') return matching.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
-    if (sortBy === 'newest') return matching.sort((a, b) => Number(b.badge === 'New') - Number(a.badge === 'New'));
-    if (searchTerms.length) {
-      const score = (product: (typeof matching)[number]) => {
-        const name = normalize(product.name);
-        const brand = normalize(product.brand);
-        return (name === normalize(query) ? 1000 : name.startsWith(normalize(query)) ? 500 : 0)
-          + (brand.startsWith(normalize(query)) ? 200 : 0)
-          + searchTerms.reduce((total, term) => total + (name.includes(term) ? 30 : brand.includes(term) ? 20 : 10), 0);
-      };
-      return matching.sort((a, b) => score(b) - score(a) || (b.popularity ?? 0) - (a.popularity ?? 0));
-    }
-    return matching;
-  }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy]);
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set('search', query.trim());
+    if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedBrand) params.set('brand', selectedBrand);
+    if (selectedMaterial) params.set('material', selectedMaterial);
+    if (selectedColor) params.set('color', selectedColor);
+    if (selectedBadge) params.set('badge', selectedBadge);
+    if (selectedGender) params.set('gender', selectedGender);
+    if (selectedFrameShape) params.set('shape', selectedFrameShape);
+    if (selectedFrameType) params.set('frameType', selectedFrameType);
+    if (availableOnly) params.set('available', 'true');
+    if (minimumPrice) params.set('minPrice', minimumPrice);
+    if (maximumPrice) params.set('maxPrice', maximumPrice);
+    if (sortBy !== 'relevance') params.set('sort', sortBy);
+    if (page > 1) params.set('page', String(page));
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy, page, searchParams, setSearchParams]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
-  const pagedProducts = filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const resetFilters = () => {
+    setQuery('');
+    setSelectedCategory('');
+    setSelectedBrand('');
+    setSelectedMaterial('');
+    setSelectedColor('');
+    setSelectedBadge('');
+    setSelectedGender('');
+    setSelectedFrameShape('');
+    setSelectedFrameType('');
+    setAvailableOnly(false);
+    setMinimumPrice('');
+    setMaximumPrice('');
+    setSortBy('relevance');
+    setPage(1);
+    setSearchParams({}, { replace: true });
+  };
+
+  const totalPages = Math.max(1, Math.ceil(catalogTotal / PAGE_SIZE));
+  const pagedProducts = products;
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
   const suggestions = ['Aurelia', 'Nocturne', 'Lumen', 'Solstice'];
   const { cart, updateQuantity } = useShop();
   const cartQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -126,42 +184,42 @@ export default function ShopPage() {
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Category
         <select value={selectedCategory} onChange={(event) => { setSelectedCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All categories</option>
-          {categoriesInStock.map((category) => <option key={category} value={categorySlug(category)}>{category}</option>)}
+          {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
         </select>
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Brand
         <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
-          <option value="">All brands</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}
+          <option value="">All brands</option>{filterOptions.brands.map((brand) => <option key={brand}>{brand}</option>)}
         </select>
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Gender
         <select value={selectedGender} onChange={(event) => { setSelectedGender(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
-          <option value="">All genders</option>{genders.map((gender) => <option key={gender}>{gender}</option>)}
+          <option value="">All genders</option>{filterOptions.genders.map((gender) => <option key={gender}>{gender}</option>)}
         </select>
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Frame shape
         <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
-          <option value="">All shapes</option>{frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
+          <option value="">All shapes</option>{filterOptions.frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
         </select>
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Frame type
         <select value={selectedFrameType} onChange={(event) => { setSelectedFrameType(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
-          <option value="">All frame types</option>{frameTypes.map((type) => <option key={type}>{type}</option>)}
+          <option value="">All frame types</option>{filterOptions.frameTypes.map((type) => <option key={type}>{type}</option>)}
         </select>
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Material
         <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
-          <option value="">All materials</option>{materials.map((material) => <option key={material}>{material}</option>)}
+          <option value="">All materials</option>{filterOptions.materials.map((material) => <option key={material}>{material}</option>)}
         </select>
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Colour
         <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
-          <option value="">All colours</option>{colors.map((color) => <option key={color}>{color}</option>)}
+          <option value="">All colours</option>{filterOptions.colors.map((color) => <option key={color}>{color}</option>)}
         </select>
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Product label
         <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
-          <option value="">All labels</option>{[...new Set(products.map((product) => product.badge).filter((badge): badge is string => Boolean(badge)))].map((badge) => <option key={badge} value={badge}>{badge}</option>)}
+          <option value="">All labels</option>{filterOptions.badges.map((badge) => <option key={badge} value={badge}>{badge}</option>)}
         </select>
       </label>
       <fieldset>
@@ -181,7 +239,7 @@ export default function ShopPage() {
       </label>
       <div className="flex gap-2 pt-2">
         <button type="button" onClick={() => setMobileFiltersOpen(false)} className="flex-1 rounded-full bg-[var(--bg-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-primary)]">Apply</button>
-        <button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[#7CBF00] hover:text-[#17300d]">Clear</button>
+        <button type="button" onClick={resetFilters} className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[#7CBF00] hover:text-[#17300d]">Clear</button>
       </div>
     </div>
   );
@@ -205,12 +263,14 @@ export default function ShopPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[var(--brand-green-dark)]">Premium collection</p>
               <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#182116] sm:text-4xl">Eyeglasses Frames</h1>
             </div>
-            <p className="text-sm text-[#5f6c5b]">{filteredProducts.length} styles ready to explore</p>
+            <p className="text-sm text-[#5f6c5b]">{catalogTotal} styles ready to explore</p>
           </div>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5f6c5b]">Discover frames that match your style.</p>
         </div>
 
         {prescriptionNotice ? <div className="mt-6 flex items-center gap-3 rounded-[20px] border border-[#7CBF00]/30 bg-[#7CBF00]/10 px-4 py-3 text-sm text-[#17300d]">Select a frame first to add your prescription.</div> : null}
+        {catalogLoading ? <p className="mt-6 text-sm text-[#5f6c5b]">Loading catalogue...</p> : null}
+        {catalogError ? <p className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{catalogError}</p> : null}
 
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} className="mt-8 rounded-[26px] border border-[#dfe7d7] bg-white p-4 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)] sm:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -250,14 +310,14 @@ export default function ShopPage() {
           <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="hidden xl:block self-start rounded-[28px] border border-[#dfe7d7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)]">
             <div className="flex items-center justify-between gap-3 pb-4">
               <h3 className="flex items-center gap-2 text-lg font-semibold text-[#182116]"><SlidersHorizontal className="h-4 w-4 text-[var(--brand-green-dark)]" /> Refine filters</h3>
-              <span className="rounded-full bg-[#edf7d9] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#17300d]">{filteredProducts.length}</span>
+              <span className="rounded-full bg-[#edf7d9] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#17300d]">{catalogTotal}</span>
             </div>
             {filterFields}
           </motion.aside>
 
           <div>
             <div className="mb-5 flex items-center justify-between gap-3 rounded-[20px] border border-[#dfe7d7] bg-white px-4 py-3 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">
-              <p className="text-sm text-[#536353]">Showing <span className="font-semibold text-[#182116]">{pagedProducts.length}</span> of <span className="font-semibold text-[#182116]">{filteredProducts.length}</span> frames</p>
+              <p className="text-sm text-[#536353]">Showing <span className="font-semibold text-[#182116]">{pagedProducts.length}</span> of <span className="font-semibold text-[#182116]">{catalogTotal}</span> frames</p>
               <div className="hidden items-center gap-2 sm:flex">
                 <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2 ${viewMode === 'grid' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><LayoutGrid className="h-4 w-4" /></button>
                 <button onClick={() => setViewMode('list')} aria-label="List view" aria-pressed={viewMode === 'list'} className={`rounded-full border p-2 ${viewMode === 'list' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><List className="h-4 w-4" /></button>
@@ -270,7 +330,7 @@ export default function ShopPage() {
                   <ProductCard product={product} layout={viewMode} />
                 </motion.div>
               ))}
-              {!pagedProducts.length ? <div className="rounded-[24px] border border-[#dfe7d7] bg-white p-8 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4"><p className="font-serif text-2xl text-[#182116]">No frames match your current selection.</p><p className="mt-2 text-sm text-[#5f6c5b]">Try broadening your search or resetting the filters.</p><button type="button" onClick={() => { setQuery(''); setSelectedCategory(''); setSelectedBrand(''); setSelectedMaterial(''); setSelectedColor(''); setSelectedBadge(''); setSelectedGender(''); setSelectedFrameShape(''); setSelectedFrameType(''); setAvailableOnly(false); setMinimumPrice(''); setMaximumPrice(''); setSortBy('relevance'); setPage(1); setSearchParams({}); }} className="mt-5 rounded-full bg-[var(--bg-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)]">Reset filters</button></div> : null}
+              {!catalogLoading && !pagedProducts.length ? <div className="rounded-[24px] border border-[#dfe7d7] bg-white p-8 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4"><p className="font-serif text-2xl text-[#182116]">No frames match your current selection.</p><p className="mt-2 text-sm text-[#5f6c5b]">Try broadening your search or resetting the filters.</p><button type="button" onClick={resetFilters} className="mt-5 rounded-full bg-[var(--bg-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)]">Reset filters</button></div> : null}
             </div>
 
             <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#dfe7d7] bg-white px-4 py-4 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">

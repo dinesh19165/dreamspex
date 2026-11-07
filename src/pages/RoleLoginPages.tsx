@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Camera, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from '../components/ui/BrandLogo';
 import { useAuth } from '../context/useAuth';
 import { mockDemoCredentials, getMockFranchiseUserByEmail } from '../data/mockAuth';
+import { adminLogin } from '../services/adminProductService';
+import { authService } from '../services/authService';
+import { intendedPath } from '../utils/authNavigation';
+import { getTokenExpiration } from '../utils/authExpiration';
 
 const CUSTOMER_PROMO = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80';
 
@@ -135,7 +139,7 @@ function RoleLoginForm({
   onSubmit,
 }: {
   kind: 'customer' | 'franchise' | 'admin';
-  onSubmit: (email: string, password: string) => void;
+  onSubmit: (email: string, password: string) => void | Promise<void>;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -154,18 +158,17 @@ function RoleLoginForm({
     }
 
     setLoading(true);
-    await new Promise((resolve) => window.setTimeout(resolve, 500));
-    setLoading(false);
-
     try {
-      onSubmit(email.trim(), password.trim());
+      await onSubmit(email.trim(), password.trim());
       if (rememberMe) {
         window.localStorage.setItem('dream-spex-remember-me', email.trim());
       } else {
         window.localStorage.removeItem('dream-spex-remember-me');
       }
-    } catch {
-      setError('Invalid demo credentials.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to sign in.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -228,7 +231,8 @@ function RoleLoginForm({
 
 export function CustomerLoginPage() {
   const navigate = useNavigate();
-  const { loginAsCustomer, isAuthenticated, role } = useAuth();
+  const location = useLocation();
+  const { setAuthenticated, isAuthenticated, role } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated && role === 'CUSTOMER') {
@@ -240,13 +244,18 @@ export function CustomerLoginPage() {
     <CustomerPortalLayout>
       <RoleLoginForm
         kind="customer"
-        onSubmit={(email, password) => {
-          const valid = email.toLowerCase() === mockDemoCredentials.customer.email && password === mockDemoCredentials.customer.password;
-          if (!valid) {
-            throw new Error('Invalid customer credentials');
-          }
-          loginAsCustomer();
-          navigate('/', { replace: true });
+        onSubmit={async (email, password) => {
+          const login = await authService.login({ identifier: email, password });
+          setAuthenticated('CUSTOMER', {
+            id: login.user.id,
+            name: login.user.displayName,
+            email: login.user.email ?? email,
+            role: 'CUSTOMER',
+            accessToken: login.accessToken,
+            accessTokenExpiresAt: getTokenExpiration(login.accessToken) ?? Date.now() + login.expiresIn * 1000,
+            refreshToken: login.refreshToken,
+          });
+          navigate(intendedPath(location.state, '/'), { replace: true });
         }}
       />
     </CustomerPortalLayout>
@@ -283,7 +292,8 @@ export function FranchiseLoginPage() {
 
 export function AdminLoginPage() {
   const navigate = useNavigate();
-  const { loginAsSuperAdmin, isAuthenticated, role } = useAuth();
+  const location = useLocation();
+  const { setAuthenticated, isAuthenticated, role } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated && role === 'SUPER_ADMIN') {
@@ -295,13 +305,18 @@ export function AdminLoginPage() {
     <AdminPortalLayout>
       <RoleLoginForm
         kind="admin"
-        onSubmit={(email, password) => {
-          const valid = email.toLowerCase() === mockDemoCredentials.admin.email && password === mockDemoCredentials.admin.password;
-          if (!valid) {
-            throw new Error('Invalid admin credentials');
-          }
-          loginAsSuperAdmin();
-          navigate('/admin/dashboard', { replace: true });
+        onSubmit={async (email, password) => {
+          const login = await adminLogin(email, password);
+          setAuthenticated('SUPER_ADMIN', {
+            id: login.user.id,
+            name: login.user.displayName,
+            email: login.user.email ?? email,
+            role: 'SUPER_ADMIN',
+            accessToken: login.accessToken,
+            accessTokenExpiresAt: getTokenExpiration(login.accessToken) ?? Date.now() + login.expiresIn * 1000,
+            refreshToken: login.refreshToken,
+          });
+          navigate(intendedPath(location.state, '/admin/dashboard'), { replace: true });
         }}
       />
     </AdminPortalLayout>

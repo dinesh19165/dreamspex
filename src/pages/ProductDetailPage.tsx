@@ -3,66 +3,83 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Glasses, Heart, ShieldCheck, Star, Truck } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
-import ProductCard from '../components/ui/ProductCard';
+import { reviews } from '../data/mockData';
 import Button from '../components/ui/Button';
 import { useShop } from '../context/ShopContext';
-import { products, reviews } from '../data/mockData';
+import { catalogService, toProduct, type CatalogProduct } from '../services/catalogService';
 import { formatINR } from '../utils/currency';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toggleWishlist, isInWishlist, addToCart, isInCart, setDeliveryPin, validateDeliveryPin } = useShop();
-  const [postalCode, setPostalCode] = useState('');
-  const [deliveryMessage, setDeliveryMessage] = useState('');
+  const { toggleWishlist, isInWishlist, addToCart, isInCart } = useShop();
   const [addedToCart, setAddedToCart] = useState(false);
-  const [pinChecking, setPinChecking] = useState(false);
+  const [cartError, setCartError] = useState('');
+  const [cartLoading, setCartLoading] = useState(false);
+  const [catalogProduct, setCatalogProduct] = useState<CatalogProduct | null>(null);
+  const [catalogError, setCatalogError] = useState('');
+  const [selectedVariantId, setSelectedVariantId] = useState('');
   const cartTimerRef = useRef<number | null>(null);
-  const product = products.find((item) => item.id === Number(id));
-  if (!product) return <Navigate to="/shop" replace />;
-
-  const supportsPrescription = product.category !== 'Contact Lenses';
-  const isWishlisted = isInWishlist(product.id);
-  const unavailable = product.stock === 'Out of Stock';
-
   useEffect(() => {
     return () => {
       if (cartTimerRef.current) window.clearTimeout(cartTimerRef.current);
     };
   }, []);
+  useEffect(() => {
+    if (!id) return;
+    setCatalogProduct(null);
+    setCatalogError('');
+    catalogService.get(id).then((value) => {
+      setCatalogProduct(value);
+      setSelectedVariantId(value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)?.id ?? '');
+    }).catch((reason) => setCatalogError(reason instanceof Error ? reason.message : 'Unable to load this product.'));
+  }, [id]);
+  const product = catalogProduct ? toProduct(catalogProduct) : null;
+  if (catalogError) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-red-600" role="alert">{catalogError}</p><Link to="/shop" className="mt-6 inline-flex rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold">Back to shop</Link></main><Footer /></div>;
+  if (!product || !catalogProduct) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-[var(--text-secondary)]">Loading product...</p></main><Footer /></div>;
 
-  const handleBuyNow = () => {
+  const supportsPrescription = product.category !== 'Contact Lenses';
+  const isWishlisted = isInWishlist(product.id);
+  const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
+  const unavailable = !selectedVariant
+    || selectedVariant.status.toUpperCase() !== 'ACTIVE'
+    || selectedVariant.availableQuantity < 1;
+
+  const productForCart = { ...product, variantId: selectedVariant?.id };
+  const handleBuyNow = async () => {
     if (unavailable) return;
-    if (!isInCart(product.id)) addToCart(product);
+    if (!isInCart(product.id)) {
+      setCartLoading(true);
+      setCartError('');
+      try {
+        await addToCart(productForCart);
+      } catch (reason) {
+        setCartError(reason instanceof Error ? reason.message : 'Unable to add this product to your cart.');
+        setCartLoading(false);
+        return;
+      }
+      setCartLoading(false);
+    }
     navigate('/checkout');
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (unavailable) return;
-    if (!isInCart(product.id)) addToCart(product);
+    if (isInCart(product.id)) return;
+    setCartLoading(true);
+    setCartError('');
+    try {
+      await addToCart(productForCart);
+    } catch (reason) {
+      setCartError(reason instanceof Error ? reason.message : 'Unable to add this product to your cart.');
+      setCartLoading(false);
+      return;
+    }
+    setCartLoading(false);
     setAddedToCart(true);
     if (cartTimerRef.current) window.clearTimeout(cartTimerRef.current);
     cartTimerRef.current = window.setTimeout(() => setAddedToCart(false), 1400);
-  };
-
-  const checkDeliveryCode = () => {
-    if (pinChecking) return;
-
-    const rawPin = postalCode.trim();
-    if (!/^\d{6}$/.test(rawPin)) {
-      setDeliveryMessage('Enter a valid 6-digit PIN code.');
-      return;
-    }
-
-    setPinChecking(true);
-    setDeliveryMessage('');
-    window.setTimeout(() => {
-      const result = validateDeliveryPin(rawPin);
-      setPostalCode(result.normalizedPin);
-      setDeliveryMessage(result.message);
-      setPinChecking(false);
-    }, 300);
   };
 
   const discountPercentage = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
@@ -90,6 +107,7 @@ export default function ProductDetailPage() {
               <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Price</p><p className="mt-1 text-3xl font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p></div>
               {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">List price</p><p className="mt-1 text-lg text-[var(--text-secondary)] line-through">{formatINR(product.oldPrice)}</p></div> : null}
               {discountPercentage > 0 ? <span className="rounded-full bg-[var(--brand-green)]/15 px-3 py-1 text-sm font-semibold text-[var(--brand-green-dark)]">{discountPercentage}% off</span> : null}
+              {catalogProduct.variants.length ? <label className="mt-4 block text-sm text-[var(--text-secondary)]"><span>Variant</span><select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)} className="mt-2 w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">{catalogProduct.variants.map((variant) => <option key={variant.id} value={variant.id} disabled={variant.status !== 'ACTIVE' || variant.availableQuantity < 1}>{[variant.color, variant.size, variant.lensType].filter(Boolean).join(' · ') || variant.sku} · {variant.availableQuantity} available</option>)}</select></label> : null}
             </div>
             <div className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 backdrop-blur-xl">
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">Available options</h2>
@@ -111,13 +129,13 @@ export default function ProductDetailPage() {
 
             <div className="flex flex-col gap-3 md:flex-row md:items-stretch">
               {supportsPrescription ? (
-                <Button variant="secondary" className={`${actionButtonBase} flex-1 w-full`} onClick={() => navigate(`/virtual-try-on?productId=${product.id}`)}>
+                <Button variant="secondary" className={`${actionButtonBase} flex-1 w-full`} onClick={() => navigate(`/virtual-try-on?productId=${encodeURIComponent(product.backendId ?? String(product.id))}`)}>
                   <Glasses className="mr-2 h-4 w-4" />Virtual Try-On
                 </Button>
               ) : null}
 
               {supportsPrescription ? (
-                <Button variant="secondary" className={`${actionButtonBase} flex-1 w-full`} onClick={() => navigate(`/prescription/${product.id}`)}>
+                <Button variant="secondary" className={`${actionButtonBase} flex-1 w-full`} onClick={() => navigate(`/prescription/${catalogProduct.id}?variantId=${encodeURIComponent(selectedVariantId)}`)}>
                   Add Prescription &amp; Choose Lenses
                 </Button>
               ) : null}
@@ -128,16 +146,16 @@ export default function ProductDetailPage() {
                 type="button"
                 className={`${actionButtonBase} w-full bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
                 onClick={handleAddToCart}
-                disabled={unavailable}
+                disabled={unavailable || cartLoading}
               >
-                {unavailable ? 'Out of stock' : addedToCart ? 'Added to Cart' : 'Add to Cart'}
+                {unavailable ? 'Out of stock' : cartLoading ? 'Adding...' : addedToCart ? 'Added to Cart' : 'Add to Cart'}
               </Button>
 
               <Button
                 type="button"
                 className={`${actionButtonBase} w-full bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
                 onClick={handleBuyNow}
-                disabled={unavailable}
+                disabled={unavailable || cartLoading}
               >
                 Buy Now
               </Button>
@@ -154,22 +172,17 @@ export default function ProductDetailPage() {
               </Button>
             </div>
 
+            {unavailable ? <p role="status" className="text-sm font-medium text-[var(--text-secondary)]">No active variant is currently available for this product.</p> : null}
             {addedToCart ? <p role="status" className="text-sm font-medium text-[var(--brand-green-dark)]">{product.name} was added to your cart.</p> : null}
+            {cartError ? <p role="alert" className="text-sm font-medium text-red-600">{cartError}</p> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-[var(--text-primary)]"><ShieldCheck className="h-4 w-4 text-cyan-400" /> Product availability</div><p className="mt-2 text-sm text-[var(--text-secondary)]">{product.stock}</p></div>
               <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-[var(--text-primary)]"><Truck className="h-4 w-4 text-cyan-400" /> Delivery details</div><p className="mt-2 text-sm text-[var(--text-secondary)]">Delivery options are shown during checkout.</p></div>
             </div>
-            <form className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5" onSubmit={(event) => { event.preventDefault(); checkDeliveryCode(); }}>
-              <label htmlFor="delivery-pin" className="text-sm font-semibold text-[var(--text-primary)]">Check a delivery PIN</label>
-              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Check mock delivery availability. Live serviceability will be connected later.</p>
-              <div className="mt-3 flex gap-2">
-                <input id="delivery-pin" inputMode="numeric" autoComplete="postal-code" maxLength={6} value={postalCode} onChange={(event) => { const nextValue = event.target.value.replace(/\D/g, '').slice(0, 6); setPostalCode(nextValue); setDeliveryPin(nextValue); setDeliveryMessage(''); }} placeholder="6-digit PIN code" className="min-w-0 flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]" />
-                <Button type="submit" className="h-[48px] min-h-[48px] rounded-full px-4 text-sm font-semibold sm:h-[52px] sm:min-h-[52px]" disabled={pinChecking || postalCode.trim().length !== 6}>{pinChecking ? 'Checking...' : 'Check'}</Button>
-              </div>
-              {deliveryMessage ? <p role="status" className={`mt-3 text-sm ${deliveryMessage.includes('available') ? 'text-emerald-300' : 'text-[var(--text-secondary)]'}`}>{deliveryMessage}</p> : null}
-              <p className="mt-2 text-xs text-[var(--text-secondary)]">Demo serviceable PINs: 500001, 500032, 560001, 110001, 400001.</p>
-            </form>
+            <p className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)]">
+              Delivery availability is calculated at checkout from your saved map location and the nearest configured store. PIN codes are not used to estimate delivery distance.
+            </p>
           </motion.div>
         </div>
 
@@ -199,7 +212,7 @@ export default function ProductDetailPage() {
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Lens selection</p>
             <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">Make it yours</h2>
             <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">Review the available lens options and enter your prescription in the guided order flow.</p>
-            {supportsPrescription ? <Link to={`/prescription/${product.id}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-[var(--text-secondary)]">Lens selection is not available for this item.</p>}
+            {supportsPrescription ? <Link to={`/prescription/${catalogProduct.id}?variantId=${encodeURIComponent(selectedVariantId)}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-[var(--text-secondary)]">Lens selection is not available for this item.</p>}
           </div>
         </div>
 
@@ -230,9 +243,6 @@ export default function ProductDetailPage() {
           <div className="flex items-end justify-between gap-4">
             <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Related products</h2>
             <Link to="/shop" className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition hover:text-cyan-200">Discover more <ArrowRight className="h-4 w-4" /></Link>
-          </div>
-          <div className="mt-8 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
-            {products.filter((item) => item.id !== product.id).slice(0, 4).map((item) => <ProductCard key={item.id} product={item} />)}
           </div>
         </div>
       </main>

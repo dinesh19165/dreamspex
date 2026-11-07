@@ -1,0 +1,6 @@
+package com.dreamspex.admin;
+
+import com.dreamspex.auth.entity.User;
+import com.dreamspex.auth.entity.User; import jakarta.persistence.*; import java.time.Instant; import java.util.UUID;
+@Entity @Table(name="homepage_content")
+public class HomepageContent { @Id @Column(length=255) private String id=UUID.randomUUID().toString(); @Column(name="content_key",nullable=false,unique=true) private String contentKey; private String title; @Column(columnDefinition="TEXT") private String body; @Column(name="image_url") private String imageUrl; @Column(nullable=false) private String status="DRAFT"; @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="updated_by") private User updatedBy; @Column(name="created_at",nullable=false) private Instant createdAt=Instant.now(); @Column(name="updated_at",nullable=false) private Instant updatedAt=Instant.now(); public String getId(){return id;} public String getContentKey(){return contentKey;} public void setContentKey(String v){contentKey=v;} public String getTitle(){return title;} public void setTitle(String v){title=v;} public String getBody(){return body;} public void setBody(String v){body=v;} public String getImageUrl(){return imageUrl;} public void setImageUrl(String v){imageUrl=v;} public String getStatus(){return status;} public void setStatus(String v){status=v;} public void setUpdatedBy(User v){updatedBy=v;} }

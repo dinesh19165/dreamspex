@@ -1,58 +1,39 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { LensSelection, Prescription, Product } from '../types';
-import { calculateCoupon, findCoupon, type CouponResult } from '../services/couponService';
+import type { LensSelection, Product } from '../types';
+import { couponService, type CouponResult } from '../services/couponService';
 import { getCartItemKey } from '../utils/cart';
+import { cartService, type CartResponse } from '../services/cartService';
+import { useAuth } from './useAuth';
 
-export const DEMO_SERVICEABLE_PIN_CODES = new Set(['500001', '500032', '560001', '110001', '400001']);
-
-export function validateDemoDeliveryPin(pin: string) {
-  const normalizedPin = pin.replace(/\D/g, '').slice(0, 6);
-
-  if (!/^\d{6}$/.test(normalizedPin)) {
-    return {
-      normalizedPin,
-      isValid: false,
-      message: 'Enter a valid 6-digit Indian PIN code.',
-    };
-  }
-
-  if (!DEMO_SERVICEABLE_PIN_CODES.has(normalizedPin)) {
-    return {
-      normalizedPin,
-      isValid: false,
-      message: 'Delivery is not available for this PIN code yet. Please try another serviceable area.',
-    };
-  }
-
-  return {
-    normalizedPin,
-    isValid: true,
-    message: 'Delivery available for this PIN code.',
-  };
-}
-
-export type CartItem = Product & { quantity: number; configuredId?: string; prescription?: Prescription; lensSelection?: LensSelection };
+export type CartItem = Product & {
+  quantity: number;
+  configuredId?: string;
+  backendItemId?: string;
+  backendProductId?: string;
+  backendVariantId?: string;
+  backendUnitPrice?: number;
+  prescriptionId?: string;
+  lensSelection?: LensSelection;
+};
 
 type ShopContextValue = {
   wishlist: Product[];
   cart: CartItem[];
-  deliveryPin: string;
-  isDeliveryPinValidated: boolean;
-  setDeliveryPin: (pin: string) => void;
-  validateDeliveryPin: (pin: string) => { normalizedPin: string; isValid: boolean; message: string };
-  clearDeliveryPin: () => void;
   isInWishlist: (productId: number) => boolean;
   isInCart: (productId: number) => boolean;
   toggleWishlist: (product: Product) => void;
-  addToCart: (product: Product) => void;
-  addConfiguredToCart: (product: Product, prescription: Prescription, lensSelection: LensSelection) => void;
+  addToCart: (product: Product, quantity?: number) => Promise<void>;
+  addConfiguredToCart: (product: Product, lensSelection: LensSelection, prescriptionId: string) => Promise<void>;
   removeFromWishlist: (productId: number) => void;
-  removeFromCart: (itemKey: string) => void;
-  updateQuantity: (itemKey: string, quantity: number) => void;
+  removeFromCart: (itemKey: string) => Promise<void>;
+  updateQuantity: (itemKey: string, quantity: number) => Promise<void>;
   clearCart: () => void;
+  cartLoading: boolean;
+  cartError: string;
+  cartNotice: string;
   appliedCoupon: CouponResult | null;
-  applyCoupon: (code: string) => CouponResult | null;
+  applyCoupon: (code: string) => Promise<CouponResult | null>;
   removeCoupon: () => void;
   subtotal: number;
   discount: number;
@@ -62,6 +43,7 @@ type ShopContextValue = {
 const ShopContext = createContext<ShopContextValue | undefined>(undefined);
 
 export function ShopProvider({ children }: { children: ReactNode }) {
+  const { user, role } = useAuth();
   const [wishlist, setWishlist] = useState<Product[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('dream-spex-wishlist') ?? '[]') as Product[];
@@ -77,138 +59,176 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       return [];
     }
   });
-  const [deliveryPin, setDeliveryPinState] = useState<string>(() => {
-    try {
-      return localStorage.getItem('dream-spex-delivery-pin') ?? '';
-    } catch {
-      return '';
-    }
-  });
-  const [isDeliveryPinValidated, setIsDeliveryPinValidated] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('dream-spex-delivery-pin-validated') === 'true';
-    } catch {
-      return false;
-    }
-  });
   const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(() => {
     try {
       const savedCode = localStorage.getItem('dream-spex-coupon');
-      return savedCode ? calculateCoupon(savedCode, 0) : null;
+      return savedCode ? { code: savedCode, discount: 0 } : null;
     } catch {
       return null;
     }
   });
+  const [cartLoading, setCartLoading] = useState(role === 'CUSTOMER' && Boolean(user?.accessToken));
+  const [cartError, setCartError] = useState('');
+  const [cartNotice, setCartNotice] = useState('');
+  const [backendSubtotal, setBackendSubtotal] = useState<number | null>(null);
 
-  const subtotal = cart.reduce((sum, item) => sum + (item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity, 0);
-  const recalculatedCoupon = appliedCoupon ? calculateCoupon(appliedCoupon.code, subtotal) : null;
-  const discount = recalculatedCoupon?.discountAmount ?? 0;
+  const subtotal = backendSubtotal ?? cart.reduce((sum, item) => sum + (item.backendUnitPrice ?? item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity, 0);
+  const discount = appliedCoupon?.discount ?? 0;
   const total = subtotal - discount;
+  const couponValidationSequence = useRef(0);
 
   useEffect(() => {
     localStorage.setItem('dream-spex-wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
   useEffect(() => {
-    localStorage.setItem('dream-spex-cart', JSON.stringify(cart));
-  }, [cart]);
+    if (role !== 'CUSTOMER') localStorage.setItem('dream-spex-cart', JSON.stringify(cart));
+  }, [cart, role]);
+
+  const mapCart = (response: CartResponse): CartItem[] => response.items.map((item, index) => ({
+    id: index + 1,
+    variantId: item.variantId,
+    name: item.productName,
+    category: 'Cart item',
+    price: item.unitPrice - item.lensAdditionalPrice,
+    image: item.imageUrl ?? '',
+    rating: 0,
+    reviews: 0,
+    stock: item.availableQuantity > 0 ? 'In Stock' : 'Out of Stock',
+    description: `SKU: ${item.sku}`,
+    colors: [],
+    sizes: [],
+    material: '',
+    brand: '',
+    quantity: item.quantity,
+    configuredId: item.id,
+    backendItemId: item.id,
+    backendProductId: item.productId,
+    backendVariantId: item.variantId,
+    backendUnitPrice: item.unitPrice,
+    prescriptionId: item.prescriptionId ?? undefined,
+    lensSelection: item.selectedLensCodes.length ? {
+      type: item.selectedLensCodes[0],
+      material: '',
+      coatings: item.selectedLensCodes.slice(1),
+      additionalPrice: item.lensAdditionalPrice,
+      codes: item.selectedLensCodes,
+    } : undefined,
+  }));
+
+  const applyCartResponse = (response: CartResponse) => {
+    setCart(mapCart(response));
+    setBackendSubtotal(response.subtotal);
+  };
+
+  const loadBackendCart = useCallback(async () => {
+    if (role !== 'CUSTOMER' || !user?.accessToken) return;
+    setCartLoading(true);
+    setCartError('');
+    try {
+      applyCartResponse(await cartService.get(user.accessToken));
+    } catch (reason) {
+      setCartError(reason instanceof Error ? reason.message : 'Unable to load your cart.');
+    } finally {
+      setCartLoading(false);
+    }
+  }, [role, user?.accessToken]);
 
   useEffect(() => {
-    if (deliveryPin) localStorage.setItem('dream-spex-delivery-pin', deliveryPin);
-    else localStorage.removeItem('dream-spex-delivery-pin');
-  }, [deliveryPin]);
-
-  useEffect(() => {
-    if (isDeliveryPinValidated) localStorage.setItem('dream-spex-delivery-pin-validated', 'true');
-    else localStorage.removeItem('dream-spex-delivery-pin-validated');
-  }, [isDeliveryPinValidated]);
+    void loadBackendCart();
+  }, [loadBackendCart]);
 
   useEffect(() => {
     if (appliedCoupon) localStorage.setItem('dream-spex-coupon', appliedCoupon.code);
     else localStorage.removeItem('dream-spex-coupon');
   }, [appliedCoupon]);
 
-  const setDeliveryPin = useCallback((value: string) => {
-    const nextValue = value.replace(/\D/g, '').slice(0, 6);
-    setDeliveryPinState(nextValue);
-    setIsDeliveryPinValidated(false);
-  }, []);
+  useEffect(() => {
+    if (!appliedCoupon?.code || role !== 'CUSTOMER' || !user?.accessToken) return undefined;
+    const sequence = ++couponValidationSequence.current;
+    void couponService.validate(user.accessToken, appliedCoupon.code)
+      .then((result) => {
+        if (sequence === couponValidationSequence.current) setAppliedCoupon(result);
+      })
+      .catch(() => {
+        if (sequence === couponValidationSequence.current) setAppliedCoupon(null);
+      });
+    return () => {
+      couponValidationSequence.current += 1;
+    };
+  }, [appliedCoupon?.code, backendSubtotal, cart, role, user?.accessToken]);
 
-  const validateDeliveryPin = useCallback((value: string) => {
-    const result = validateDemoDeliveryPin(value);
-    setDeliveryPinState(result.normalizedPin);
-    setIsDeliveryPinValidated(result.isValid);
-    return result;
-  }, []);
-
-  const clearDeliveryPin = useCallback(() => {
-    setDeliveryPinState('');
-    setIsDeliveryPinValidated(false);
-  }, []);
-
-  const toggleWishlist = (product: Product) => {
+  const toggleWishlist = useCallback((product: Product) => {
     setWishlist((current) => {
       const exists = current.some((item) => item.id === product.id);
       return exists ? current.filter((item) => item.id !== product.id) : [...current, product];
     });
-  };
+  }, []);
 
-  const addToCart = (product: Product) => {
-    setCart((current) => {
-      const itemKey = `product-${product.id}`;
-      const existing = current.find((item) => getCartItemKey(item) === itemKey);
-      if (existing) {
-        return current.map((item) => (getCartItemKey(item) === itemKey ? { ...item, quantity: item.quantity + 1 } : item));
-      }
-      return [...current, { ...product, quantity: 1, configuredId: itemKey }];
-    });
-  };
+  const mutateCart = useCallback(async (operation: (accessToken: string) => Promise<CartResponse | void>, successMessage: string) => {
+    if (role !== 'CUSTOMER' || !user?.accessToken) throw new Error('Please sign in to use your cart.');
+    setCartLoading(true);
+    setCartError('');
+    setCartNotice('');
+    try {
+      const response = await operation(user.accessToken);
+      if (response) applyCartResponse(response);
+      setCartNotice(successMessage);
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Unable to update your cart.';
+      setCartError(message);
+      throw reason;
+    } finally {
+      setCartLoading(false);
+    }
+  }, [role, user?.accessToken]);
 
-  const addConfiguredToCart = (product: Product, prescription: Prescription, lensSelection: LensSelection) => {
-    const configuredId = `configured-${product.id}-${encodeURIComponent(JSON.stringify({ prescription, lensSelection }))}`;
-    setCart((current) => {
-      const existing = current.find((item) => getCartItemKey(item) === configuredId);
-      if (existing) return current.map((item) => (item === existing ? { ...item, quantity: item.quantity + 1 } : item));
-      return [...current, { ...product, quantity: 1, prescription, lensSelection, configuredId }];
-    });
-  };
+  const addToCart = useCallback(async (product: Product, quantity = 1) => {
+    if (!product.variantId) throw new Error('This product is not linked to an available backend variant.');
+    if (!Number.isInteger(quantity) || quantity < 1) throw new Error('Quantity must be at least 1.');
+    await mutateCart((accessToken) => cartService.add(accessToken, product.variantId!, quantity), 'Product added to cart.');
+  }, [mutateCart]);
 
-  const removeFromWishlist = (productId: number) => {
+  const addConfiguredToCart = useCallback(async (product: Product, lensSelection: LensSelection, prescriptionId: string) => {
+    if (!product.variantId) throw new Error('This product is not linked to an available backend variant.');
+    if (!lensSelection.codes?.length) throw new Error('Select one available lens type before adding this frame.');
+    await mutateCart((accessToken) => cartService.add(accessToken, product.variantId!, 1, prescriptionId, lensSelection.codes), 'Prescription lenses added to cart.');
+  }, [mutateCart]);
+
+  const removeFromWishlist = useCallback((productId: number) => {
     setWishlist((current) => current.filter((item) => item.id !== productId));
-  };
+  }, []);
 
-  const removeFromCart = (itemKey: string) => {
-    setCart((current) => current.filter((item) => getCartItemKey(item) !== itemKey));
-  };
+  const removeFromCart = useCallback(async (itemKey: string) => {
+    const item = cart.find((value) => getCartItemKey(value) === itemKey);
+    if (!item?.backendItemId) throw new Error('Cart item is not available in the backend cart.');
+    const backendItemId = item.backendItemId;
+    await mutateCart((accessToken) => cartService.remove(accessToken, backendItemId), 'Product removed from cart.');
+  }, [cart, mutateCart]);
 
-  const updateQuantity = (itemKey: string, quantity: number) => {
-    setCart((current) =>
-      current.flatMap((item) => {
-        if (getCartItemKey(item) !== itemKey) {
-          return [item];
-        }
-        return quantity > 0 ? [{ ...item, quantity }] : [];
-      })
-    );
-  };
+  const updateQuantity = useCallback(async (itemKey: string, quantity: number) => {
+    const item = cart.find((value) => getCartItemKey(value) === itemKey);
+    if (!item?.backendItemId) throw new Error('Cart item is not available in the backend cart.');
+    if (quantity < 1) return removeFromCart(itemKey);
+    await mutateCart((accessToken) => cartService.update(accessToken, item.backendItemId!, quantity), 'Cart quantity updated.');
+  }, [cart, mutateCart, removeFromCart]);
 
-  const clearCart = () => setCart([]);
-  const applyCoupon = useCallback((code: string) => {
-    const result = findCoupon(code) ? calculateCoupon(code, subtotal) : null;
-    if (result) setAppliedCoupon(result);
+  const clearCart = useCallback(() => setCart([]), []);
+  const applyCoupon = useCallback(async (code: string) => {
+    if (!user?.accessToken) throw new Error('Please sign in to validate a coupon.');
+    const result = await couponService.validate(user.accessToken, code);
+    setAppliedCoupon(result);
     return result;
-  }, [subtotal]);
+  }, [user?.accessToken]);
   const removeCoupon = () => setAppliedCoupon(null);
 
   const value = useMemo<ShopContextValue>(
     () => ({
       wishlist,
       cart,
-      deliveryPin,
-      isDeliveryPinValidated,
-      setDeliveryPin,
-      validateDeliveryPin,
-      clearDeliveryPin,
+      cartLoading,
+      cartError,
+      cartNotice,
       isInWishlist: (productId: number) => wishlist.some((item) => item.id === productId),
       isInCart: (productId: number) => cart.some((item) => item.id === productId),
       toggleWishlist,
@@ -218,14 +238,14 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       removeFromCart,
       updateQuantity,
       clearCart,
-      appliedCoupon: recalculatedCoupon,
+      appliedCoupon,
       applyCoupon,
       removeCoupon,
       subtotal,
       discount,
       total,
     }),
-    [wishlist, cart, deliveryPin, isDeliveryPinValidated, setDeliveryPin, validateDeliveryPin, clearDeliveryPin, recalculatedCoupon, subtotal, discount, total, applyCoupon]
+    [wishlist, cart, appliedCoupon, subtotal, discount, total, applyCoupon, cartLoading, cartError, cartNotice, addToCart, addConfiguredToCart, removeFromCart, updateQuantity, removeFromWishlist, clearCart, toggleWishlist]
   );
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

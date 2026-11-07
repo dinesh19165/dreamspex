@@ -16,8 +16,9 @@ export type FaceLandmarks = {
 
 export type TryOnFrame = {
   src: string;
-  width: number;
-  height: number;
+  fallbackSrc?: string;
+  width?: number;
+  height?: number;
 };
 
 export type TryOnState = 'idle' | 'loading-camera' | 'loading-detection' | 'ready' | 'denied' | 'unavailable' | 'failed';

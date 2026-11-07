@@ -1,13 +1,69 @@
 import { Check } from 'lucide-react';
-import type { LensSelection } from '../../types';
+import type { LensOption } from '../../services/prescriptionService';
 import { formatINR } from '../../utils/currency';
 
-export const lensMaterials = [{ name: 'Standard Lens', description: 'Clear everyday vision', material: 'Standard', price: 0 }, { name: 'Thin Lens', description: 'Lighter profile for higher powers', material: 'Thin', price: 35 }, { name: 'Ultra Thin Lens', description: 'Our slimmest premium finish', material: 'Ultra Thin', price: 70 }];
-export const lensCoatings = [{ name: 'Anti-Reflective', price: 15 }, { name: 'Blue Light Protection', price: 20 }, { name: 'Scratch Resistant', price: 10 }, { name: 'UV Protection', price: 10 }];
+type LensSelectorProps = {
+  options: LensOption[];
+  selectedCodes: string[];
+  onChange: (codes: string[]) => void;
+};
 
-type LensSelectorProps = { value: LensSelection; onChange: (value: LensSelection) => void };
-export default function LensSelector({ value, onChange }: LensSelectorProps) {
-  const toggleCoating = (coating: string, price: number) => { const selected = value.coatings.includes(coating); onChange({ ...value, coatings: selected ? value.coatings.filter((item) => item !== coating) : [...value.coatings, coating], additionalPrice: value.additionalPrice + (selected ? -price : price) }); };
-  const chooseMaterial = (material: typeof lensMaterials[number]) => { const coatingTotal = lensCoatings.filter((coating) => value.coatings.includes(coating.name)).reduce((sum, coating) => sum + coating.price, 0); onChange({ ...value, type: material.name, material: material.material, additionalPrice: material.price + coatingTotal }); };
-  return <div className="space-y-6"><section><h2 className="text-lg font-semibold text-[var(--text-primary)]">Lens material</h2><div className="mt-4 grid gap-3 md:grid-cols-3">{lensMaterials.map((lens) => <button key={lens.material} onClick={() => chooseMaterial(lens)} className={`rounded-2xl border p-4 text-left ${value.material === lens.material ? 'border-cyan-400/60 bg-cyan-400/10' : 'border-[var(--border-subtle)] bg-[var(--bg-card)]'}`}><span className="flex items-center justify-between font-semibold text-[var(--text-primary)]">{lens.name}{value.material === lens.material ? <Check className="h-4 w-4 text-cyan-300" /> : null}</span><span className="mt-2 block text-sm text-[var(--text-secondary)]">{lens.description}</span><span className="mt-3 block text-sm text-cyan-300">{lens.price ? `+${formatINR(lens.price)}` : 'Included'}</span></button>)}</div></section><section><h2 className="text-lg font-semibold text-[var(--text-primary)]">Lens coatings</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{lensCoatings.map((coating) => <button key={coating.name} onClick={() => toggleCoating(coating.name, coating.price)} className={`flex items-center justify-between rounded-2xl border p-4 text-left ${value.coatings.includes(coating.name) ? 'border-cyan-400/60 bg-cyan-400/10' : 'border-[var(--border-subtle)] bg-[var(--bg-card)]'}`}><span className="text-sm font-semibold text-[var(--text-primary)]">{coating.name}</span><span className="flex items-center gap-3 text-sm text-cyan-300">+{formatINR(coating.price)}{value.coatings.includes(coating.name) ? <Check className="h-4 w-4" /> : null}</span></button>)}</div></section></div>;
+const groups = [
+  { category: 'TYPE', title: 'Lens type' },
+  { category: 'COATING', title: 'Optional coatings' },
+  { category: 'MATERIAL', title: 'Lens material' },
+] as const;
+
+export default function LensSelector({ options, selectedCodes, onChange }: LensSelectorProps) {
+  const choose = (option: LensOption) => {
+    if (!option.available || option.additionalCost == null) return;
+    if (option.category === 'TYPE') {
+      onChange([...selectedCodes.filter((code) => !options.some((item) => item.code === code && item.category === 'TYPE')), option.code]);
+      return;
+    }
+    onChange(selectedCodes.includes(option.code)
+      ? selectedCodes.filter((code) => code !== option.code)
+      : [...selectedCodes, option.code]);
+  };
+
+  return (
+    <div className="space-y-7">
+      {groups.map((group) => {
+        const items = options.filter((option) => option.category === group.category);
+        if (!items.length) return null;
+        return (
+          <section key={group.category}>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">{group.title}</h3>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {items.map((option) => {
+                const selected = selectedCodes.includes(option.code);
+                const canSelect = option.available && option.additionalCost != null;
+                return (
+                  <article key={option.code} className={`rounded-2xl border p-4 ${selected ? 'border-cyan-400/60 bg-cyan-400/10' : 'border-[var(--border-subtle)] bg-[var(--bg-card)]'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div><h4 className="font-semibold text-[var(--text-primary)]">{option.name}</h4>
+                        <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{option.benefits}</p>
+                      </div>
+                      {option.recommended ? <span className="shrink-0 rounded-full bg-cyan-400/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-cyan-200">Suggested</span> : null}
+                    </div>
+                    {option.recommendationReason ? <p className="mt-2 text-xs text-cyan-200">{option.recommendationReason}</p> : null}
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-sm text-cyan-200">
+                        {option.additionalCost == null ? 'Price not configured' : option.additionalCost === 0 ? 'Included' : `+${formatINR(option.additionalCost)}`}
+                        {option.preparationDays ? <span className="ml-2 text-xs text-[var(--text-secondary)]">· {option.preparationDays} days</span> : null}
+                      </div>
+                      {canSelect ? <button type="button" onClick={() => choose(option)} className="inline-flex items-center gap-2 rounded-full border border-cyan-400/50 px-3 py-2 text-xs font-semibold text-cyan-100">
+                        {selected ? <><Check className="h-4 w-4" />Selected</> : 'Select Lens'}
+                      </button> : <span className="text-xs text-[var(--text-secondary)]">Currently unavailable</span>}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+      <p className="text-xs leading-5 text-[var(--text-secondary)]">Suggestions are informational and are not medical advice. An optician should review complex prescriptions.</p>
+    </div>
+  );
 }

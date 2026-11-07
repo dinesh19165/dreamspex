@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ShoppingCart, Trash2 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
@@ -7,19 +7,48 @@ import SectionTitle from '../components/ui/SectionTitle';
 import { useShop } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
 import { formatINR } from '../utils/currency';
+import { useAuth } from '../context/useAuth';
+import { membershipService } from '../services/membershipService';
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total } = useShop();
+  const { cart, removeFromCart, updateQuantity, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total, cartLoading, cartError, cartNotice } = useShop();
+  const { user } = useAuth();
   const [couponCode, setCouponCode] = useState('');
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+  const [membershipDiscountPercentage, setMembershipDiscountPercentage] = useState<number | null>(null);
+  const [membershipError, setMembershipError] = useState('');
+  useEffect(() => {
+    let active = true;
+    setMembershipError('');
+    if (!user?.accessToken) {
+      setMembershipDiscountPercentage(null);
+      return () => { active = false; };
+    }
+    membershipService.dashboard(user.accessToken)
+      .then((response) => {
+        if (active) setMembershipDiscountPercentage(response.current?.status === 'ACTIVE'
+          ? response.current.discountPercentage
+          : null);
+      })
+      .catch((reason: unknown) => {
+        if (active) setMembershipError(reason instanceof Error ? reason.message : 'Unable to load membership pricing.');
+      });
+    return () => { active = false; };
+  }, [user?.accessToken]);
   const handleApplyCoupon = async () => { setCouponLoading(true); setCouponError(''); await new Promise((resolve) => window.setTimeout(resolve, 350)); if (!applyCoupon(couponCode)) setCouponError('Invalid coupon code.'); setCouponLoading(false); };
+  const estimatedMembershipDiscount = !appliedCoupon && membershipDiscountPercentage
+    ? subtotal * membershipDiscountPercentage / 100
+    : 0;
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <SectionTitle eyebrow="Cart" title="Your selected frames" description="Review your order, refine quantities, and continue to checkout." />
+        {cartLoading ? <p className="mt-4 text-sm text-[var(--text-secondary)]">Updating your cart...</p> : null}
+        {cartError ? <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{cartError}</p> : null}
+        {cartNotice ? <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{cartNotice}</p> : null}
 
         {cart.length === 0 ? (
           <div className="mt-10 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-10 text-center backdrop-blur-xl">
@@ -33,22 +62,22 @@ export default function CartPage() {
               {cart.map((item) => (
                 <div key={getCartItemKey(item)} className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 backdrop-blur-xl">
                   <div className="flex flex-wrap items-center gap-4">
-                    <img src={item.image} alt={item.name} className="h-24 w-24 rounded-[20px] object-cover" />
+                    {item.image ? <img src={item.image} alt={item.name} className="h-24 w-24 rounded-[20px] object-cover" /> : <div className="flex h-24 w-24 items-center justify-center rounded-[20px] bg-[var(--bg-secondary)]"><ShoppingCart className="h-6 w-6 text-[var(--text-secondary)]" /></div>}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{item.category}</p>
                       <h3 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{item.name}</h3>
                       <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{item.description}</p>
                       {item.lensSelection ? <p className="mt-3 text-sm text-cyan-200">{item.lensSelection.type} · {item.lensSelection.coatings.length ? item.lensSelection.coatings.join(', ') : 'No coating selected'}</p> : null}
                     </div>
-                    <button onClick={() => removeFromCart(getCartItemKey(item))} aria-label={`Remove ${item.name} from cart`} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-3 text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)]">
+                    <button onClick={() => void removeFromCart(getCartItemKey(item))} disabled={cartLoading} aria-label={`Remove ${item.name} from cart`} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-3 text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] disabled:opacity-50">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border-subtle)] pt-4 text-sm text-[var(--text-secondary)]">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`} className="rounded-full border border-[var(--border-subtle)] px-3 py-2 text-[var(--text-secondary)]">-</button>
+                      <button onClick={() => void updateQuantity(getCartItemKey(item), item.quantity - 1)} disabled={cartLoading} aria-label={`Decrease ${item.name} quantity`} className="rounded-full border border-[var(--border-subtle)] px-3 py-2 text-[var(--text-secondary)] disabled:opacity-50">-</button>
                       <span className="min-w-[2rem] text-center font-semibold text-[var(--text-primary)]">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(getCartItemKey(item), item.quantity + 1)} aria-label={`Increase ${item.name} quantity`} className="rounded-full border border-[var(--border-subtle)] px-3 py-2 text-[var(--text-secondary)]">+</button>
+                      <button onClick={() => void updateQuantity(getCartItemKey(item), item.quantity + 1)} disabled={cartLoading} aria-label={`Increase ${item.name} quantity`} className="rounded-full border border-[var(--border-subtle)] px-3 py-2 text-[var(--text-secondary)] disabled:opacity-50">+</button>
                     </div>
                     <span className="text-lg font-semibold text-[var(--text-primary)]">{formatINR((item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity)}</span>
                   </div>
@@ -79,8 +108,10 @@ export default function CartPage() {
                   <div className="mt-3 flex gap-2"><input id="cart-coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Enter coupon code" className="min-w-0 flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" /><button type="button" disabled={couponLoading || !couponCode.trim()} onClick={handleApplyCoupon} className="rounded-full bg-[#7CBF00] px-4 py-3 text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50">{couponLoading ? 'Applying...' : 'Apply'}</button></div>
                   {couponError ? <p className="mt-2 text-xs text-rose-300" role="alert">{couponError}</p> : null}
                   {appliedCoupon ? <div className="mt-3 flex items-center justify-between gap-3 text-xs text-cyan-200"><span>✓ Coupon {appliedCoupon.code} applied · You saved {formatINR(discount)}</span><button type="button" onClick={removeCoupon} className="text-cyan-300 underline">Remove</button></div> : null}
+                  {estimatedMembershipDiscount > 0 ? <p className="mt-3 text-xs text-cyan-200">Estimated membership discount · {formatINR(estimatedMembershipDiscount)}. Final eligibility and total are verified at checkout.</p> : null}
+                  {membershipError ? <p className="mt-2 text-xs text-rose-300" role="alert">{membershipError}</p> : null}
                 </div>
-                {appliedCoupon ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon.code} ({appliedCoupon.discountPercent}% OFF)</span><span>-{formatINR(discount)}</span></div> : null}
+                {appliedCoupon ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon.code} applied</span><span>-{formatINR(discount)}</span></div> : null}
                 <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-base font-semibold text-[var(--text-primary)]"><span>Total</span><span>{formatINR(total)}</span></div>
                 <p className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 text-sm leading-6 text-[var(--text-secondary)]">Delivery options and payment methods are shown in the demo checkout. No real payment is processed.</p>
               </div>

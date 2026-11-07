@@ -1,3 +1,172 @@
+# spring:
+#   application:
+#     name: dream-spex-api
+#   profiles:
+#     default: none
+#   servlet:
+#     multipart:
+#       max-file-size: 100MB
+#       max-request-size: 101MB
+#   jpa:
+#     open-in-view: false
+#     hibernate:
+#       ddl-auto: validate
+#     properties:
+#       hibernate:
+#         jdbc:
+#           time_zone: UTC
+#   flyway:
+#     enabled: true
+#     baseline-on-migrate: true
+#   jackson:
+#     time-zone: UTC
+
+# server:
+#   forward-headers-strategy: framework
+#   error:
+#     include-message: never
+
+# dreamspex:
+#   storage:
+#     local-directory: ${DREAMSPEX_STORAGE_DIRECTORY:${user.home}/.dream-spex/private-prescriptions}
+#     homepage-images-directory: ${DREAMSPEX_HOMEPAGE_IMAGES_DIRECTORY:${user.home}/.dream-spex/homepage-images}
+#   security:
+#     jwt-issuer: ${DREAMSPEX_JWT_ISSUER:http://localhost:8080}
+#     jwt-secret: ${DREAMSPEX_JWT_SECRET}
+#     otp-secret: ${DREAMSPEX_OTP_SECRET:${DREAMSPEX_JWT_SECRET}}
+#     delivery-link-encryption-secret: ${DREAMSPEX_DELIVERY_LINK_ENCRYPTION_SECRET:${DREAMSPEX_JWT_SECRET}}
+#     access-token-minutes: ${DREAMSPEX_ACCESS_TOKEN_MINUTES:15}
+#     refresh-token-days: ${DREAMSPEX_REFRESH_TOKEN_DAYS:30}
+#   cors:
+#     allowed-origins: ${DREAMSPEX_CORS_ORIGINS:http://localhost:5173}
+#   payment:
+#     provider: ${DREAMSPEX_PAYMENT_PROVIDER:RAZORPAY_TEST}
+#     key-id: ${RAZORPAY_KEY_ID:}
+#     key-secret: ${RAZORPAY_KEY_SECRET:}
+#     webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+#   shipping:
+#     free-threshold: ${DREAMSPEX_FREE_SHIPPING_THRESHOLD:2000}
+#     charge: ${DREAMSPEX_SHIPPING_CHARGE:99}
+
+# springdoc:
+#   swagger-ui:
+#     path: /swagger-ui.html
+
+# ---
+# spring:
+#   config:
+#     activate:
+#       on-profile: local
+#   mail:
+#     host: ${MAIL_HOST:}
+#     port: ${MAIL_PORT:587}
+#     username: ${MAIL_USERNAME:}
+#     password: ${MAIL_PASSWORD:}
+#     properties:
+#       mail:
+#         smtp:
+#           auth: true
+#           starttls:
+#             enable: true
+#           connectiontimeout: 10000
+#           timeout: 10000
+#           writetimeout: 10000
+#   datasource:
+#     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/dreamspex?createDatabaseIfNotExist=true&serverTimezone=UTC}
+#     username: ${SPRING_DATASOURCE_USERNAME}
+#     password: ${SPRING_DATASOURCE_PASSWORD}
+
+# ---
+# spring:
+#   config:
+#     activate:
+#       on-profile: test
+#   flyway:
+#     enabled: false
+#   jpa:
+#     hibernate:
+#       ddl-auto: create-drop
+
+# ---
+# spring:
+#   config:
+#     activate:
+#       on-profile: "prod | production"
+#   mail:
+#     host: ${MAIL_HOST}
+#     port: ${MAIL_PORT}
+#     username: ${MAIL_USERNAME}
+#     password: ${MAIL_PASSWORD}
+#     properties:
+#       mail:
+#         smtp:
+#           auth: true
+#           starttls:
+#             enable: true
+#           connectiontimeout: 10000
+#           timeout: 10000
+#           writetimeout: 10000
+#   datasource:
+#     url: ${SPRING_DATASOURCE_URL}
+#     username: ${SPRING_DATASOURCE_USERNAME}
+#     password: ${SPRING_DATASOURCE_PASSWORD}
+# dreamspex:
+#   storage:
+#     local-directory: ${DREAMSPEX_STORAGE_DIRECTORY}
+#     homepage-images-directory: ${DREAMSPEX_HOMEPAGE_IMAGES_DIRECTORY}
+#   security:
+#     jwt-issuer: ${DREAMSPEX_JWT_ISSUER}
+#     jwt-secret: ${DREAMSPEX_JWT_SECRET}
+#     otp-secret: ${DREAMSPEX_OTP_SECRET}
+#     delivery-link-encryption-secret: ${DREAMSPEX_DELIVERY_LINK_ENCRYPTION_SECRET}
+#   cors:
+#     allowed-origins: ${DREAMSPEX_CORS_ORIGINS}
+
+# ---
+# spring:
+#   config:
+#     activate:
+#       on-profile: staging
+#   mail:
+#     host: ${MAIL_HOST}
+#     port: ${MAIL_PORT:587}
+#     username: ${MAIL_USERNAME}
+#     password: ${MAIL_PASSWORD}
+#     properties:
+#       mail:
+#         smtp:
+#           auth: true
+#           starttls:
+#             enable: true
+#           connectiontimeout: 10000
+#           timeout: 10000
+#           writetimeout: 10000
+#   datasource:
+#     url: ${SPRING_DATASOURCE_URL}
+#     username: ${SPRING_DATASOURCE_USERNAME}
+#     password: ${SPRING_DATASOURCE_PASSWORD}
+#   flyway:
+#     enabled: true
+#     baseline-on-migrate: false
+# server:
+#   port: ${PORT:8080}
+# dreamspex:
+#   storage:
+#     local-directory: ${DREAMSPEX_STORAGE_DIRECTORY}
+#     homepage-images-directory: ${DREAMSPEX_HOMEPAGE_IMAGES_DIRECTORY}
+#   security:
+#     jwt-issuer: ${DREAMSPEX_JWT_ISSUER}
+#     jwt-secret: ${DREAMSPEX_JWT_SECRET}
+#     otp-secret: ${DREAMSPEX_OTP_SECRET}
+#     delivery-link-encryption-secret: ${DREAMSPEX_DELIVERY_LINK_ENCRYPTION_SECRET}
+#   cors:
+#     allowed-origins: ${DREAMSPEX_CORS_ORIGINS}
+#   payment:
+#     provider: RAZORPAY_TEST
+#     key-id: ${RAZORPAY_KEY_ID:}
+#     key-secret: ${RAZORPAY_KEY_SECRET:}
+#     webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+
 spring:
   application:
     name: dream-spex-api
@@ -127,6 +296,8 @@ spring:
   config:
     activate:
       on-profile: staging
+  jpa:
+    database-platform: org.hibernate.dialect.MariaDBDialect
   mail:
     host: ${MAIL_HOST}
     port: ${MAIL_PORT:587}
@@ -148,8 +319,10 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: false
+
 server:
   port: ${PORT:8080}
+
 dreamspex:
   storage:
     local-directory: ${DREAMSPEX_STORAGE_DIRECTORY}

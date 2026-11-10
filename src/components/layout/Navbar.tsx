@@ -28,7 +28,7 @@ type MegaMenuGroup = { title: string; kind: MegaMenuGroupKind; items: MegaMenuIt
 type MegaMenu = { label: string; groups: MegaMenuGroup[] };
 
 function getProductImage(product: CatalogProduct) {
-  const primaryImage = [...product.images].sort((a, b) => Number(b.primaryImage) - Number(a.primaryImage) || a.sortOrder - b.sortOrder)[0];
+  const primaryImage = [...(product.images ?? [])].sort((a, b) => Number(b.primaryImage) - Number(a.primaryImage) || a.sortOrder - b.sortOrder)[0];
   return resolveCmsMediaUrl(primaryImage?.imageUrl ?? product.tryOnImageUrl);
 }
 

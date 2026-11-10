@@ -56,7 +56,8 @@ export type CatalogProduct = {
   gstEnabled: boolean;
   categories: CatalogCategory[];
   variants: CatalogVariant[];
-  images: CatalogImage[];
+  imageUrl?: string | null;
+  images?: CatalogImage[] | null;
 };
 
 export type CatalogPage = {
@@ -93,7 +94,8 @@ export const catalogService = {
 };
 
 export function toProduct(product: CatalogProduct): Product {
-  const primaryImage = [...product.images].sort((a, b) => Number(b.primaryImage) - Number(a.primaryImage) || a.sortOrder - b.sortOrder)[0];
+  const images = product.images ?? [];
+  const primaryImage = [...images].sort((a, b) => Number(b.primaryImage) - Number(a.primaryImage) || a.sortOrder - b.sortOrder)[0];
   const activeVariants = product.variants.filter((variant) => variant.status.toUpperCase() === 'ACTIVE');
   const available = activeVariants.reduce((total, variant) => total + variant.availableQuantity, 0);
   const firstVariant = activeVariants.find((variant) => variant.availableQuantity > 0);
@@ -111,7 +113,7 @@ export function toProduct(product: CatalogProduct): Product {
     frameType: product.frameType ?? undefined,
     price: Number(product.basePrice),
     oldPrice: product.compareAtPrice == null ? undefined : Number(product.compareAtPrice),
-    image: primaryImage?.imageUrl ?? '',
+    image: primaryImage?.imageUrl ?? product.imageUrl ?? '',
     tryOnImageUrl: product.tryOnImageUrl ?? undefined,
     badge: product.badge ?? undefined,
     rating: 0,

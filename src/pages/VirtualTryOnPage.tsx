@@ -28,7 +28,7 @@ type TryOnProduct = {
 function isEyewearProduct(product: CatalogProduct) {
   const productDetails = `${product.name} ${product.categories.map((category) => category.name).join(' ')}`;
   return product.status.toUpperCase() === 'PUBLISHED'
-    && product.images.some((image) => Boolean(image.imageUrl))
+    && (product.images ?? []).some((image) => Boolean(image.imageUrl))
     && !/contact\s*lenses?/i.test(productDetails)
     && (Boolean(product.frameShape || product.frameType) || /eyewear|eyeglasses|glasses|spectacles|sunglasses|frames?/i.test(productDetails));
 }

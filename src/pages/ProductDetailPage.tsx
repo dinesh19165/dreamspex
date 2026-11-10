@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Glasses, Heart, ShieldCheck, Star, Truck } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Glasses, Heart, ShieldCheck, Star, Truck } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { reviews } from '../data/mockData';
@@ -11,6 +11,7 @@ import { formatINR } from '../utils/currency';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { productGstInformation } from '../utils/gst';
 import { getDiscountPercentage } from '../utils/pricing';
+import { getPrimaryGalleryImageIndex, getProductGalleryImages, getSwipeGalleryIndex } from '../utils/productGallery';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -22,7 +23,9 @@ export default function ProductDetailPage() {
   const [catalogProduct, setCatalogProduct] = useState<CatalogProduct | null>(null);
   const [catalogError, setCatalogError] = useState('');
   const [selectedVariantId, setSelectedVariantId] = useState('');
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const cartTimerRef = useRef<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
   useEffect(() => {
     return () => {
       if (cartTimerRef.current) window.clearTimeout(cartTimerRef.current);
@@ -34,6 +37,7 @@ export default function ProductDetailPage() {
     setCatalogError('');
     catalogService.get(id).then((value) => {
       setCatalogProduct(value);
+      setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(value.images, value.imageUrl ?? '')));
       setSelectedVariantId(value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)?.id ?? '');
     }).catch((reason) => setCatalogError(reason instanceof Error ? reason.message : 'Unable to load this product.'));
   }, [id]);
@@ -42,6 +46,21 @@ export default function ProductDetailPage() {
   if (!product || !catalogProduct) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-[var(--text-secondary)]">Loading product...</p></main><Footer /></div>;
 
   const supportsPrescription = product.category !== 'Contact Lenses';
+  const galleryImages = getProductGalleryImages(catalogProduct.images, product.image);
+  const selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0];
+  const changeImage = (index: number) => {
+    if (!galleryImages.length) return;
+    setSelectedImageIndex((index + galleryImages.length) % galleryImages.length);
+  };
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+  };
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null) return;
+    const deltaX = (event.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+    touchStartX.current = null;
+    changeImage(getSwipeGalleryIndex(selectedImageIndex, galleryImages.length, deltaX));
+  };
   const isWishlisted = isInWishlist(product.id);
   const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
   const unavailable = !selectedVariant
@@ -93,10 +112,28 @@ export default function ProductDetailPage() {
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-10 grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 backdrop-blur-xl sm:p-5">
-            <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-[24px] bg-[var(--bg-secondary)] p-3 sm:p-5 lg:aspect-[4/3]">
-              <img src={product.image} alt={product.name} fetchPriority="high" className="h-full w-full object-contain" />
+            <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[24px] bg-[var(--bg-secondary)] p-3 sm:p-5 lg:aspect-[4/3]"
+              onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+              {selectedImage ? <img src={selectedImage.imageUrl} alt={selectedImage.altText || product.name} fetchPriority="high" className="h-full w-full object-contain" /> : null}
+              {galleryImages.length > 1 ? <>
+                <button type="button" aria-label="Previous product image" onClick={() => changeImage(selectedImageIndex - 1)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white shadow hover:bg-black/75">
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button type="button" aria-label="Next product image" onClick={() => changeImage(selectedImageIndex + 1)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-2 text-white shadow hover:bg-black/75">
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </> : null}
             </div>
-            <p className="mt-3 text-xs text-[var(--text-secondary)]">One product image is available in this sample catalogue.</p>
+            {galleryImages.length > 1 ? <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Product images">
+              {galleryImages.map((image, index) => <button key={image.id} type="button"
+                aria-label={`View product image ${index + 1}`} aria-pressed={index === selectedImageIndex}
+                onClick={() => changeImage(index)}
+                className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-[var(--bg-secondary)] p-1 ${index === selectedImageIndex ? 'border-[var(--brand-green)]' : 'border-[var(--border-subtle)]'}`}>
+                <img src={image.imageUrl} alt="" className="h-full w-full object-contain" />
+              </button>)}
+            </div> : null}
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">

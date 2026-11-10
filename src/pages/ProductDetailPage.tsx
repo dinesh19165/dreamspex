@@ -110,7 +110,8 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid gap-10 grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid items-start gap-10 grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-6">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 backdrop-blur-xl sm:p-5">
             <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[24px] bg-[var(--bg-secondary)] p-3 sm:p-5 lg:aspect-[4/3]"
               onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
@@ -135,6 +136,28 @@ export default function ProductDetailPage() {
               </button>)}
             </div> : null}
           </motion.div>
+          <section className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 backdrop-blur-xl sm:p-8" aria-labelledby="product-specifications">
+            <p id="product-specifications" className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Specifications</p>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {([
+                ['Category', product.category],
+                ...(product.gender ? [['Audience', product.gender]] : []),
+                ...(product.frameShape ? [['Frame shape', product.frameShape]] : []),
+                ...(product.frameType ? [['Frame type', product.frameType]] : []),
+                ['Material', product.material],
+                ['Brand', product.brand],
+                ['Available colours', product.colors.join(', ')],
+                ['Available sizes', product.sizes.join(', ')],
+                ['Availability', product.stock],
+              ] as Array<[string, string]>).map(([label, value]) => (
+                <div key={String(label)} className="rounded-[18px] border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
+                  <p className="text-sm text-[var(--text-secondary)]">{String(label)}</p>
+                  <p className="mt-2 font-semibold text-[var(--text-primary)]">{String(value)}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+          </div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
             <div>
@@ -232,37 +255,13 @@ export default function ProductDetailPage() {
             <p className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)]">
               Delivery availability is calculated at checkout from your saved map location and the nearest configured store. PIN codes are not used to estimate delivery distance.
             </p>
-          </motion.div>
-        </div>
-
-        <div className="mt-16 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 backdrop-blur-xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Specifications</p>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              {([
-                ['Category', product.category],
-                ...(product.gender ? [['Audience', product.gender]] : []),
-                ...(product.frameShape ? [['Frame shape', product.frameShape]] : []),
-                ...(product.frameType ? [['Frame type', product.frameType]] : []),
-                ['Material', product.material],
-                ['Brand', product.brand],
-                ['Available colours', product.colors.join(', ')],
-                ['Available sizes', product.sizes.join(', ')],
-                ['Availability', product.stock],
-              ] as Array<[string, string]>).map(([label, value]) => (
-                <div key={String(label)} className="rounded-[18px] border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
-                  <p className="text-sm text-[var(--text-secondary)]">{String(label)}</p>
-                  <p className="mt-2 font-semibold text-[var(--text-primary)]">{String(value)}</p>
-                </div>
-              ))}
+            <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-8">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Lens selection</p>
+              <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">Make it yours</h2>
+              <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">Review the available lens options and enter your prescription in the guided order flow.</p>
+              {supportsPrescription ? <Link to={`/prescription/${catalogProduct.id}?variantId=${encodeURIComponent(selectedVariantId)}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-[var(--text-secondary)]">Lens selection is not available for this item.</p>}
             </div>
-          </div>
-          <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-8">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Lens selection</p>
-            <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">Make it yours</h2>
-            <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">Review the available lens options and enter your prescription in the guided order flow.</p>
-            {supportsPrescription ? <Link to={`/prescription/${catalogProduct.id}?variantId=${encodeURIComponent(selectedVariantId)}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-[var(--text-secondary)]">Lens selection is not available for this item.</p>}
-          </div>
+          </motion.div>
         </div>
 
         <section className="mt-16 rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 backdrop-blur-xl" aria-labelledby="customer-reviews">

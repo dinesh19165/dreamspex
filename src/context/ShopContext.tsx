@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from 'react';
 import type { LensSelection, Product } from '../types';
 import { couponService, type CouponResult } from '../services/couponService';
-import { getCartItemKey } from '../utils/cart';
+import { getCartItemKey, withoutCartItem } from '../utils/cart';
 import { cartService, type CartResponse } from '../services/cartService';
 import { useAuth } from './useAuth';
 
@@ -42,6 +42,39 @@ type ShopContextValue = {
 
 const ShopContext = createContext<ShopContextValue | undefined>(undefined);
 
+function mapCart(response: CartResponse): CartItem[] {
+  return response.items.map((item, index) => ({
+    id: index + 1,
+    variantId: item.variantId,
+    name: item.productName,
+    category: 'Cart item',
+    price: item.unitPrice - item.lensAdditionalPrice,
+    image: item.imageUrl ?? '',
+    rating: 0,
+    reviews: 0,
+    stock: item.availableQuantity > 0 ? 'In Stock' : 'Out of Stock',
+    description: `SKU: ${item.sku}`,
+    colors: [],
+    sizes: [],
+    material: '',
+    brand: '',
+    quantity: item.quantity,
+    configuredId: item.id,
+    backendItemId: item.id,
+    backendProductId: item.productId,
+    backendVariantId: item.variantId,
+    backendUnitPrice: item.unitPrice,
+    prescriptionId: item.prescriptionId ?? undefined,
+    lensSelection: item.selectedLensCodes.length ? {
+      type: item.selectedLensCodes[0],
+      material: '',
+      coatings: item.selectedLensCodes.slice(1),
+      additionalPrice: item.lensAdditionalPrice,
+      codes: item.selectedLensCodes,
+    } : undefined,
+  }));
+}
+
 export function ShopProvider({ children }: { children: ReactNode }) {
   const { user, role } = useAuth();
   const [wishlist, setWishlist] = useState<Product[]>(() => {
@@ -76,6 +109,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const discount = appliedCoupon?.discount ?? 0;
   const total = subtotal - discount;
   const couponValidationSequence = useRef(0);
+  const pendingCartRemovals = useRef(new Set<string>());
 
   useEffect(() => {
     localStorage.setItem('dream-spex-wishlist', JSON.stringify(wishlist));
@@ -85,41 +119,10 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     if (role !== 'CUSTOMER') localStorage.setItem('dream-spex-cart', JSON.stringify(cart));
   }, [cart, role]);
 
-  const mapCart = (response: CartResponse): CartItem[] => response.items.map((item, index) => ({
-    id: index + 1,
-    variantId: item.variantId,
-    name: item.productName,
-    category: 'Cart item',
-    price: item.unitPrice - item.lensAdditionalPrice,
-    image: item.imageUrl ?? '',
-    rating: 0,
-    reviews: 0,
-    stock: item.availableQuantity > 0 ? 'In Stock' : 'Out of Stock',
-    description: `SKU: ${item.sku}`,
-    colors: [],
-    sizes: [],
-    material: '',
-    brand: '',
-    quantity: item.quantity,
-    configuredId: item.id,
-    backendItemId: item.id,
-    backendProductId: item.productId,
-    backendVariantId: item.variantId,
-    backendUnitPrice: item.unitPrice,
-    prescriptionId: item.prescriptionId ?? undefined,
-    lensSelection: item.selectedLensCodes.length ? {
-      type: item.selectedLensCodes[0],
-      material: '',
-      coatings: item.selectedLensCodes.slice(1),
-      additionalPrice: item.lensAdditionalPrice,
-      codes: item.selectedLensCodes,
-    } : undefined,
-  }));
-
-  const applyCartResponse = (response: CartResponse) => {
+  const applyCartResponse = useCallback((response: CartResponse) => {
     setCart(mapCart(response));
     setBackendSubtotal(response.subtotal);
-  };
+  }, []);
 
   const loadBackendCart = useCallback(async () => {
     if (role !== 'CUSTOMER' || !user?.accessToken) return;
@@ -132,7 +135,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     } finally {
       setCartLoading(false);
     }
-  }, [role, user?.accessToken]);
+  }, [applyCartResponse, role, user?.accessToken]);
 
   useEffect(() => {
     void loadBackendCart();
@@ -181,7 +184,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     } finally {
       setCartLoading(false);
     }
-  }, [role, user?.accessToken]);
+  }, [applyCartResponse, role, user?.accessToken]);
 
   const addToCart = useCallback(async (product: Product, quantity = 1) => {
     if (!product.variantId) throw new Error('This product is not linked to an available backend variant.');
@@ -202,9 +205,42 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const removeFromCart = useCallback(async (itemKey: string) => {
     const item = cart.find((value) => getCartItemKey(value) === itemKey);
     if (!item?.backendItemId) throw new Error('Cart item is not available in the backend cart.');
-    const backendItemId = item.backendItemId;
-    await mutateCart((accessToken) => cartService.remove(accessToken, backendItemId), 'Product removed from cart.');
-  }, [cart, mutateCart]);
+    if (role !== 'CUSTOMER' || !user?.accessToken) throw new Error('Please sign in to use your cart.');
+    if (pendingCartRemovals.current.has(itemKey)) return;
+
+    pendingCartRemovals.current.add(itemKey);
+    const itemIndex = cart.findIndex((value) => getCartItemKey(value) === itemKey);
+    const lineTotal = (item.backendUnitPrice ?? item.price + (item.lensSelection?.additionalPrice ?? 0))
+      * item.quantity;
+    setCartError('');
+    setCartNotice('');
+    setCart((current) => withoutCartItem(current, itemKey));
+    setBackendSubtotal((current) => current === null ? null : Math.max(0, current - lineTotal));
+    setCartLoading(true);
+
+    try {
+      await cartService.remove(user.accessToken, item.backendItemId);
+      setCartNotice('Product removed from cart.');
+      try {
+        applyCartResponse(await cartService.get(user.accessToken));
+      } catch (reason) {
+        setCartError(reason instanceof Error
+          ? `Product removed, but the cart could not be refreshed: ${reason.message}`
+          : 'Product removed, but the cart could not be refreshed.');
+      }
+    } catch (reason) {
+      setCart((current) => current.some((value) => getCartItemKey(value) === itemKey)
+        ? current
+        : [...current.slice(0, itemIndex), item, ...current.slice(itemIndex)]);
+      setBackendSubtotal((current) => current === null ? null : current + lineTotal);
+      const message = reason instanceof Error ? reason.message : 'Unable to remove the product from your cart.';
+      setCartError(message);
+      throw reason;
+    } finally {
+      pendingCartRemovals.current.delete(itemKey);
+      setCartLoading(false);
+    }
+  }, [applyCartResponse, cart, role, user?.accessToken]);
 
   const updateQuantity = useCallback(async (itemKey: string, quantity: number) => {
     const item = cart.find((value) => getCartItemKey(value) === itemKey);

@@ -13,6 +13,7 @@ import GstBreakdown from '../components/ui/GstBreakdown';
 import { addressService } from '../services/addressService';
 import { orderService, type CheckoutQuoteResponse } from '../services/orderService';
 import { toGstBreakdown } from '../utils/gst';
+import ToastNotification from '../components/ui/ToastNotification';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total, cartLoading, cartError, cartNotice } = useShop();
@@ -25,6 +26,14 @@ export default function CartPage() {
   const [cartQuote, setCartQuote] = useState<CheckoutQuoteResponse | null>(null);
   const [cartQuoteLoading, setCartQuoteLoading] = useState(false);
   const [cartQuoteError, setCartQuoteError] = useState('');
+  const [removalToast, setRemovalToast] = useState('');
+
+  useEffect(() => {
+    if (!removalToast) return undefined;
+    const timeout = window.setTimeout(() => setRemovalToast(''), 2800);
+    return () => window.clearTimeout(timeout);
+  }, [removalToast]);
+
   useEffect(() => {
     let active = true;
     setCartQuote(null);
@@ -70,6 +79,7 @@ export default function CartPage() {
   const estimatedMembershipDiscount = !appliedCoupon && membershipDiscountPercentage
     ? subtotal * membershipDiscountPercentage / 100
     : 0;
+  const currentCartQuote = cartQuote?.subtotal === subtotal ? cartQuote : null;
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -78,13 +88,13 @@ export default function CartPage() {
         <SectionTitle eyebrow="Cart" title="Your selected frames" description="Review your order, refine quantities, and continue to checkout." />
         {cartLoading ? <p className="mt-4 text-sm text-[var(--text-secondary)]">Updating your cart...</p> : null}
         {cartError ? <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{cartError}</p> : null}
-        {cartNotice ? <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{cartNotice}</p> : null}
+        {cartNotice && cartNotice !== 'Product removed from cart.' ? <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{cartNotice}</p> : null}
 
         {cart.length === 0 ? (
           <div className="mt-10 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-10 text-center backdrop-blur-xl">
             <p className="text-lg font-semibold text-[var(--text-primary)]">Your bag is empty.</p>
             <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">Choose your favourite frames and they’ll appear here instantly.</p>
-            <Link to="/shop" className="mt-6 inline-flex items-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Browse frames</Link>
+            <Link to="/shop" className="mt-6 inline-flex items-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Continue Shopping</Link>
           </div>
         ) : (
           <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.3fr_0.9fr]">
@@ -99,7 +109,12 @@ export default function CartPage() {
                       <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{item.description}</p>
                       {item.lensSelection ? <p className="mt-3 text-sm text-cyan-200">{item.lensSelection.type} · {item.lensSelection.coatings.length ? item.lensSelection.coatings.join(', ') : 'No coating selected'}</p> : null}
                     </div>
-                    <button onClick={() => void removeFromCart(getCartItemKey(item))} disabled={cartLoading} aria-label={`Remove ${item.name} from cart`} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-3 text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] disabled:opacity-50">
+                    <button onClick={() => {
+                      void removeFromCart(getCartItemKey(item)).then(
+                        () => setRemovalToast(`${item.name} removed from your cart.`),
+                        () => { /* The cart context displays the removal error. */ },
+                      );
+                    }} disabled={cartLoading} aria-label={`Remove ${item.name} from cart`} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-3 text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] disabled:opacity-50">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -131,7 +146,7 @@ export default function CartPage() {
                 </div>
                 <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
                   <p className="text-sm text-[var(--text-secondary)]">Subtotal</p>
-                  <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{formatINR(cartQuote?.subtotal ?? subtotal)}</p>
+                  <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{formatINR(currentCartQuote?.subtotal ?? subtotal)}</p>
                 </div>
                 <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
                   <label htmlFor="cart-coupon" className="text-sm text-[var(--text-secondary)]">Have a coupon code?</label>
@@ -141,14 +156,14 @@ export default function CartPage() {
                   {estimatedMembershipDiscount > 0 ? <p className="mt-3 text-xs text-cyan-200">Estimated membership discount · {formatINR(estimatedMembershipDiscount)}. Final eligibility and total are verified at checkout.</p> : null}
                   {membershipError ? <p className="mt-2 text-xs text-rose-300" role="alert">{membershipError}</p> : null}
                 </div>
-                {(cartQuote?.discount ?? discount) > 0 ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon?.code ?? 'Discount'}</span><span>-{formatINR(cartQuote?.discount ?? discount)}</span></div> : null}
+                {(currentCartQuote?.discount ?? discount) > 0 ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon?.code ?? 'Discount'}</span><span>-{formatINR(currentCartQuote?.discount ?? discount)}</span></div> : null}
                 <div className="border-t border-[var(--border-subtle)] pt-4">
                   {cartQuoteLoading ? <p className="text-xs text-[var(--text-secondary)]" role="status">Loading backend GST quote...</p> : null}
                   {cartQuoteError ? <p className="text-xs text-amber-700" role="status">{cartQuoteError}</p> : null}
-                  <GstBreakdown breakdown={toGstBreakdown(cartQuote?.gstSnapshot)} />
+                  <GstBreakdown breakdown={toGstBreakdown(currentCartQuote?.gstSnapshot)} />
                 </div>
-                {cartQuote ? <div className="flex items-center justify-between text-sm text-[var(--text-secondary)]"><span>Shipping</span><span>{cartQuote.shipping === 0 ? 'FREE' : formatINR(cartQuote.shipping)}</span></div> : null}
-                <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-base font-semibold text-[var(--text-primary)]"><span>{cartQuote ? 'Backend total' : 'Subtotal before shipping'}</span><span>{formatINR(cartQuote?.total ?? total)}</span></div>
+                {currentCartQuote ? <div className="flex items-center justify-between text-sm text-[var(--text-secondary)]"><span>Shipping</span><span>{currentCartQuote.shipping === 0 ? 'FREE' : formatINR(currentCartQuote.shipping)}</span></div> : null}
+                <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-base font-semibold text-[var(--text-primary)]"><span>{currentCartQuote ? 'Backend total' : 'Subtotal before shipping'}</span><span>{formatINR(currentCartQuote?.total ?? total)}</span></div>
                 <p className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 text-sm leading-6 text-[var(--text-secondary)]">Delivery options and payment methods are shown in the demo checkout. No real payment is processed.</p>
               </div>
 
@@ -160,6 +175,7 @@ export default function CartPage() {
           </div>
         )}
       </main>
+      <ToastNotification message={removalToast} visible={Boolean(removalToast)} />
       <Footer />
     </div>
   );

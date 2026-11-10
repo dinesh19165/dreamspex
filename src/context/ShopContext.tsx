@@ -30,6 +30,7 @@ type ShopContextValue = {
   updateQuantity: (itemKey: string, quantity: number) => Promise<void>;
   clearCart: () => void;
   cartLoading: boolean;
+  cartReady: boolean;
   cartError: string;
   cartNotice: string;
   appliedCoupon: CouponResult | null;
@@ -101,6 +102,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     }
   });
   const [cartLoading, setCartLoading] = useState(role === 'CUSTOMER' && Boolean(user?.accessToken));
+  const [cartLoadedToken, setCartLoadedToken] = useState<string | null>(null);
   const [cartError, setCartError] = useState('');
   const [cartNotice, setCartNotice] = useState('');
   const [backendSubtotal, setBackendSubtotal] = useState<number | null>(null);
@@ -108,6 +110,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const subtotal = backendSubtotal ?? cart.reduce((sum, item) => sum + (item.backendUnitPrice ?? item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity, 0);
   const discount = appliedCoupon?.discount ?? 0;
   const total = subtotal - discount;
+  const cartReady = role !== 'CUSTOMER' || !user?.accessToken || cartLoadedToken === user.accessToken;
   const couponValidationSequence = useRef(0);
   const pendingCartRemovals = useRef(new Set<string>());
 
@@ -133,6 +136,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     } catch (reason) {
       setCartError(reason instanceof Error ? reason.message : 'Unable to load your cart.');
     } finally {
+      setCartLoadedToken(user.accessToken);
       setCartLoading(false);
     }
   }, [applyCartResponse, role, user?.accessToken]);
@@ -263,6 +267,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       wishlist,
       cart,
       cartLoading,
+      cartReady,
       cartError,
       cartNotice,
       isInWishlist: (productId: number) => wishlist.some((item) => item.id === productId),
@@ -281,7 +286,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       discount,
       total,
     }),
-    [wishlist, cart, appliedCoupon, subtotal, discount, total, applyCoupon, cartLoading, cartError, cartNotice, addToCart, addConfiguredToCart, removeFromCart, updateQuantity, removeFromWishlist, clearCart, toggleWishlist]
+    [wishlist, cart, appliedCoupon, subtotal, discount, total, applyCoupon, cartLoading, cartReady, cartError, cartNotice, addToCart, addConfiguredToCart, removeFromCart, updateQuantity, removeFromWishlist, clearCart, toggleWishlist]
   );
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

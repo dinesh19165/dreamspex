@@ -8,6 +8,7 @@ import { adminLogin } from '../services/adminProductService';
 import { authService } from '../services/authService';
 import { intendedPath } from '../utils/authNavigation';
 import { getTokenExpiration } from '../utils/authExpiration';
+import { pendingProductActionPath } from '../utils/pendingProductAction';
 
 const CUSTOMER_PROMO = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80';
 
@@ -137,9 +138,11 @@ function FranchisePortalLayout({ children }: { children: React.ReactNode }) {
 function RoleLoginForm({
   kind,
   onSubmit,
+  registerState,
 }: {
   kind: 'customer' | 'franchise' | 'admin';
   onSubmit: (email: string, password: string) => void | Promise<void>;
+  registerState?: unknown;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -223,7 +226,7 @@ function RoleLoginForm({
 
       <div className="flex items-center justify-between gap-3 pt-1 text-sm text-[var(--text-secondary)]">
         <Link to="/" className="font-medium text-[var(--text-secondary)]">Back to Dream Spex</Link>
-        {kind === 'customer' ? <Link to="/register" className="font-medium text-[var(--brand-green-dark)]">Create account</Link> : null}
+        {kind === 'customer' ? <Link to="/register" state={registerState} className="font-medium text-[var(--brand-green-dark)]">Create account</Link> : null}
       </div>
     </form>
   );
@@ -244,6 +247,7 @@ export function CustomerLoginPage() {
     <CustomerPortalLayout>
       <RoleLoginForm
         kind="customer"
+        registerState={location.state}
         onSubmit={async (email, password) => {
           const login = await authService.login({ identifier: email, password });
           setAuthenticated('CUSTOMER', {
@@ -255,7 +259,7 @@ export function CustomerLoginPage() {
             accessTokenExpiresAt: getTokenExpiration(login.accessToken) ?? Date.now() + login.expiresIn * 1000,
             refreshToken: login.refreshToken,
           });
-          navigate(intendedPath(location.state, '/'), { replace: true });
+          navigate(pendingProductActionPath() ?? intendedPath(location.state, '/'), { replace: true });
         }}
       />
     </CustomerPortalLayout>

@@ -8,15 +8,19 @@ import Button from '../components/ui/Button';
 import { useShop } from '../context/ShopContext';
 import { catalogService, toProduct, type CatalogProduct } from '../services/catalogService';
 import { formatINR } from '../utils/currency';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { productGstInformation } from '../utils/gst';
 import { getDiscountPercentage } from '../utils/pricing';
 import { getPrimaryGalleryImageIndex, getProductGalleryImages, getSwipeGalleryIndex } from '../utils/productGallery';
+import { useAuth } from '../context/useAuth';
+import { readPendingProductAction, savePendingProductAction, takePendingProductAction } from '../utils/pendingProductAction';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toggleWishlist, isInWishlist, addToCart, isInCart } = useShop();
+  const location = useLocation();
+  const { role } = useAuth();
+  const { cart, cartLoading: sharedCartLoading, cartReady, toggleWishlist, isInWishlist, addToCart } = useShop();
   const [addedToCart, setAddedToCart] = useState(false);
   const [cartError, setCartError] = useState('');
   const [cartLoading, setCartLoading] = useState(false);
@@ -38,9 +42,44 @@ export default function ProductDetailPage() {
     catalogService.get(id).then((value) => {
       setCatalogProduct(value);
       setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(value.images, value.imageUrl ?? '')));
-      setSelectedVariantId(value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)?.id ?? '');
+      const pendingAction = readPendingProductAction();
+      const pendingVariant = pendingAction?.productId === value.id
+        ? value.variants.find((variant) => variant.id === pendingAction.variantId
+          && variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)
+        : undefined;
+      setSelectedVariantId(pendingVariant?.id
+        ?? value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)?.id
+        ?? '');
     }).catch((reason) => setCatalogError(reason instanceof Error ? reason.message : 'Unable to load this product.'));
   }, [id]);
+
+  useEffect(() => {
+    if (!catalogProduct || role !== 'CUSTOMER' || !cartReady || sharedCartLoading) return;
+    const pendingAction = takePendingProductAction(catalogProduct.id);
+    if (!pendingAction) return;
+
+    const variant = catalogProduct.variants.find((item) => item.id === pendingAction.variantId
+      && item.status.toUpperCase() === 'ACTIVE' && item.availableQuantity >= pendingAction.quantity);
+    if (!variant) {
+      setCartError('The selected product option is no longer available. Please choose another option.');
+      return;
+    }
+
+    setCartLoading(true);
+    setCartError('');
+    const productWithVariant = { ...toProduct(catalogProduct), variantId: variant.id };
+    const alreadyInCart = cart.some((item) => item.backendVariantId === variant.id);
+    void (async () => {
+      try {
+        if (!alreadyInCart) await addToCart(productWithVariant, pendingAction.quantity);
+        navigate(pendingAction.action === 'BUY_NOW' ? '/checkout' : '/cart', { replace: true });
+      } catch (reason) {
+        setCartError(reason instanceof Error ? reason.message : 'Unable to add this product to your cart.');
+      } finally {
+        setCartLoading(false);
+      }
+    })();
+  }, [addToCart, cart, cartReady, catalogProduct, navigate, role, sharedCartLoading]);
   const product = catalogProduct ? toProduct(catalogProduct) : null;
   if (catalogError) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-red-600" role="alert">{catalogError}</p><Link to="/shop" className="mt-6 inline-flex rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold">Back to shop</Link></main><Footer /></div>;
   if (!product || !catalogProduct) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-[var(--text-secondary)]">Loading product...</p></main><Footer /></div>;
@@ -68,9 +107,26 @@ export default function ProductDetailPage() {
     || selectedVariant.availableQuantity < 1;
 
   const productForCart = { ...product, variantId: selectedVariant?.id };
+  const requireCustomer = (action: 'ADD_TO_CART' | 'BUY_NOW') => {
+    if (role === 'CUSTOMER') return false;
+    if (selectedVariant) {
+      savePendingProductAction({
+        productId: catalogProduct.id,
+        variantId: selectedVariant.id,
+        action,
+        quantity: 1,
+        returnPath: location.pathname,
+      });
+    }
+    navigate('/login', {
+      state: { from: { pathname: location.pathname, search: location.search, hash: location.hash } },
+    });
+    return true;
+  };
   const handleBuyNow = async () => {
     if (unavailable) return;
-    if (!isInCart(product.id)) {
+    if (requireCustomer('BUY_NOW')) return;
+    if (!cart.some((item) => item.backendVariantId === selectedVariant?.id)) {
       setCartLoading(true);
       setCartError('');
       try {
@@ -87,7 +143,8 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = async () => {
     if (unavailable) return;
-    if (isInCart(product.id)) return;
+    if (requireCustomer('ADD_TO_CART')) return;
+    if (cart.some((item) => item.backendVariantId === selectedVariant?.id)) return;
     setCartLoading(true);
     setCartError('');
     try {
@@ -218,7 +275,7 @@ export default function ProductDetailPage() {
                 type="button"
                 className={`${actionButtonBase} w-full bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
                 onClick={handleAddToCart}
-                disabled={unavailable || cartLoading}
+                disabled={unavailable || cartLoading || sharedCartLoading}
               >
                 {unavailable ? 'Out of stock' : cartLoading ? 'Adding...' : addedToCart ? 'Added to Cart' : 'Add to Cart'}
               </Button>
@@ -227,7 +284,7 @@ export default function ProductDetailPage() {
                 type="button"
                 className={`${actionButtonBase} w-full bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
                 onClick={handleBuyNow}
-                disabled={unavailable || cartLoading}
+                disabled={unavailable || cartLoading || sharedCartLoading}
               >
                 Buy Now
               </Button>

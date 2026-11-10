@@ -8,6 +8,7 @@ import { authService } from '../services/authService';
 import { useAuth } from '../context/useAuth';
 import { intendedPath } from '../utils/authNavigation';
 import { getTokenExpiration } from '../utils/authExpiration';
+import { pendingProductActionPath } from '../utils/pendingProductAction';
 
 type Mode = 'login' | 'register' | 'forgot';
 type Errors = Record<string, string>;
@@ -100,7 +101,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
           accessTokenExpiresAt: getTokenExpiration(login.accessToken) ?? Date.now() + login.expiresIn * 1000,
           refreshToken: login.refreshToken,
         });
-        navigate(intendedPath(location.state, '/'), { replace: true });
+        navigate(pendingProductActionPath() ?? intendedPath(location.state, '/'), { replace: true });
       } else if (mode === 'register') {
         const registration = await authService.register({
           name: form.name, email: form.email, phone: form.phone, password: form.password,
@@ -124,7 +125,26 @@ export default function AuthPage({ mode }: { mode: Mode }) {
     return <AuthLayout><OtpVerification identifier={maskedIdentifier} onBack={() => setStep('form')}
       onVerified={async (otp) => {
         if (mode === 'forgot') { setResetOtp(otp); setStep('reset'); }
-        else { await authService.verifyOtp(challengeId, otp); setStep('success'); }
+        else {
+          await authService.verifyOtp(challengeId, otp);
+          const resumePath = mode === 'register' ? pendingProductActionPath() : null;
+          if (!resumePath) {
+            setStep('success');
+            return;
+          }
+          try {
+            const login = await authService.login({ identifier: form.email, password: form.password });
+            setAuthenticated('CUSTOMER', {
+              id: login.user.id, name: login.user.displayName, email: login.user.email ?? form.email,
+              role: 'CUSTOMER', accessToken: login.accessToken,
+              accessTokenExpiresAt: getTokenExpiration(login.accessToken) ?? Date.now() + login.expiresIn * 1000,
+              refreshToken: login.refreshToken,
+            });
+            navigate(resumePath, { replace: true });
+          } catch {
+            setStep('success');
+          }
+        }
       }} onResend={async () => { await authService.resendOtp(challengeId); }} /></AuthLayout>;
   }
 
@@ -161,7 +181,12 @@ export default function AuthPage({ mode }: { mode: Mode }) {
       <span className="success-mark">✓</span><span className="auth-step">DREAM SPEX / COMPLETE</span>
       <h1>{mode === 'login' ? 'Welcome back.' : mode === 'forgot' ? 'Password updated successfully' : 'Account created successfully'}</h1>
       <p className="auth-description">{mode === 'login' ? 'Your private eyewear edit is ready.' : mode === 'forgot' ? 'Your password has been reset.' : 'Welcome to Dream Spex.'}</p>
-      <button className="auth-primary" onClick={() => navigate('/login', { replace: true })}>
+      <button className="auth-primary" onClick={() => navigate('/login', {
+        replace: true,
+        state: pendingProductActionPath()
+          ? { from: { pathname: pendingProductActionPath() } }
+          : location.state,
+      })}>
         {mode === 'login' ? 'Continue shopping' : mode === 'forgot' ? 'Back to login' : 'Continue to login'} <ArrowRight size={17} />
       </button>
     </div></AuthLayout>;
@@ -214,7 +239,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
         <button type="button" aria-label="Continue with Apple" className="auth-social"><Apple size={18} /></button></div>
     </> : null}
     <p className="auth-switch">{mode === 'register' ? 'Already have an account?' : 'Don&apos;t have an account?'}
-      {' '}<Link to={mode === 'register' ? '/login' : '/register'}>{mode === 'register' ? 'Sign in' : 'Create account'}</Link>
+      {' '}<Link to={mode === 'register' ? '/login' : '/register'} state={location.state}>{mode === 'register' ? 'Sign in' : 'Create account'}</Link>
     </p>
   </div></AuthLayout>;
 }

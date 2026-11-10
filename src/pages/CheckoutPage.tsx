@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
+import { LoaderCircle, LockKeyhole } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
@@ -334,6 +334,10 @@ export default function CheckoutPage() {
     : null;
   const loyaltyDiscount = currentRedemptionPreview?.discount ?? loyaltyValidation.discount;
   const payableTotal = Math.max(0, baseOrderTotal - loyaltyDiscount);
+  const paymentDisabled = !checkoutQuote?.deliveryAvailability.available || !addressId || paymentLoading
+    || quoteLoading || !selectedLocationIsSaved || Boolean(loyaltyValidation.error)
+    || redemptionPreviewLoading || Boolean(redemptionPreviewError)
+    || (loyaltyValidation.points > 0 && !currentRedemptionPreview);
 
   useEffect(() => {
     const points = parseLoyaltyPointsInput(loyaltyPointsInput);
@@ -479,7 +483,7 @@ export default function CheckoutPage() {
             <Link to="/shop" className="mt-6 inline-flex items-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Continue shopping</Link>
           </div>
         ) : (
-          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="mt-10 grid grid-cols-1 items-start gap-8 lg:grid-cols-[0.95fr_1.05fr]">
             <div className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 backdrop-blur-xl">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -564,20 +568,9 @@ export default function CheckoutPage() {
                           : <p className="mt-2 text-sm text-[var(--text-secondary)]">Save your address and select a valid map location to check delivery availability. PIN codes are not used to estimate distance.</p>}
                 </div>
 
-                {paymentError ? <p className="text-sm text-rose-300" role="alert">{paymentError}</p> : null}
-                {paymentState ? <p className="text-sm text-amber-300" role="status">{paymentState}</p> : null}
-                <button
-                  type="submit"
-                  disabled={!checkoutQuote?.deliveryAvailability.available || !addressId || paymentLoading || quoteLoading || !selectedLocationIsSaved
-                    || Boolean(loyaltyValidation.error) || redemptionPreviewLoading || Boolean(redemptionPreviewError)
-                    || (loyaltyValidation.points > 0 && !currentRedemptionPreview)}
-                  className="w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-4 text-sm font-semibold text-[var(--text-primary)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {paymentLoading ? 'Opening Razorpay...' : 'Pay securely with Razorpay'}
-                </button>
               </form>
             </div>
-            <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-8 text-[var(--text-secondary)]">
+            <div className="h-fit rounded-[32px] border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-6 text-[var(--text-secondary)] sm:p-8">
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Order summary</p>
               <div className="mt-6 grid gap-4">
                 {cart.map((item) => (
@@ -651,7 +644,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between border-t border-[var(--border-subtle)] pt-3 text-lg font-semibold text-[var(--text-primary)]"><span>Total</span><span>{checkoutQuote ? formatINR(payableTotal) : quoteLoading ? 'Calculating...' : '—'}</span></div>
                 {quoteError ? <p className="text-xs text-rose-300" role="alert">{quoteError}</p> : null}
               </div>
-              <div className="mt-6 grid gap-4 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
+              <div className="mt-5 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
                 <label className="text-sm text-[var(--text-secondary)]">
                   <span className="block text-xs uppercase tracking-[0.3em] text-[var(--text-secondary)]">Shipping option</span>
                   <select value={shippingOption} onChange={(event) => setShippingOption(event.target.value)} className="mt-3 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none">
@@ -660,22 +653,34 @@ export default function CheckoutPage() {
                     <option value="priority">Priority member dispatch</option>
                   </select>
                 </label>
-                <label className="text-sm text-[var(--text-secondary)]">
-                  <span className="block text-xs uppercase tracking-[0.3em] text-[var(--text-secondary)]">Payment method</span>
-                  <select className="mt-3 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none">
-                    <option>Credit card</option>
-                    <option>Apple Pay</option>
-                    <option>PayPal</option>
-                  </select>
-                </label>
               </div>
-              <div className="mt-6 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 text-sm text-[var(--text-secondary)]">
-                <div className="flex items-start gap-3">
-                  <ShieldCheck className="mt-1 h-5 w-5 text-cyan-300" />
-                  <p className="text-sm text-[var(--text-secondary)]">Secure checkout with premium order protection.</p>
-                </div>
-              </div>
-              <button type="submit" form="checkout-form" disabled={!checkoutQuote?.deliveryAvailability.available || !addressId || paymentLoading || quoteLoading || !selectedLocationIsSaved} className="mt-4 w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-4 text-sm font-semibold text-[var(--text-primary)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50">{paymentLoading ? 'Opening Razorpay...' : 'Pay securely with Razorpay'}</button>
+              {paymentError ? <p className="mt-4 text-sm text-rose-300" role="alert">{paymentError}</p> : null}
+              {paymentState ? <p className="mt-4 text-sm text-amber-300" role="status">{paymentState}</p> : null}
+              <button
+                type="submit"
+                form="checkout-form"
+                disabled={paymentDisabled}
+                aria-busy={paymentLoading}
+                className="mt-5 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[var(--brand-green)] px-5 py-4 text-base font-semibold text-[var(--text-primary)] shadow-lg shadow-black/10 transition hover:bg-[var(--brand-green-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {paymentLoading ? <>
+                  <LoaderCircle aria-hidden="true" className="h-5 w-5 animate-spin" />
+                  <span role="status">Opening Razorpay…</span>
+                </> : <>
+                  <span>Pay {checkoutQuote ? formatINR(payableTotal) : '—'} Securely</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2 py-1 text-xs font-bold text-[#0b1f3a]" aria-label="Razorpay">
+                    <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4">
+                      <path d="M3 2h7.6L5 18H1.5L7 5H3z" fill="#3395ff" />
+                      <path d="M10.8 2H18L12.5 18H9l3.6-10.4H9.2z" fill="#072654" />
+                    </svg>
+                    <span>Razorpay</span>
+                  </span>
+                </>}
+              </button>
+              <p className="mt-3 flex items-center justify-center gap-2 text-xs text-[var(--text-secondary)]">
+                <LockKeyhole aria-hidden="true" className="h-4 w-4 text-[var(--brand-green)]" />
+                Secure payment powered by Razorpay
+              </p>
             </div>
           </div>
         )}

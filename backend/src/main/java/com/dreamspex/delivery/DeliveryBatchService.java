@@ -1,5 +1,6 @@
 package com.dreamspex.delivery;
 import com.dreamspex.auth.entity.User;
+import com.dreamspex.loyalty.LoyaltyService;
 import com.dreamspex.common.ApiException;
 import com.dreamspex.config.SecurityProperties;
 import com.dreamspex.order.Order;
@@ -27,6 +28,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,7 @@ import static com.dreamspex.delivery.DeliveryBatchDtos.*;
 
 @Service
 public class DeliveryBatchService {
+    @Autowired private LoyaltyService loyaltyService;
     private static final Duration LINK_LIFETIME = Duration.ofHours(72);
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final Set<String> DRIVER_STATUSES =
@@ -80,9 +83,7 @@ public class DeliveryBatchService {
 
     @Transactional(readOnly = true)
     public List<BatchSummary> listBatches() {
-        return batches.findAllByOrderByCreatedAtDesc().stream()
-                .filter(batch -> "NORMAL_DELIVERY".equals(batch.getOperationType()))
-                .map(this::summary).toList();
+        return listBatchesRequiringAttention("NORMAL_DELIVERY");
     }
 
     @Transactional(readOnly = true)
@@ -124,9 +125,7 @@ public class DeliveryBatchService {
     @Transactional(readOnly = true)
     public List<BatchSummary> listReturnBatches(String operationType) {
         validateReturnOperation(operationType);
-        return batches.findAllByOrderByCreatedAtDesc().stream()
-                .filter(batch -> operationType.equals(batch.getOperationType()))
-                .map(this::summary).toList();
+        return listBatchesRequiringAttention(operationType);
     }
 
     @Transactional
@@ -429,6 +428,7 @@ public class DeliveryBatchService {
             throw conflict("ORDER_STATUS_CONFLICT", "The order status no longer matches the delivery operation.");
         }
         order.setStatus(next);
+        if ("DELIVERED".equals(next) && loyaltyService != null) loyaltyService.processDeliveredOrder(order);
         OrderStatusHistory entry = new OrderStatusHistory();
         entry.setOrder(order);
         entry.setStatus(next);
@@ -731,6 +731,14 @@ public class DeliveryBatchService {
         return new BatchSummary(batch.getId(), batch.getRouteName(), status, total, pending, delivered, failed,
                 batch.getCreatedAt(), activeLink == null ? null : activeLink.getExpiresAt(),
                 activeLink != null, summaries, batch.getOperationType(), completed);
+    }
+
+    private List<BatchSummary> listBatchesRequiringAttention(String operationType) {
+        return batches.findAllByOrderByCreatedAtDesc().stream()
+                .filter(batch -> operationType.equals(batch.getOperationType()))
+                .map(this::summary)
+                .filter(batch -> batch.pending() > 0 || batch.failed() > 0)
+                .toList();
     }
 
     private DriverBatch driverBatch(DeliveryBatch batch, List<DriverOrder> driverOrders) {

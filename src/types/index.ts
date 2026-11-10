@@ -2,6 +2,9 @@ export interface Product {
   id: number;
   backendId?: string;
   variantId?: string;
+  hsnCode?: string | null;
+  gstRate?: number | null;
+  gstEnabled?: boolean;
   name: string;
   category: string;
   gender?: string;

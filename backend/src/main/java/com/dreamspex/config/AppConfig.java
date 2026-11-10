@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import com.dreamspex.payment.PaymentProperties;
 
 @Configuration
-@EnableConfigurationProperties({SecurityProperties.class, CorsProperties.class, PaymentProperties.class, ShippingProperties.class})
+@EnableConfigurationProperties({SecurityProperties.class, CorsProperties.class, PaymentProperties.class,
+        ShippingProperties.class})
 public class AppConfig {
 }

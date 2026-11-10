@@ -71,7 +71,7 @@ These endpoints are implemented by the delivery batch module. Batch creation is 
 | Method and endpoint | Role / access | Purpose |
 |---|---|---|
 | `GET /admin/delivery/batches/eligible-orders?postalCode=&city=&includeAssigned=` | `SUPER_ADMIN` | List paid, processing orders; filter by postal code/city. Assigned orders are included only when explicitly requested for reassignment. |
-| `GET /admin/delivery/batches` | `SUPER_ADMIN` | List route batches with total, pending, delivered, and failed counts. |
+| `GET /admin/delivery/batches` | `SUPER_ADMIN` | List only route batches with pending or failed orders requiring attention, with total, pending, delivered, and failed counts. Completed batch records remain available in database history. |
 | `GET /admin/delivery/batches/{id}` | `SUPER_ADMIN` | View every batch order, customer/address details, delivery status history, and link availability without changing the batch. |
 | `GET /admin/delivery/batches/{id}/active-link` | `SUPER_ADMIN` | Retrieve the existing link only while it is active and recoverable; does not create or rotate a link or OTP. |
 | `POST /admin/delivery/batches` | `SUPER_ADMIN` | Create a same-route batch; request `{ "routeName":"Madhapur route","orderIds":["..."],"reassignActiveOrders":false }`. Returns one link and one unique OTP per order. |
@@ -80,7 +80,7 @@ These endpoints are implemented by the delivery batch module. Batch creation is 
 | `POST /admin/delivery/batches/{id}/link/revoke` | `SUPER_ADMIN` | Revoke current links without closing the batch; a new link may be generated later. |
 | `POST /admin/delivery/batches/{id}/revoke` | `SUPER_ADMIN` | Close the batch and revoke its links. |
 | `GET /admin/returns/delivery-batches/{operationType}/eligible-requests?city=&state=&postalCode=` | `SUPER_ADMIN` | List unassigned approved/pickup-scheduled return requests or replacement requests in `REPLACEMENT_PROCESSING`, filtered by route. Types: `RETURN_PICKUP`, `REPLACEMENT_DELIVERY`. |
-| `GET /admin/returns/delivery-batches/{operationType}` | `SUPER_ADMIN` | List pickup or replacement delivery batches with independent request statuses and counts. |
+| `GET /admin/returns/delivery-batches/{operationType}` | `SUPER_ADMIN` | List only pickup or replacement delivery batches with pending or failed requests requiring attention, with independent request statuses and counts. Completed batch records remain available in database history. |
 | `POST /admin/returns/delivery-batches/{operationType}` | `SUPER_ADMIN` | Create one same-route batch for selected request IDs; returns one link and one unique OTP per request. |
 | `GET /admin/returns/delivery-batches/{operationType}/{id}` | `SUPER_ADMIN` | View linked requests and combined request/delivery status histories without changing delivery links or OTPs. |
 | `GET /admin/returns/delivery-batches/{operationType}/{id}/active-link` | `SUPER_ADMIN` | Retrieve the current recoverable link without rotation. |

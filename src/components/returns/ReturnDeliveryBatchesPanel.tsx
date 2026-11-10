@@ -83,6 +83,23 @@ function ReturnDeliveryBatchSection({
     });
   }, [loadBatches, loadEligible, title]);
 
+  useEffect(() => {
+    const refreshBatches = () => {
+      if (document.visibilityState !== 'visible') return;
+      void loadBatches().catch((reason: unknown) => {
+        setError(reason instanceof Error ? reason.message : `Unable to refresh ${title.toLowerCase()}.`);
+      });
+    };
+    const interval = window.setInterval(refreshBatches, 5000);
+    window.addEventListener('focus', refreshBatches);
+    document.addEventListener('visibilitychange', refreshBatches);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshBatches);
+      document.removeEventListener('visibilitychange', refreshBatches);
+    };
+  }, [loadBatches, title]);
+
   const createBatch = async () => {
     if (!routeName.trim() || !selectedIds.length) {
       setError('Enter a route name and select at least one eligible request.');
@@ -220,7 +237,7 @@ function ReturnDeliveryBatchSection({
     </div> : <p className="mt-3 rounded-xl bg-[var(--bg-primary)] p-4 text-sm text-[var(--text-secondary)]">No eligible requests match these route filters.</p>}
 
     <h3 className="mt-6 font-semibold">Existing batches</h3>
-    {!batches.length ? <p className="mt-2 text-sm text-[var(--text-secondary)]">No batches yet.</p> : <div className="mt-3 grid gap-3 lg:grid-cols-2">{batches.map((batch) => <article key={batch.id} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
+    {!batches.length ? <p className="mt-2 text-sm text-[var(--text-secondary)]">No batches need admin attention.</p> : <div className="mt-3 grid gap-3 lg:grid-cols-2">{batches.map((batch) => <article key={batch.id} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
       <div className="flex items-start justify-between gap-2"><div><p className="font-semibold">{batch.routeName}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">{batch.status} · {batch.linkExpiresAt ? `Link expires ${new Date(batch.linkExpiresAt).toLocaleString('en-IN')}` : 'No active link'}</p></div></div>
       <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs"><span>Total<strong className="mt-1 block text-base">{batch.total}</strong></span><span>Pending<strong className="mt-1 block text-base">{batch.pending}</strong></span><span>Completed<strong className="mt-1 block text-base">{batch.completed}</strong></span><span>Failed<strong className="mt-1 block text-base">{batch.failed}</strong></span></div>
       <div className="mt-3 flex flex-wrap gap-2"><Button type="button" className="px-3 py-2 text-xs" onClick={() => void openBatch(batch.id)}><PackageOpen className="mr-1 h-3 w-3" />View Batch</Button>

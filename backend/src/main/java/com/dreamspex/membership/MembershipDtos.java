@@ -58,12 +58,17 @@ public final class MembershipDtos {
             String customerId,
             String customerName,
             String customerEmail,
+            String customerPhone,
             String planId,
             String planName,
+            BigDecimal planPrice,
+            BigDecimal discountPercentage,
             String status,
             Instant purchasedAt,
             Instant startsAt,
-            Instant expiresAt) {}
+            Instant expiresAt,
+            String paymentStatus,
+            String paymentReference) {}
 
     public record AdminMembershipPaymentResponse(
             String id,

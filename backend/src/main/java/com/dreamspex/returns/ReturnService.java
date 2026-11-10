@@ -20,7 +20,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -36,6 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ReturnService {
+    private static final ZoneId REPORT_ZONE = ZoneId.of("Asia/Kolkata");
     private static final BigDecimal ZERO = new BigDecimal("0.00");
     private static final Set<String> TERMINAL_REQUESTS = Set.of("REJECTED", "CANCELLED");
     private static final Map<String, Set<String>> TRANSITIONS = Map.of(
@@ -316,8 +317,8 @@ public class ReturnService {
     public List<AdminReturnResponse> adminList(String status, LocalDate from, LocalDate to, String orderId) {
         return requests.findAllByOrderByCreatedAtDesc().stream()
                 .filter(request -> status == null || status.isBlank() || request.getStatus().equals(status))
-                .filter(request -> from == null || !request.getCreatedAt().isBefore(from.atStartOfDay().toInstant(ZoneOffset.UTC)))
-                .filter(request -> to == null || request.getCreatedAt().isBefore(to.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC)))
+                .filter(request -> from == null || !request.getCreatedAt().isBefore(from.atStartOfDay(REPORT_ZONE).toInstant()))
+                .filter(request -> to == null || request.getCreatedAt().isBefore(to.plusDays(1).atStartOfDay(REPORT_ZONE).toInstant()))
                 .filter(request -> orderId == null || orderId.isBlank()
                         || request.getOrder().getId().equals(orderId)
                         || request.getOrder().getOrderNumber().equalsIgnoreCase(orderId))

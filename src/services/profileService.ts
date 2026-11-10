@@ -11,6 +11,10 @@ export type CustomerProfile = {
   dateOfBirth: string | null;
   gender: string | null;
   marketingOptIn: boolean;
+  whatsappMarketingOptIn: boolean;
+  whatsappMarketingOptOut: boolean;
+  whatsappConsentAt: string | null;
+  whatsappConsentSource: string | null;
   roles: string[];
 };
 
@@ -37,8 +41,8 @@ type ProblemResponse = {
   fieldErrors?: Array<{ field: string; message: string }>;
 };
 
-async function request<T>(accessToken: string, init: RequestInit = {}) {
-  const response = await fetch(`${apiBaseUrl}/api/v1/me`, {
+async function request<T>(accessToken: string, init: RequestInit = {}, path = '/api/v1/me') {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -58,4 +62,9 @@ export const profileService = {
   get: (accessToken: string) => request<CustomerProfile>(accessToken),
   update: (accessToken: string, profile: CustomerProfileUpdate) =>
     request<CustomerProfile>(accessToken, { method: 'PATCH', body: JSON.stringify(profile) }),
+  updateWhatsappMarketingConsent: (accessToken: string, optedIn: boolean) =>
+    request<CustomerProfile>(accessToken, {
+      method: 'PATCH',
+      body: JSON.stringify({ optedIn }),
+    }, '/api/v1/me/marketing/whatsapp-consent'),
 };

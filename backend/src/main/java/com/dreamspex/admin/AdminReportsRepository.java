@@ -43,6 +43,10 @@ public class AdminReportsRepository {
                        SUM(CASE WHEN status = 'PENDING_PAYMENT' THEN 1 ELSE 0 END) AS pending,
                        SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
                        SUM(CASE WHEN status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered,
+                       COALESCE(SUM(CASE WHEN payment_status = 'PAID' AND status <> 'CANCELLED' THEN discount_amount ELSE 0 END), 0) AS discounts,
+                       COALESCE(SUM(CASE WHEN payment_status = 'PAID' AND status <> 'CANCELLED'
+                           THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(gst_snapshot, '$.gstAmount')) AS DECIMAL(12,2))
+                           ELSE 0 END), 0) AS gst_collected,
                        COALESCE(AVG(CASE WHEN payment_status = 'PAID' AND status <> 'CANCELLED' THEN total_amount END), 0) AS average_order_value
                 FROM orders
                 WHERE created_at >= ? AND created_at < ?
@@ -169,6 +173,7 @@ public class AdminReportsRepository {
     public Map<String, Object> returnSummary(LocalDate start, LocalDate end) {
         return jdbc.queryForMap("""
                 SELECT COUNT(*) AS total,
+                       SUM(CASE WHEN status = 'REQUESTED' THEN 1 ELSE 0 END) AS pending,
                        SUM(CASE WHEN status IN ('APPROVED', 'PICKUP_SCHEDULED', 'PICKED_UP', 'RECEIVED',
                            'QUALITY_CHECK', 'REPLACEMENT_PROCESSING', 'REPLACED', 'REFUND_PROCESSING', 'REFUNDED')
                            THEN 1 ELSE 0 END) AS approved,
@@ -176,6 +181,43 @@ public class AdminReportsRepository {
                 FROM return_requests
                 WHERE created_at >= ? AND created_at < ?
                 """, timestamp(start), timestamp(end.plusDays(1)));
+    }
+
+    public BigDecimal pendingRefundAmount(LocalDate start, LocalDate end) {
+        return decimal(jdbc.queryForObject("""
+                SELECT COALESCE(SUM(amount), 0)
+                FROM return_refund_transactions
+                WHERE status IN ('CREATED', 'PENDING', 'SUBMITTING', 'PROCESSING')
+                  AND created_at >= ? AND created_at < ?
+                """, BigDecimal.class, timestamp(start), timestamp(end.plusDays(1))));
+    }
+
+    public AdminReportsDtos.Memberships membershipSummary(LocalDate start, LocalDate end) {
+        Map<String, Object> totals = jdbc.queryForMap("""
+                SELECT SUM(CASE WHEN status = 'ACTIVE' AND starts_at <= CURRENT_TIMESTAMP AND expires_at > CURRENT_TIMESTAMP THEN 1 ELSE 0 END) AS active,
+                       SUM(CASE WHEN status = 'EXPIRED' OR expires_at <= CURRENT_TIMESTAMP THEN 1 ELSE 0 END) AS expired
+                FROM memberships
+                WHERE created_at >= ? AND created_at < ?
+                """, timestamp(start), timestamp(end.plusDays(1)));
+        BigDecimal revenue = decimal(jdbc.queryForObject("""
+                SELECT COALESCE(SUM(amount), 0)
+                FROM membership_payments
+                WHERE status = 'CAPTURED' AND created_at >= ? AND created_at < ?
+                """, BigDecimal.class, timestamp(start), timestamp(end.plusDays(1))));
+        List<AdminReportsDtos.PlanMembershipCount> plans = jdbc.query("""
+                SELECT p.name, COUNT(m.id)
+                FROM memberships m
+                JOIN membership_plans p ON p.id = m.plan_id
+                WHERE m.created_at >= ? AND m.created_at < ?
+                GROUP BY p.id, p.name
+                ORDER BY COUNT(m.id) DESC, p.name
+                """, (rs, row) -> new AdminReportsDtos.PlanMembershipCount(rs.getString(1), rs.getLong(2)),
+                timestamp(start), timestamp(end.plusDays(1)));
+        return new AdminReportsDtos.Memberships(
+                number(totals, "active"),
+                number(totals, "expired"),
+                revenue,
+                plans);
     }
 
     public long processedRefundCount(LocalDate start, LocalDate end) {
@@ -200,5 +242,10 @@ public class AdminReportsRepository {
 
     private static BigDecimal decimal(BigDecimal value) {
         return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private static long number(Map<String, Object> values, String key) {
+        Object value = values.get(key);
+        return value instanceof Number number ? number.longValue() : 0;
     }
 }

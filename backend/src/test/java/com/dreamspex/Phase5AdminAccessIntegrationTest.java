@@ -33,11 +33,26 @@ class Phase5AdminAccessIntegrationTest {
         mockMvc.perform(get("/api/v1/admin/dashboard").with(customer)).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/admin/customers").with(customer)).andExpect(status().isForbidden());
         mockMvc.perform(get("/api/v1/admin/audit-logs").with(customer)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/admin/gst/settings").with(customer)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/admin/gst/history").with(customer)).andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                        "/api/v1/admin/gst/settings").with(customer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"defaultRate":18,"priceTreatment":"INCLUSIVE","enabled":true}
+                        """)).andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                        "/api/v1/admin/products/{id}/gst", "product-id").with(customer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"hsnCode":"9004","useGlobalRate":true,"gstEnabled":true}
+                        """)).andExpect(status().isForbidden());
     }
 
     @Test
     void anonymousCannotAccessPhase5AdminOperations() throws Exception {
         mockMvc.perform(get("/api/v1/admin/dashboard")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/admin/gst/settings")).andExpect(status().isUnauthorized());
     }
 
     @Test

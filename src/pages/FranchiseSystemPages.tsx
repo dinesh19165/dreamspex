@@ -5,11 +5,14 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { useAuth } from '../context/useAuth';
 import Button from '../components/ui/Button';
 import { adminSalesOverview, franchiseOrders, franchiseProducts, franchiseRegistrations, franchises, franchiseStats, franchiseUsers, topProducts } from '../data/franchiseData';
-import { adminProductService, type AdminCategory, type AdminProduct, type AdminProductRequest } from '../services/adminProductService';
-import { AdminApiError, adminService, type AdminReport, type AdminSettings, type AdminStore, type AdminStoreRequest } from '../services/adminService';
+import { adminProductService, type AdminCategory, type AdminProduct, type AdminProductGstRequest, type AdminProductRequest } from '../services/adminProductService';
+import { AdminApiError, adminService, type AdminGstHistoryEntry, type AdminGstSettings, type AdminReport, type AdminSettings, type AdminStore, type AdminStoreRequest } from '../services/adminService';
 import { resolveCmsMediaUrl } from '../config/api';
 import CustomerLocationPicker from '../components/addresses/CustomerLocationPicker';
 import { isValidCoordinates, type Coordinates } from '../utils/deliveryNavigation';
+import { isValidGstRate } from '../utils/gst';
+import AdminDateRangeFilter from '../components/ui/AdminDateRangeFilter';
+import { downloadReportExcel, downloadReportPdf, printReport, type AdminReportDocument } from '../utils/adminReportExport';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -40,13 +43,16 @@ function getDefaultNavigationGroups(role: 'SUPER_ADMIN' | 'FRANCHISE_ADMIN' | 'C
       { label: 'Growth', items: [
         { label: 'Offers', href: '/admin/offers', icon: CircleDollarSign },
         { label: 'Membership', href: '/admin/membership', icon: CheckCircle2 },
+        { label: 'Loyalty & referral reports', href: '/admin/loyalty', icon: CircleDollarSign },
+        { label: 'Loyalty settings', href: '/admin/loyalty-settings', icon: Settings },
         { label: 'Customers', href: '/admin/customers', icon: Users },
-        { label: 'Homepage', href: '/admin/content', icon: PanelsTopLeft },
+      { label: 'Homepage', href: '/admin/content', icon: PanelsTopLeft },
       ] },
       { label: 'Organization', items: [
         { label: 'Franchises', href: '/admin/franchises', icon: Building2 },
         { label: 'Users', href: '/admin/users', icon: UserRound },
         { label: 'Settings', href: '/admin/settings', icon: Settings },
+        { label: 'GST Settings', href: '/admin/settings/gst', icon: CircleDollarSign },
       ] },
     ];
   }
@@ -227,10 +233,10 @@ export function DashboardShell({
 
 export function SuperAdminInventoryPage() {
   const { user } = useAuth();
-  const [searchParams] = useSearchParams();
-  const lowStockOnly = searchParams.get('filter') === 'low-stock';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const stockFilter = searchParams.get('filter') ?? '';
   const [products, setProducts] = useState<AdminProduct[]>([]);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -248,20 +254,37 @@ export function SuperAdminInventoryPage() {
   }, [user?.accessToken]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => { setQuery(searchParams.get('q') ?? ''); }, [searchParams]);
 
   const stockItems = products.flatMap((product) => product.variants.map((variant) => {
     const available = variant.availableQuantity ?? Math.max(0, variant.quantity - (variant.reservedQuantity ?? 0));
     return { product, variant, available };
   }));
-  const filteredItems = stockItems.filter(({ product, variant }) => {
+  const filteredItems = stockItems.filter(({ product, variant, available }) => {
     const normalizedQuery = query.trim().toLowerCase();
-    return !normalizedQuery
+    const matchesQuery = !normalizedQuery
       || product.name.toLowerCase().includes(normalizedQuery)
       || product.sku.toLowerCase().includes(normalizedQuery)
       || variant.sku.toLowerCase().includes(normalizedQuery);
-  }).filter(({ available }) => !lowStockOnly || (available > 0 && available <= 5));
+    const matchesStock = stockFilter === 'low-stock'
+      ? available > 0 && available <= 5
+      : stockFilter === 'out-of-stock'
+        ? available === 0
+        : stockFilter === 'available'
+          ? available > 0
+          : true;
+    return matchesQuery && matchesStock;
+  });
   const lowStockCount = stockItems.filter(({ available }) => available > 0 && available <= 5).length;
+  const outOfStockCount = stockItems.filter(({ available }) => available === 0).length;
   const totalAvailable = stockItems.reduce((sum, item) => sum + item.available, 0);
+  const lowStockOnly = stockFilter === 'low-stock';
+  const updateInventoryFilter = (filter: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (filter) next.set('filter', filter);
+    else next.delete('filter');
+    setSearchParams(next);
+  };
 
   return (
     <DashboardShell>
@@ -270,28 +293,31 @@ export function SuperAdminInventoryPage() {
         <p className="text-sm text-[var(--text-secondary)]">Inventory figures are based on current product variant stock.</p>
         <Button type="button" variant="secondary" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Refresh inventory</Button>
       </div>
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {[
-          { label: 'Products', value: products.length },
-          { label: 'Tracked variants', value: stockItems.length },
-          { label: 'Available units', value: totalAvailable },
-        ].map((metric) => <div key={metric.label} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+          { label: 'Products', value: products.length, to: '/admin/products' },
+          { label: 'Tracked variants', value: stockItems.length, to: '/admin/inventory' },
+          { label: 'Available units', value: totalAvailable, filter: 'available' },
+          { label: 'Low-stock variants', value: lowStockCount, filter: 'low-stock' },
+          { label: 'Out of stock', value: outOfStockCount, filter: 'out-of-stock' },
+        ].map((metric) => <Link key={metric.label} to={metric.to ?? `/admin/inventory?filter=${metric.filter}`} className="group rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--brand-green)]/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]">
           <p className="text-xs font-medium text-[var(--text-secondary)]">{metric.label}</p>
           <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">{metric.value.toLocaleString('en-IN')}</p>
-        </div>)}
+          <span className="mt-2 block text-[11px] font-medium text-[var(--brand-green-dark)]">View details →</span>
+        </Link>)}
       </div>
       {error ? <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert"><span>{error}</span><button type="button" onClick={() => void load()} className="font-semibold underline">Try again</button></div> : null}
       <section className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]" aria-label="Product inventory">
         <div className="flex flex-col gap-3 border-b border-[var(--border-subtle)] p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div><h2 className="font-semibold">Stock by variant</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{lowStockOnly ? `Showing ${filteredItems.length} low-stock variants` : `${lowStockCount} variants have 1–5 available units`}</p></div>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search products or SKUs" aria-label="Search inventory" className="h-10 w-full rounded-lg border border-[var(--border-subtle)] bg-white px-3 text-sm sm:max-w-xs" />
+          <div><h2 className="font-semibold">Stock by variant</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">{stockFilter ? `Showing ${filteredItems.length} ${stockFilter === 'low-stock' ? 'low-stock' : stockFilter === 'out-of-stock' ? 'out-of-stock' : 'available'} variants` : `${lowStockCount} variants have 1–5 available units`}</p></div>
+          <div className="flex w-full gap-2 sm:max-w-md"><input value={query} onChange={(event) => { setQuery(event.target.value); const next = new URLSearchParams(searchParams); if (event.target.value) next.set('q', event.target.value); else next.delete('q'); setSearchParams(next, { replace: true }); }} placeholder="Search products or SKUs" aria-label="Search inventory" className="h-10 min-w-0 flex-1 rounded-lg border border-[var(--border-subtle)] bg-white px-3 text-sm" />{stockFilter ? <button type="button" onClick={() => updateInventoryFilter('')} className="rounded-lg border border-[var(--border-subtle)] px-3 text-xs">Clear filter</button> : null}</div>
         </div>
         {loading ? <p className="p-6 text-sm text-[var(--text-secondary)]" role="status">Loading inventory…</p>
           : filteredItems.length ? <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead><tr>{['Product', 'Product SKU', 'Variant', 'Status', 'Available', 'Reserved'].map((label) => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead>
               <tbody>{filteredItems.map(({ product, variant, available }) => <tr key={variant.id ?? variant.sku} className="border-t border-[var(--border-subtle)]">
-                <td className="px-4 py-3 font-medium">{product.name}</td>
+                <td className="px-4 py-3 font-medium"><Link to={`/admin/products?productId=${encodeURIComponent(product.id)}`} className="underline-offset-2 hover:underline">{product.name}</Link></td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{product.sku}</td>
                 <td className="px-4 py-3">{variant.sku}</td>
                 <td className="px-4 py-3"><StatusBadge status={available === 0 ? 'Out of Stock' : available <= 5 ? 'Low Stock' : variant.status} /></td>
@@ -1172,6 +1198,7 @@ export function SuperAdminOrdersPage() {
 
 export function SuperAdminProductsPage() {
   const { user, refreshSession } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [returnabilityByProductId, setReturnabilityByProductId] = useState<Record<string, boolean>>({});
@@ -1182,9 +1209,9 @@ export function SuperAdminProductsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [productQuery, setProductQuery] = useState('');
-  const [productStatus, setProductStatus] = useState('ALL');
-  const [productCategory, setProductCategory] = useState('ALL');
+  const [productQuery, setProductQuery] = useState(() => searchParams.get('q') ?? '');
+  const [productStatus, setProductStatus] = useState(() => searchParams.get('status') ?? 'ALL');
+  const [productCategory, setProductCategory] = useState(() => searchParams.get('categoryId') ?? 'ALL');
   const [productPage, setProductPage] = useState(0);
 
   const refresh = async () => {
@@ -1210,9 +1237,22 @@ export function SuperAdminProductsPage() {
     void refresh();
   }, []);
 
+  useEffect(() => {
+    setProductQuery(searchParams.get('q') ?? '');
+    setProductStatus(searchParams.get('status') ?? 'ALL');
+    setProductCategory(searchParams.get('categoryId') ?? 'ALL');
+    setProductPage(0);
+    const productId = searchParams.get('productId');
+    const product = productId ? products.find((item) => item.id === productId) : undefined;
+    if (product) {
+      setSelected(product);
+      setEditorOpen(true);
+    }
+  }, [products, searchParams]);
+
   const filteredProducts = useMemo(() => products.filter((product) => {
     const query = productQuery.trim().toLowerCase();
-    const matchesQuery = !query || product.name.toLowerCase().includes(query) || product.sku.toLowerCase().includes(query) || product.brand.toLowerCase().includes(query);
+    const matchesQuery = !query || product.name.toLowerCase().includes(query) || product.sku.toLowerCase().includes(query) || product.brand.toLowerCase().includes(query) || product.categories.some((category) => category.name.toLowerCase().includes(query));
     const matchesStatus = productStatus === 'ALL' || product.status === productStatus;
     const matchesCategory = productCategory === 'ALL' || product.categories.some((category) => category.id === productCategory);
     return matchesQuery && matchesStatus && matchesCategory;
@@ -1220,6 +1260,26 @@ export function SuperAdminProductsPage() {
   const productsPerPage = 9;
   const pagedProducts = filteredProducts.slice(productPage * productsPerPage, (productPage + 1) * productsPerPage);
   const productPageCount = Math.max(1, Math.ceil(filteredProducts.length / productsPerPage));
+  const updateProductFilters = (updates: Record<string, string>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => value && value !== 'ALL' ? next.set(key, value) : next.delete(key));
+    setSearchParams(next, { replace: true });
+  };
+  const openProductEditor = (product: AdminProduct | null) => {
+    setSelected(product);
+    setEditorOpen(true);
+    const next = new URLSearchParams(searchParams);
+    if (product) next.set('productId', product.id);
+    else next.delete('productId');
+    setSearchParams(next);
+  };
+  const closeProductEditor = () => {
+    setSelected(null);
+    setEditorOpen(false);
+    const next = new URLSearchParams(searchParams);
+    next.delete('productId');
+    setSearchParams(next, { replace: true });
+  };
 
   const storedMediaPath = (upload: { url: string; storageKey: string }) => ({
     ...upload,
@@ -1238,7 +1298,7 @@ export function SuperAdminProductsPage() {
     }
   };
 
-  const save = async (request: AdminProductRequest, returnable: boolean) => {
+  const save = async (request: AdminProductRequest, gst: AdminProductGstRequest, returnable: boolean) => {
     setError('');
     setNotice('');
     setSaving(true);
@@ -1247,6 +1307,13 @@ export function SuperAdminProductsPage() {
         ? await adminProductService.update(selected.id, request)
         : await adminProductService.create(request);
       setSelected(savedProduct);
+      try {
+        await adminProductService.updateGst(savedProduct.id, gst);
+      } catch (reason) {
+        await refresh();
+        setError(`Product was saved, but its GST classification could not be updated: ${reason instanceof Error ? reason.message : 'Please try again.'}`);
+        return;
+      }
       try {
         await adminProductService.setReturnable(savedProduct.id, returnable);
       } catch (reason) {
@@ -1258,6 +1325,9 @@ export function SuperAdminProductsPage() {
       setNotice(selected ? 'Product and return setting updated successfully.' : 'Product created successfully.');
       setSelected(null);
       setEditorOpen(false);
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('productId');
+      setSearchParams(nextParams, { replace: true });
       await refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to save product.');
@@ -1289,6 +1359,9 @@ export function SuperAdminProductsPage() {
       if (selected?.id === product.id) {
         setSelected(null);
         setEditorOpen(false);
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete('productId');
+        setSearchParams(nextParams, { replace: true });
       }
       await refresh();
     } catch (reason) {
@@ -1310,20 +1383,31 @@ export function SuperAdminProductsPage() {
           categories={categories}
           saving={saving}
           onUploadTryOnImage={uploadTryOnImage}
-          onCancel={() => { setSelected(null); setEditorOpen(false); }}
+          onCancel={closeProductEditor}
           onSave={save}
         />
       ) : null}
       <div className="mb-5 flex justify-end">
-        <Button onClick={() => { setSelected(null); setEditorOpen(true); }}>Create Product</Button>
+        <Button onClick={() => openProductEditor(null)}>Create Product</Button>
+      </div>
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {[
+          { label: 'Total products', count: products.length, status: 'ALL' },
+          { label: 'Published', count: products.filter((product) => product.status === 'PUBLISHED').length, status: 'PUBLISHED' },
+          { label: 'Draft', count: products.filter((product) => product.status === 'DRAFT').length, status: 'DRAFT' },
+          { label: 'Inactive', count: products.filter((product) => product.status === 'INACTIVE').length, status: 'INACTIVE' },
+          { label: 'Categories', count: categories.length, href: '/admin/categories' },
+        ].map((metric) => <Link key={metric.label} to={metric.href ?? `/admin/products${metric.status === 'ALL' ? '' : `?status=${metric.status}`}`} className="group rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--brand-green)]/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]">
+          <p className="text-xs font-medium text-[var(--text-secondary)]">{metric.label}</p><p className="mt-2 text-2xl font-semibold">{metric.count.toLocaleString('en-IN')}</p><span className="mt-2 block text-[11px] font-medium text-[var(--brand-green-dark)]">View details →</span>
+        </Link>)}
       </div>
       <div className="mb-5 flex flex-wrap gap-3 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
-        <input value={productQuery} onChange={(event) => { setProductQuery(event.target.value); setProductPage(0); }} placeholder="Search name, SKU or brand" className="min-w-[220px] flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" />
-        <select value={productStatus} onChange={(event) => { setProductStatus(event.target.value); setProductPage(0); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
+        <input value={productQuery} onChange={(event) => { setProductQuery(event.target.value); setProductPage(0); updateProductFilters({ q: event.target.value }); }} placeholder="Search name, SKU or brand" className="min-w-[220px] flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" />
+        <select value={productStatus} onChange={(event) => { setProductStatus(event.target.value); setProductPage(0); updateProductFilters({ status: event.target.value }); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
           <option value="ALL">All statuses</option>
           {['DRAFT', 'PUBLISHED', 'INACTIVE'].map((value) => <option key={value}>{value}</option>)}
         </select>
-        <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductPage(0); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
+        <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductPage(0); updateProductFilters({ categoryId: event.target.value }); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
           <option value="ALL">All categories</option>
           {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
         </select>
@@ -1339,7 +1423,7 @@ export function SuperAdminProductsPage() {
               {product.images[0]?.imageUrl ? <img src={product.images[0].imageUrl} alt={product.images[0].altText ?? product.name} className="mb-4 h-40 w-full rounded-2xl object-cover" /> : null}
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-xl font-semibold text-[var(--text-primary)]">{product.name}</h3>
+                  <h3 className="text-xl font-semibold text-[var(--text-primary)]"><button type="button" onClick={() => openProductEditor(product)} className="text-left underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{product.name}</button></h3>
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">{product.brand} · {product.sku}</p>
                 </div>
                 <StatusBadge status={product.status} />
@@ -1350,8 +1434,11 @@ export function SuperAdminProductsPage() {
                   {product.variants.reduce((total, variant) => total + (variant.availableQuantity ?? Math.max(0, variant.quantity - (variant.reservedQuantity ?? 0))), 0)} available
                 </span>
               </div>
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                HSN {product.hsnCode || 'not set'} · {product.gstEnabled ? product.gstRate == null ? 'Global GST rate' : `${product.gstRate}% product rate` : 'GST disabled'}
+              </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button variant="ghost" onClick={() => { setSelected(product); setEditorOpen(true); }}>Edit</Button>
+                <Button variant="ghost" onClick={() => openProductEditor(product)}>Edit</Button>
                 <Button variant="ghost" onClick={() => void changeStatus(product, product.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}>
                   {product.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
                 </Button>
@@ -1375,12 +1462,16 @@ type ProductEditorProps = {
   saving: boolean;
   onUploadTryOnImage: (file: File) => Promise<{ url: string; storageKey: string }>;
   onCancel: () => void;
-  onSave: (request: AdminProductRequest, returnable: boolean) => Promise<void>;
+  onSave: (request: AdminProductRequest, gst: AdminProductGstRequest, returnable: boolean) => Promise<void>;
 };
 
 function ProductEditor({ product, returnable: initialReturnable, categories, saving, onUploadTryOnImage, onCancel, onSave }: ProductEditorProps) {
   const [form, setForm] = useState<AdminProductRequest>(() => productRequest(product));
   const [returnable, setReturnable] = useState(initialReturnable);
+  const [hsnCode, setHsnCode] = useState(product?.hsnCode ?? '');
+  const [useGlobalRate, setUseGlobalRate] = useState(product?.gstRate == null);
+  const [gstRate, setGstRate] = useState(product?.gstRate == null ? '' : String(product.gstRate));
+  const [gstEnabled, setGstEnabled] = useState(product?.gstEnabled ?? true);
   const [validationError, setValidationError] = useState('');
   const [tryOnFile, setTryOnFile] = useState<File | null>(null);
   const [tryOnPreviewUrl, setTryOnPreviewUrl] = useState<string | null>(null);
@@ -1389,6 +1480,10 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
   useEffect(() => {
     setForm(productRequest(product));
     setReturnable(initialReturnable);
+    setHsnCode(product?.hsnCode ?? '');
+    setUseGlobalRate(product?.gstRate == null);
+    setGstRate(product?.gstRate == null ? '' : String(product.gstRate));
+    setGstEnabled(product?.gstEnabled ?? true);
     setTryOnFile(null);
     setValidationError('');
   }, [initialReturnable, product]);
@@ -1421,6 +1516,15 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
       setValidationError('Every image needs an image URL.');
       return;
     }
+    if (hsnCode.trim() && !/^(?:\d{4}|\d{6}|\d{8})$/.test(hsnCode.trim())) {
+      setValidationError('HSN code must contain 4, 6, or 8 digits.');
+      return;
+    }
+    const parsedGstRate = gstRate === '' ? null : Number(gstRate);
+    if (!useGlobalRate && (parsedGstRate == null || !isValidGstRate(parsedGstRate))) {
+      setValidationError('Enter a product GST rate between 0 and 100, or select the global rate.');
+      return;
+    }
     setValidationError('');
     let tryOnImageUrl = form.tryOnImageUrl;
     if (tryOnFile) {
@@ -1443,6 +1547,11 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
       brand: form.brand.trim(),
       description: form.description.trim(),
       tryOnImageUrl,
+    }, {
+      hsnCode: hsnCode.trim() || null,
+      useGlobalRate,
+      gstRate: useGlobalRate ? null : parsedGstRate,
+      gstEnabled,
     }, returnable);
   };
 
@@ -1475,6 +1584,24 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
           </select>
         </label>
       </div>
+      <section className="mt-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
+        <h4 className="font-semibold text-[var(--text-primary)]">GST classification</h4>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <label className="text-sm text-[var(--text-secondary)]">
+            <span>HSN code</span>
+            <input inputMode="numeric" maxLength={16} value={hsnCode} onChange={(event) => setHsnCode(event.target.value)} className={inputClass} />
+          </label>
+          <label className="flex items-center gap-3 text-sm text-[var(--text-secondary)]">
+            <input type="checkbox" checked={gstEnabled} onChange={(event) => setGstEnabled(event.target.checked)} className="h-4 w-4 accent-[#7CBF00]" />
+            GST applies to this product
+          </label>
+          <label className="flex items-center gap-3 text-sm text-[var(--text-secondary)] md:col-span-2">
+            <input type="checkbox" checked={useGlobalRate} onChange={(event) => setUseGlobalRate(event.target.checked)} className="h-4 w-4 accent-[#7CBF00]" />
+            Use global GST rate
+          </label>
+          {!useGlobalRate ? <ProductInput label="Product GST rate (%)" type="number" min="0" max="100" step="0.01" value={gstRate} onChange={setGstRate} required /> : null}
+        </div>
+      </section>
       <label className="mt-5 flex items-start gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 text-sm">
         <input type="checkbox" checked={returnable} onChange={(event) => setReturnable(event.target.checked)} className="mt-0.5 h-4 w-4 accent-[#7CBF00]" />
         <span><span className="block font-semibold text-[var(--text-primary)]">{returnable ? 'Returnable' : 'Non-returnable'}</span><span className="mt-1 block text-xs text-[var(--text-secondary)]">Customers can request a return or replacement for this product only when enabled and when the order meets the configured return policy.</span></span>
@@ -1831,10 +1958,12 @@ export function FranchiseProfilePage() {
 
 export function ReportsPage({ scope = 'super-admin' }: { scope?: 'super-admin' | 'franchise-admin' }) {
   const { user } = useAuth();
-  const [period, setPeriod] = useState('last30');
+  const [searchParams, setSearchParams] = useSearchParams();
   const today = toReportDate(new Date());
-  const [startDate, setStartDate] = useState(() => reportRange('last30', today).start);
-  const [endDate, setEndDate] = useState(today);
+  const initialStartDate = searchParams.get('startDate');
+  const initialEndDate = searchParams.get('endDate');
+  const [startDate, setStartDate] = useState(() => initialStartDate ?? reportRange('last30', today).start);
+  const [endDate, setEndDate] = useState(() => initialEndDate ?? today);
   const [report, setReport] = useState<AdminReport | null>(null);
   const [loading, setLoading] = useState(scope === 'super-admin');
   const [error, setError] = useState('');
@@ -1859,76 +1988,77 @@ export function ReportsPage({ scope = 'super-admin' }: { scope?: 'super-admin' |
   }, [endDate, scope, startDate, user?.accessToken]);
 
   useEffect(() => { void load(); }, [load]);
-
-  const changePeriod = (value: string) => {
-    setPeriod(value);
-    if (value !== 'custom') {
-      const range = reportRange(value, toReportDate(new Date()));
-      setStartDate(range.start);
-      setEndDate(range.end);
+  useEffect(() => {
+    const queryStart = searchParams.get('startDate');
+    const queryEnd = searchParams.get('endDate');
+    if (queryStart && queryEnd) {
+      setStartDate(queryStart);
+      setEndDate(queryEnd);
     }
+  }, [searchParams]);
+
+  const changeDateRange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+    const next = new URLSearchParams(searchParams);
+    if (start) next.set('startDate', start);
+    else next.delete('startDate');
+    if (end) next.set('endDate', end);
+    else next.delete('endDate');
+    setSearchParams(next, { replace: true });
   };
 
-  const exportCsv = () => {
-    if (!report) return;
-    const rows: Array<Array<string | number>> = [
-      ['Dream Spex Admin Report', `${report.startDate} to ${report.endDate}`],
-      [],
-      ['Revenue', 'Amount'],
-      ['Paid revenue', report.revenue.paidRevenue],
-      ['Refund deductions', report.revenue.refundDeductions],
-      ['Net revenue', report.revenue.netRevenue],
-      ['Today', report.revenue.today],
-      ['Last 7 days', report.revenue.last7Days],
-      ['Last 30 days', report.revenue.last30Days],
-      ['This month', report.revenue.thisMonth],
-      ['This year', report.revenue.thisYear],
-      [],
-      ['Orders', 'Count'],
-      ['Total orders', report.orders.total],
-      ['Paid orders', report.orders.paid],
-      ['Pending orders', report.orders.pending],
-      ['Cancelled orders', report.orders.cancelled],
-      ['Delivered orders', report.orders.delivered],
-      ['Average order value', report.orders.averageOrderValue],
-      [],
-      ['Customers', 'Count'],
-      ['Registered customers', report.customers.totalRegistered],
-      ['New customers', report.customers.newCustomers],
-      ['Repeat customers', report.customers.repeatCustomers],
-      [],
-      ['Returns & refunds', 'Value'],
-      ['Return requests', report.returns.total],
-      ['Approved returns', report.returns.approved],
-      ['Rejected returns', report.returns.rejected],
-      ['Processed refunds', report.returns.processedRefunds],
-      ['Refunded amount', report.returns.refundedAmount],
-      [],
-      ['Best-selling product', 'Quantity', 'Revenue'],
-      ...report.products.bestSelling.map((item) => [item.name, item.quantity, item.revenue]),
-      [],
-      ['Revenue trend date', 'Paid revenue'],
-      ...report.revenue.trend.map((item) => [item.date, item.value]),
-      [],
-      ['Order trend date', 'Orders'],
-      ...report.orders.trend.map((item) => [item.date, item.count]),
-      [],
-      ['Customer trend date', 'New customers'],
-      ...report.customers.trend.map((item) => [item.date, item.count]),
-      [],
-      ['Category', 'Quantity', 'Revenue'],
-      ...report.products.categorySales.map((item) => [item.name, item.quantity, item.revenue]),
-      [],
-      ['Low-stock product', 'SKU', 'Low-stock variants', 'Available units'],
-      ...report.products.lowStock.map((item) => [item.name, item.sku, item.lowStockVariants, item.availableUnits]),
-    ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `dream-spex-report-${report.startDate}-to-${report.endDate}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+  const reportDocument = (): AdminReportDocument | null => {
+    if (!report) return null;
+    return {
+      title: 'Global admin report',
+      startDate: report.startDate,
+      endDate: report.endDate,
+      columns: [{ label: 'Section' }, { label: 'Metric' }, { label: 'Value' }],
+      rows: [
+        ['Sales', 'Paid revenue', report.revenue.paidRevenue],
+        ['Sales', 'Refund deductions', report.revenue.refundDeductions],
+        ['Sales', 'Net revenue', report.revenue.netRevenue],
+          ['Sales', 'Discounts', report.revenue.discounts],
+          ['Sales', 'GST collected', report.revenue.gstCollected],
+        ['Orders', 'Total orders', report.orders.total],
+        ['Orders', 'Paid orders', report.orders.paid],
+        ['Orders', 'Pending orders', report.orders.pending],
+        ['Orders', 'Cancelled orders', report.orders.cancelled],
+        ['Orders', 'Delivered orders', report.orders.delivered],
+        ['Customers', 'Registered customers', report.customers.totalRegistered],
+        ['Customers', 'New customers', report.customers.newCustomers],
+        ['Customers', 'Repeat customers', report.customers.repeatCustomers],
+        ['Returns', 'Return requests', report.returns.total],
+        ['Returns', 'Approved returns', report.returns.approved],
+        ['Returns', 'Rejected returns', report.returns.rejected],
+        ['Returns', 'Pending returns', report.returns.pending],
+        ['Returns', 'Processed refunds', report.returns.processedRefunds],
+        ['Returns', 'Refunded amount', report.returns.refundedAmount],
+        ['Returns', 'Pending refund amount', report.returns.pendingRefundAmount],
+        ['Memberships', 'Active memberships', report.memberships.active],
+        ['Memberships', 'Expired memberships', report.memberships.expired],
+        ['Memberships', 'Membership revenue', report.memberships.revenue],
+        ...report.products.bestSelling.map((item) => ['Best-selling products', item.name, `${item.quantity} units · ${formatCurrency(item.revenue)}`]),
+        ...report.revenue.trend.map((item) => ['Revenue trend', item.date, item.value]),
+        ...report.orders.trend.map((item) => ['Order trend', item.date, item.count]),
+        ...report.customers.trend.map((item) => ['Customer trend', item.date, item.count]),
+      ],
+      summary: [
+        { label: 'Paid revenue', value: formatCurrency(report.revenue.paidRevenue) },
+        { label: 'Net revenue', value: formatCurrency(report.revenue.netRevenue) },
+        { label: 'Discounts', value: formatCurrency(report.revenue.discounts) },
+        { label: 'GST collected', value: formatCurrency(report.revenue.gstCollected) },
+        { label: 'Orders', value: report.orders.total },
+        { label: 'Customers', value: report.customers.totalRegistered },
+        { label: 'Refunded amount', value: formatCurrency(report.returns.refundedAmount) },
+        { label: 'Pending refund amount', value: formatCurrency(report.returns.pendingRefundAmount) },
+        { label: 'Active memberships', value: report.memberships.active },
+        { label: 'Expired memberships', value: report.memberships.expired },
+        { label: 'Membership revenue', value: formatCurrency(report.memberships.revenue) },
+        ...report.memberships.planCounts.map((plan) => ({ label: `${plan.planName} memberships`, value: plan.count })),
+      ],
+    };
   };
 
   if (scope === 'franchise-admin') {
@@ -1945,20 +2075,13 @@ export function ReportsPage({ scope = 'super-admin' }: { scope?: 'super-admin' |
       <SectionTitle eyebrow="Reports" title="Network reports" description="Live revenue, order, customer, product, inventory, and returns analytics from Dream Spex records." />
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-xs font-medium text-[var(--text-secondary)]">Date range
-            <select value={period} onChange={(event) => changePeriod(event.target.value)} className="mt-1 block h-10 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)]">
-              <option value="today">Today</option><option value="last7">Last 7 days</option><option value="last30">Last 30 days</option><option value="month">This month</option><option value="year">This year</option><option value="custom">Custom range</option>
-            </select>
-          </label>
-          {period === 'custom' ? <>
-            <label className="text-xs font-medium text-[var(--text-secondary)]">From<input type="date" value={startDate} max={endDate} onChange={(event) => setStartDate(event.target.value)} className="mt-1 block h-10 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)]" /></label>
-            <label className="text-xs font-medium text-[var(--text-secondary)]">To<input type="date" value={endDate} min={startDate} max={today} onChange={(event) => setEndDate(event.target.value)} className="mt-1 block h-10 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 text-sm text-[var(--text-primary)]" /></label>
-          </> : null}
+          <AdminDateRangeFilter startDate={startDate} endDate={endDate} onApply={changeDateRange} />
           <Button type="button" variant="secondary" onClick={() => void load()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Refresh</Button>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="secondary" onClick={exportCsv} disabled={!report || loading}><Download className="mr-2 h-4 w-4" />Download CSV</Button>
-          <Button type="button" variant="secondary" onClick={() => window.print()} disabled={!report || loading}><Printer className="mr-2 h-4 w-4" />Print / PDF</Button>
+          <Button type="button" variant="secondary" onClick={() => { const document = reportDocument(); if (document) downloadReportExcel(document); }} disabled={!report || loading}><Download className="mr-2 h-4 w-4" />Excel</Button>
+          <Button type="button" variant="secondary" onClick={() => { const document = reportDocument(); if (document) void downloadReportPdf(document); }} disabled={!report || loading}>PDF</Button>
+          <Button type="button" variant="secondary" onClick={() => { const document = reportDocument(); if (document) printReport(document); }} disabled={!report || loading}><Printer className="mr-2 h-4 w-4" />Print</Button>
         </div>
       </div>
       {loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]" role="status">Loading report data…</p> : error ? <div className="mt-6 rounded-xl border border-red-300/40 bg-red-50 p-4 text-sm text-red-800" role="alert">{error}<Button type="button" variant="secondary" className="ml-3" onClick={() => void load()}>Retry</Button></div> : null}
@@ -1967,7 +2090,18 @@ export function ReportsPage({ scope = 'super-admin' }: { scope?: 'super-admin' |
         <section className="mt-3" aria-labelledby="report-revenue-heading">
           <h2 id="report-revenue-heading" className="mb-3 text-lg font-semibold">Revenue</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {[['Paid revenue', report.revenue.paidRevenue], ['Refund deductions', report.revenue.refundDeductions], ['Net revenue', report.revenue.netRevenue], ['Today', report.revenue.today], ['Last 7 days', report.revenue.last7Days], ['Last 30 days', report.revenue.last30Days], ['This month', report.revenue.thisMonth], ['This year', report.revenue.thisYear]].map(([label, amount]) => <ReportMetric key={String(label)} label={String(label)} value={formatCurrency(Number(amount))} />)}
+            {[
+              ['Paid revenue', report.revenue.paidRevenue, rangeLink('/admin/orders?paymentStatus=PAID', report.startDate, report.endDate)],
+              ['Refund deductions', report.revenue.refundDeductions, rangeLink('/admin/returns?status=REFUNDED', report.startDate, report.endDate)],
+              ['Net revenue', report.revenue.netRevenue, rangeLink('/admin/orders?paymentStatus=PAID', report.startDate, report.endDate)],
+              ['Discounts', report.revenue.discounts, rangeLink('/admin/orders?paymentStatus=PAID', report.startDate, report.endDate)],
+              ['GST collected', report.revenue.gstCollected, rangeLink('/admin/orders?paymentStatus=PAID', report.startDate, report.endDate)],
+              ['Today', report.revenue.today, reportDateLink('today', today)],
+              ['Last 7 days', report.revenue.last7Days, reportDateLink('last7', today)],
+              ['Last 30 days', report.revenue.last30Days, reportDateLink('last30', today)],
+              ['This month', report.revenue.thisMonth, reportDateLink('month', today)],
+              ['This year', report.revenue.thisYear, reportDateLink('year', today)],
+            ].map(([label, amount, to]) => <ReportMetric key={String(label)} label={String(label)} value={formatCurrency(Number(amount))} to={String(to)} />)}
           </div>
           <ReportChart title="Revenue trend" points={report.revenue.trend} valueLabel="Paid revenue" formatValue={(value) => formatCurrency(value)} />
         </section>
@@ -1975,45 +2109,56 @@ export function ReportsPage({ scope = 'super-admin' }: { scope?: 'super-admin' |
           <h2 id="report-orders-heading" className="mb-3 text-lg font-semibold">Orders</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             {[
-              ['Total orders', report.orders.total], ['Paid orders', report.orders.paid], ['Pending orders', report.orders.pending],
-              ['Cancelled orders', report.orders.cancelled], ['Delivered orders', report.orders.delivered],
-              ['Average order value', formatCurrency(report.orders.averageOrderValue)],
-            ].map(([label, value]) => <ReportMetric key={String(label)} label={String(label)} value={String(value)} />)}
+              ['Total orders', report.orders.total, rangeLink('/admin/orders', report.startDate, report.endDate)], ['Paid orders', report.orders.paid, rangeLink('/admin/orders?paymentStatus=PAID', report.startDate, report.endDate)], ['Pending orders', report.orders.pending, rangeLink('/admin/orders?status=PENDING_PAYMENT', report.startDate, report.endDate)],
+              ['Cancelled orders', report.orders.cancelled, rangeLink('/admin/orders?status=CANCELLED', report.startDate, report.endDate)], ['Delivered orders', report.orders.delivered, rangeLink('/admin/orders?status=DELIVERED', report.startDate, report.endDate)],
+              ['Average order value', formatCurrency(report.orders.averageOrderValue), rangeLink('/admin/orders', report.startDate, report.endDate)],
+            ].map(([label, value, to]) => <ReportMetric key={String(label)} label={String(label)} value={String(value)} to={String(to)} />)}
           </div>
           <ReportChart title="Order trend" points={report.orders.trend} valueLabel="Orders" formatValue={(value) => value.toLocaleString('en-IN')} />
         </section>
         <section className="mt-7" aria-labelledby="report-customers-heading">
           <h2 id="report-customers-heading" className="mb-3 text-lg font-semibold">Customers</h2>
           <div className="grid gap-3 sm:grid-cols-3">
-            <ReportMetric label="Registered customers" value={report.customers.totalRegistered.toLocaleString('en-IN')} />
-            <ReportMetric label="New customers" value={report.customers.newCustomers.toLocaleString('en-IN')} />
-            <ReportMetric label="Repeat customers" value={report.customers.repeatCustomers.toLocaleString('en-IN')} />
+            <ReportMetric label="Registered customers" value={report.customers.totalRegistered.toLocaleString('en-IN')} to={rangeLink('/admin/customers', report.startDate, report.endDate)} />
+            <ReportMetric label="New customers" value={report.customers.newCustomers.toLocaleString('en-IN')} to={rangeLink('/admin/customers', report.startDate, report.endDate)} />
+            <ReportMetric label="Repeat customers" value={report.customers.repeatCustomers.toLocaleString('en-IN')} to={rangeLink('/admin/customers', report.startDate, report.endDate)} />
           </div>
           <ReportChart title="New customer trend" points={report.customers.trend} valueLabel="Customers" formatValue={(value) => value.toLocaleString('en-IN')} />
+        </section>
+        <section className="mt-7" aria-labelledby="report-membership-heading">
+          <h2 id="report-membership-heading" className="mb-3 text-lg font-semibold">Memberships</h2>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <ReportMetric label="Active memberships" value={report.memberships.active.toLocaleString('en-IN')} to={rangeLink('/admin/membership?status=ACTIVE', report.startDate, report.endDate)} />
+            <ReportMetric label="Expired memberships" value={report.memberships.expired.toLocaleString('en-IN')} to={rangeLink('/admin/membership?status=EXPIRED', report.startDate, report.endDate)} />
+            <ReportMetric label="Membership revenue" value={formatCurrency(report.memberships.revenue)} to={rangeLink('/admin/membership', report.startDate, report.endDate)} />
+            {report.memberships.planCounts.map((plan) => <ReportMetric key={plan.planName} label={`${plan.planName} memberships`} value={plan.count.toLocaleString('en-IN')} to={rangeLink('/admin/membership', report.startDate, report.endDate)} />)}
+          </div>
         </section>
         <section className="mt-7 grid gap-5 xl:grid-cols-2" aria-labelledby="report-products-heading">
           <div>
             <h2 id="report-products-heading" className="mb-3 text-lg font-semibold">Best-selling products</h2>
-            <ReportTable headers={['Product', 'Quantity sold', 'Revenue']} rows={report.products.bestSelling.map((item) => [item.name, item.quantity.toLocaleString('en-IN'), formatCurrency(item.revenue)])} empty="No paid product sales for this period." />
+            <ReportTable headers={['Product', 'Quantity sold', 'Revenue']} rows={report.products.bestSelling.map((item) => [item.name, item.quantity.toLocaleString('en-IN'), formatCurrency(item.revenue)])} rowLink={(row) => `/admin/products?q=${encodeURIComponent(row[0])}`} empty="No paid product sales for this period." />
           </div>
           <div>
             <h2 className="mb-3 text-lg font-semibold">Category-wise sales</h2>
-            <ReportTable headers={['Category', 'Quantity sold', 'Revenue']} rows={report.products.categorySales.map((item) => [item.name, item.quantity.toLocaleString('en-IN'), formatCurrency(item.revenue)])} empty="No category sales for this period." />
+            <ReportTable headers={['Category', 'Quantity sold', 'Revenue']} rows={report.products.categorySales.map((item) => [item.name, item.quantity.toLocaleString('en-IN'), formatCurrency(item.revenue)])} rowLink={(row) => `/admin/products?q=${encodeURIComponent(row[0])}`} empty="No category sales for this period." />
           </div>
         </section>
         <section className="mt-7 grid gap-5 xl:grid-cols-2">
           <div>
             <h2 className="mb-3 text-lg font-semibold">Low-stock products</h2>
-            <ReportTable headers={['Product', 'SKU', 'Low-stock variants', 'Available']} rows={report.products.lowStock.map((item) => [item.name, item.sku, item.lowStockVariants.toLocaleString('en-IN'), item.availableUnits.toLocaleString('en-IN')])} empty="No low-stock products." />
+            <ReportTable headers={['Product', 'SKU', 'Low-stock variants', 'Available']} rows={report.products.lowStock.map((item) => [item.name, item.sku, item.lowStockVariants.toLocaleString('en-IN'), item.availableUnits.toLocaleString('en-IN')])} rowLink={(row) => `/admin/inventory?filter=low-stock&q=${encodeURIComponent(row[1])}`} empty="No low-stock products." />
           </div>
           <div>
             <h2 className="mb-3 text-lg font-semibold">Returns & refunds</h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              <ReportMetric label="Return requests" value={report.returns.total.toLocaleString('en-IN')} />
-              <ReportMetric label="Approved returns" value={report.returns.approved.toLocaleString('en-IN')} />
-              <ReportMetric label="Rejected returns" value={report.returns.rejected.toLocaleString('en-IN')} />
-              <ReportMetric label="Processed refunds" value={report.returns.processedRefunds.toLocaleString('en-IN')} />
-              <ReportMetric label="Refunded amount" value={formatCurrency(report.returns.refundedAmount)} />
+              <ReportMetric label="Return requests" value={report.returns.total.toLocaleString('en-IN')} to="/admin/returns" />
+              <ReportMetric label="Approved returns" value={report.returns.approved.toLocaleString('en-IN')} to="/admin/returns?status=APPROVED" />
+              <ReportMetric label="Rejected returns" value={report.returns.rejected.toLocaleString('en-IN')} to={rangeLink('/admin/returns?status=REJECTED', report.startDate, report.endDate)} />
+              <ReportMetric label="Pending returns" value={report.returns.pending.toLocaleString('en-IN')} to={rangeLink('/admin/returns?status=REQUESTED', report.startDate, report.endDate)} />
+              <ReportMetric label="Processed refunds" value={report.returns.processedRefunds.toLocaleString('en-IN')} to={rangeLink('/admin/returns?status=REFUNDED', report.startDate, report.endDate)} />
+              <ReportMetric label="Refunded amount" value={formatCurrency(report.returns.refundedAmount)} to={rangeLink('/admin/returns?status=REFUNDED', report.startDate, report.endDate)} />
+              <ReportMetric label="Pending refund amount" value={formatCurrency(report.returns.pendingRefundAmount)} to={rangeLink('/admin/returns', report.startDate, report.endDate)} />
             </div>
           </div>
         </section>
@@ -2023,59 +2168,90 @@ export function ReportsPage({ scope = 'super-admin' }: { scope?: 'super-admin' |
 }
 
 function toReportDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(date);
 }
 
 function reportRange(period: string, today: string) {
-  const date = new Date(`${today}T00:00:00`);
+  const date = new Date(`${today}T00:00:00+05:30`);
   if (period === 'today') return { start: today, end: today };
-  if (period === 'month') return { start: toReportDate(new Date(date.getFullYear(), date.getMonth(), 1)), end: today };
-  if (period === 'year') return { start: toReportDate(new Date(date.getFullYear(), 0, 1)), end: today };
+  if (period === 'yesterday') {
+    date.setUTCDate(date.getUTCDate() - 1);
+    const yesterday = toReportDate(date);
+    return { start: yesterday, end: yesterday };
+  }
+  if (period === 'month') return { start: `${today.slice(0, 7)}-01`, end: today };
+  if (period === 'lastMonth') {
+    date.setUTCDate(1);
+    date.setUTCDate(date.getUTCDate() - 1);
+    const end = toReportDate(date);
+    return { start: `${end.slice(0, 7)}-01`, end };
+  }
+  if (period === 'year') return { start: `${today.slice(0, 4)}-01-01`, end: today };
   const days = period === 'last7' ? 6 : 29;
-  date.setDate(date.getDate() - days);
+  date.setUTCDate(date.getUTCDate() - days);
   return { start: toReportDate(date), end: today };
 }
 
-function ReportMetric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-sm"><p className="text-xs font-medium text-[var(--text-secondary)]">{label}</p><p className="mt-2 text-xl font-semibold tracking-tight text-[var(--text-primary)]">{value}</p></div>;
+function reportDateLink(period: string, today: string) {
+  const { start, end } = reportRange(period, today);
+  return `/admin/reports?startDate=${start}&endDate=${end}&period=${period}`;
+}
+
+function rangeLink(path: string, startDate: string, endDate: string) {
+  const url = new URL(path, window.location.origin);
+  const isReturns = url.pathname === '/admin/returns';
+  url.searchParams.set(isReturns ? 'from' : 'startDate', startDate);
+  url.searchParams.set(isReturns ? 'to' : 'endDate', endDate);
+  return `${url.pathname}${url.search}`;
+}
+
+function ReportMetric({ label, value, to }: { label: string; value: string; to: string }) {
+  return <Link to={to} className="group block rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--brand-green)]/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]">
+    <p className="text-xs font-medium text-[var(--text-secondary)]">{label}</p><p className="mt-2 text-xl font-semibold tracking-tight text-[var(--text-primary)]">{value}</p><span className="mt-1 block text-[10px] font-medium text-[var(--brand-green-dark)] opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">View details →</span>
+  </Link>;
 }
 
 function ReportChart({ title, points, valueLabel, formatValue }: { title: string; points: AdminReport['revenue']['trend']; valueLabel: string; formatValue: (value: number) => string }) {
   const groupedPoints = useMemo(() => {
-    if (points.length <= 31) return points;
+    if (points.length <= 31) return points.map((point) => ({ ...point, endDate: point.date }));
     const grouping: 'week' | 'month' = points.length > 100 ? 'month' : 'week';
     const groups = new Map<string, { date: string; value: number; count: number }>();
     points.forEach((point) => {
-      const date = new Date(`${point.date}T00:00:00`);
-      if (grouping === 'week') date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
-      else date.setDate(1);
+      const date = new Date(`${point.date}T00:00:00+05:30`);
+      if (grouping === 'week') date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));
+      else date.setUTCDate(1);
       const key = toReportDate(date);
       const current = groups.get(key) ?? { date: key, value: 0, count: 0 };
       current.value += point.value;
       current.count += point.count;
       groups.set(key, current);
     });
-    return [...groups.values()];
+    return [...groups.values()].map((point) => {
+      const endDate = new Date(`${point.date}T00:00:00+05:30`);
+      if (grouping === 'week') endDate.setUTCDate(endDate.getUTCDate() + 6);
+      else {
+        endDate.setUTCMonth(endDate.getUTCMonth() + 1);
+        endDate.setUTCDate(0);
+      }
+      return { ...point, endDate: toReportDate(endDate) };
+    });
   }, [points]);
   const maximum = Math.max(1, ...groupedPoints.map((point) => point.value));
   return <section className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5" aria-label={`${title}: ${valueLabel}`}>
     <h3 className="font-semibold">{title}</h3>
     {groupedPoints.length ? <div className="mt-5 flex h-52 items-end gap-1 overflow-x-auto border-b border-[var(--border-subtle)] px-1 sm:gap-2">
-      {groupedPoints.map((point) => <div key={point.date} className="group flex h-full min-w-5 flex-1 flex-col items-center justify-end gap-2 sm:min-w-8" title={`${point.date}: ${formatValue(point.value)}`}>
+      {groupedPoints.map((point) => <Link key={point.date} to={`/admin/reports?startDate=${point.date}&endDate=${point.endDate}`} className="group flex h-full min-w-5 flex-1 flex-col items-center justify-end gap-2 rounded-t sm:min-w-8 focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]" aria-label={`Open ${title} report for ${point.date} to ${point.endDate}`} title={`${point.date}: ${formatValue(point.value)}`}>
         <span className="hidden text-[10px] text-[var(--text-secondary)] group-hover:block">{formatValue(point.value)}</span>
-        <div className="w-full max-w-12 rounded-t bg-[#6b946d] transition-opacity group-hover:opacity-75" style={{ height: `${point.value > 0 ? Math.max(3, (point.value / maximum) * 145) : 2}px` }} />
+        <div className="w-full max-w-12 rounded-t bg-[#6b946d] transition-colors group-hover:bg-[var(--brand-green-dark)]" style={{ height: `${point.value > 0 ? Math.max(3, (point.value / maximum) * 145) : 2}px` }} />
         <span className="max-w-full truncate text-[9px] text-[var(--text-secondary)]">{point.date.slice(5)}</span>
-      </div>)}
+      </Link>)}
     </div> : <p className="mt-4 rounded-lg bg-[var(--bg-primary)] p-5 text-sm text-[var(--text-secondary)]">No {valueLabel.toLowerCase()} data for this period.</p>}
   </section>;
 }
 
-function ReportTable({ headers, rows, empty }: { headers: string[]; rows: string[][]; empty: string }) {
+function ReportTable({ headers, rows, empty, rowLink }: { headers: string[]; rows: string[][]; empty: string; rowLink?: (row: string[]) => string }) {
   return <div className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-    {rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-left text-sm"><thead className="bg-[var(--bg-primary)] text-xs text-[var(--text-secondary)]"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={`${row[0]}-${index}`} className="border-t border-[var(--border-subtle)]">{row.map((cell, cellIndex) => <td key={`${cellIndex}-${cell}`} className="px-4 py-3 text-[var(--text-primary)]">{cell}</td>)}</tr>)}</tbody></table></div> : <p className="p-5 text-sm text-[var(--text-secondary)]">{empty}</p>}
+    {rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-left text-sm"><thead className="bg-[var(--bg-primary)] text-xs text-[var(--text-secondary)]"><tr>{headers.map((header) => <th key={header} className="px-4 py-3 font-medium">{header}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={`${row[0]}-${index}`} className="border-t border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]">{row.map((cell, cellIndex) => <td key={`${cellIndex}-${cell}`} className="px-4 py-3 text-[var(--text-primary)]">{rowLink && cellIndex === 0 ? <Link to={rowLink(row)} className="block rounded-sm font-medium underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{cell}</Link> : cell}</td>)}</tr>)}</tbody></table></div> : <p className="p-5 text-sm text-[var(--text-secondary)]">{empty}</p>}
   </div>;
 }
 
@@ -2319,6 +2495,7 @@ export function SuperAdminSettingsPage() {
   const field = 'mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm outline-none';
   return <DashboardShell>
     <SectionTitle eyebrow="Settings" title="System configuration" description="Manage secure Dream Spex operational settings." />
+    <Link to="/admin/settings/gst" className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 hover:border-[var(--brand-green)]"><span><span className="block font-semibold">Global GST settings</span><span className="mt-1 block text-sm text-[var(--text-secondary)]">Update the GST rate stored by the backend and view its change history.</span></span><ArrowRight className="h-5 w-5 shrink-0 text-[var(--brand-green-dark)]" /></Link>
     {message ? <p className="mt-5 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{message}</p> : null}
     {error ? <p className="mt-5 rounded-2xl border border-red-300/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
     <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -2345,5 +2522,127 @@ export function SuperAdminSettingsPage() {
       </div><div className="mt-4 flex flex-wrap gap-5 text-sm"><label><input type="checkbox" checked={form.email.tlsEnabled} onChange={(e) => update({ email: { ...form.email, tlsEnabled: e.target.checked } })} /> TLS enabled</label><label><input type="checkbox" checked={form.email.sslEnabled} onChange={(e) => update({ email: { ...form.email, sslEnabled: e.target.checked } })} /> SSL enabled</label><label><input type="checkbox" checked={form.email.enabled} onChange={(e) => update({ email: { ...form.email, enabled: e.target.checked } })} /> Email notifications enabled</label></div><div className="mt-5 flex flex-wrap gap-3"><Button disabled={saving} onClick={() => void saveEmail()}>Save configuration</Button><Button type="button" variant="ghost" onClick={() => void testSmtpConnection()}>Test SMTP connection</Button></div><div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--border-subtle)] pt-5"><input type="email" placeholder="Test recipient email" className={`${field} max-w-sm`} value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} /><Button type="button" variant="ghost" disabled={!testRecipient} onClick={() => void sendTestEmail()}>Send test email</Button></div><p className="mt-4 text-xs text-[var(--text-secondary)]">Password configured: {form.email.passwordConfigured ? 'Yes' : 'No'}. Passwords are encrypted at rest and never returned.</p></section>
       <StoreDeliverySettingsPanel accessToken={token} />
     </div>
+  </DashboardShell>;
+}
+
+export function SuperAdminGstSettingsPage() {
+  const { user, refreshSession } = useAuth();
+  const token = user?.accessToken ?? '';
+  const [settings, setSettings] = useState<AdminGstSettings | null>(null);
+  const [history, setHistory] = useState<AdminGstHistoryEntry[]>([]);
+  const [rate, setRate] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      setError('Your admin session has expired. Please sign in again.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const [current, entries] = await Promise.all([
+        adminService.gstSettings(token),
+        adminService.gstHistory(token),
+      ]);
+      setSettings(current);
+      setRate(String(current.defaultRate));
+      setHistory(entries);
+    } catch (reason) {
+      if (reason instanceof AdminApiError && reason.status === 401) await refreshSession();
+      setError(reason instanceof Error ? reason.message : 'Unable to load GST settings.');
+    } finally {
+      setLoading(false);
+    }
+  }, [refreshSession, token]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const parsedRate = Number(rate);
+    if (!isValidGstRate(parsedRate)) {
+      setError('Enter a GST rate between 0 and 100.');
+      setMessage('');
+      return;
+    }
+    if (!settings || !token) {
+      setError('GST settings are not loaded. Retry before saving.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      const updated = await adminService.updateGstSettings(token, {
+        defaultRate: parsedRate,
+        priceTreatment: settings.priceTreatment,
+        enabled: settings.enabled,
+      });
+      setSettings(updated);
+      setRate(String(updated.defaultRate));
+      setHistory(await adminService.gstHistory(token));
+      setEditing(false);
+      setMessage('Global GST rate saved to the backend.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to save the GST rate.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <DashboardShell>
+    <SectionTitle eyebrow="Admin settings" title="Global GST settings" description="Manage the global GST rate stored by the backend and review previous changes." />
+    <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-8">
+        {loading ? <p className="text-sm text-[var(--text-secondary)]" role="status">Loading GST settings...</p>
+          : settings ? <>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-sm text-[var(--text-secondary)]">Current GST rate</p>
+                <p className="mt-2 text-4xl font-semibold text-[var(--text-primary)]">{settings.defaultRate}%</p>
+                <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                  Last updated {new Date(settings.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                </p>
+                <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                  {settings.enabled ? 'Enabled' : 'Disabled'} · {settings.priceTreatment.toLowerCase()} pricing
+                </p>
+              </div>
+              {!editing ? <Button type="button" onClick={() => { setMessage(''); setError(''); setEditing(true); }}>Update</Button> : null}
+            </div>
+          </> : null}
+        {editing && settings ? <form onSubmit={(event) => void save(event)} className="mt-6">
+          <label htmlFor="global-gst-rate" className="block text-sm font-medium text-[var(--text-primary)]">GST percentage</label>
+          <div className="mt-2 flex max-w-sm items-center gap-3">
+            <input id="global-gst-rate" type="number" min="0" max="100" step="0.01" required value={rate} onChange={(event) => setRate(event.target.value)} className="min-w-0 flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--brand-green)]" />
+            <span className="text-lg font-semibold">%</span>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+            <Button type="button" variant="ghost" disabled={saving} onClick={() => { setEditing(false); setRate(String(settings.defaultRate)); setError(''); }}>Cancel</Button>
+          </div>
+        </form> : null}
+        {message ? <p className="mt-5 text-sm text-emerald-700" role="status">{message}</p> : null}
+        {error ? <div className="mt-5 text-sm text-red-600" role="alert"><p>{error}</p>{!settings ? <Button type="button" variant="ghost" className="mt-3" onClick={() => void load()}>Retry</Button> : null}</div> : null}
+      </section>
+      <aside className="rounded-[26px] border border-amber-400/30 bg-amber-400/10 p-6 text-sm leading-6 text-[var(--text-secondary)]">
+        <h2 className="font-semibold text-[var(--text-primary)]">Checkout integration status</h2>
+        <p className="mt-3">Checkout quotes now calculate inclusive GST using the selected store and delivery state. New orders save a GST snapshot, and Razorpay uses the unchanged inclusive order payable total.</p>
+      </aside>
+    </div>
+    <section className="mt-6 rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-8">
+      <h2 className="text-xl font-semibold text-[var(--text-primary)]">GST change history</h2>
+      {history.length ? <ol className="mt-4 divide-y divide-[var(--border-subtle)]">
+        {history.map((entry) => <li key={entry.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+          <span className="font-medium text-[var(--text-primary)]">{entry.defaultRate}% · {entry.priceTreatment.toLowerCase()} · {entry.enabled ? 'enabled' : 'disabled'}{entry.active ? ' · current' : ''}</span>
+          <span className="text-[var(--text-secondary)]">{new Date(entry.updatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}{entry.updatedByName ? ` · ${entry.updatedByName}` : ''}</span>
+        </li>)}
+      </ol> : !loading && !error ? <p className="mt-3 text-sm text-[var(--text-secondary)]">No GST changes are available.</p> : null}
+    </section>
   </DashboardShell>;
 }

@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import static com.dreamspex.catalog.dto.CatalogDtos.*;
+import static com.dreamspex.gst.GstDtos.*;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -25,6 +26,13 @@ public class AdminCatalogController {
     ProductResponse createProduct(Authentication a,@Valid @RequestBody ProductRequest request) { ProductResponse r=service.saveProduct(null, request); audit.record(current.require(a),"PRODUCT_CREATED","PRODUCT",r.id()); return r; }
     @PatchMapping("/products/{id}")
     ProductResponse updateProduct(Authentication a,@PathVariable String id, @Valid @RequestBody ProductRequest request) { ProductResponse r=service.saveProduct(id, request); audit.record(current.require(a),"PRODUCT_UPDATED","PRODUCT",id); return r; }
+    @PutMapping("/products/{id}/gst")
+    ProductGstResponse updateProductGst(Authentication a, @PathVariable String id,
+                                         @Valid @RequestBody ProductGstRequest request) {
+        ProductGstResponse response = service.updateProductGst(id, request);
+        audit.record(current.require(a), "PRODUCT_GST_UPDATED", "PRODUCT", id);
+        return response;
+    }
     @DeleteMapping("/products/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void deleteProduct(Authentication a,@PathVariable String id) { service.deleteProduct(id); audit.record(current.require(a),"PRODUCT_DELETED","PRODUCT",id); }

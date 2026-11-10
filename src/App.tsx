@@ -50,6 +50,7 @@ import {
   StoresPage,
   SuperAdminProductsPage,
   SuperAdminSettingsPage,
+  SuperAdminGstSettingsPage,
 } from './pages/FranchiseSystemPages';
 import HomepageBuilderPage from './pages/HomepageBuilderPage';
 import MainCategoryManagementPage from './pages/MainCategoryManagementPage';
@@ -58,6 +59,8 @@ import AdminOffersPage from './pages/AdminOffersPage';
 import AdminMembershipPage from './pages/AdminMembershipPage';
 import { AdminReturnsPage, CustomerReturnsPage, ReturnRequestPage } from './pages/ReturnPages';
 import DeliveryBatchPage from './pages/DeliveryBatchPage';
+import LoyaltyPage from './pages/LoyaltyPage';
+import { AdminLoyaltyReportsPage, AdminLoyaltySettingsPage } from './pages/AdminLoyaltyPage';
 
 function RootEntry() {
   return <HomePage />;
@@ -139,7 +142,7 @@ function App() {
             <Route path="/membership" element={<MembershipPage />} />
             <Route path="/membership/checkout" element={<MembershipCheckoutPage />} />
             <Route path="/offers" element={<OffersPage />} />
-            <Route path="/referral" element={<ReferralPage />} />
+            <Route path="/referral" element={<CustomerRoute><ReferralPage /></CustomerRoute>} />
             <Route path="/franchise" element={<FranchisePage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/about" element={<AboutPage />} />
@@ -165,6 +168,7 @@ function App() {
             <Route path="/after-sales" element={<AfterSalesPage />} />
             <Route path="/dashboard" element={<CustomerRoute><DashboardPage /></CustomerRoute>} />
             <Route path="/wallet" element={<CustomerRoute><WalletPage /></CustomerRoute>} />
+            <Route path="/loyalty" element={<CustomerRoute><LoyaltyPage /></CustomerRoute>} />
             <Route path="/orders" element={<CustomerRoute><OrdersPage /></CustomerRoute>} />
             <Route path="/my-orders" element={<CustomerRoute><OrdersPage /></CustomerRoute>} />
             <Route path="/returns/new" element={<CustomerRoute><ReturnRequestPage /></CustomerRoute>} />
@@ -188,10 +192,13 @@ function App() {
             <Route path="/admin/customers" element={<SuperAdminRoute><AdminCustomersPage /></SuperAdminRoute>} />
             <Route path="/admin/offers" element={<SuperAdminRoute><AdminOffersPage /></SuperAdminRoute>} />
             <Route path="/admin/membership" element={<SuperAdminRoute><AdminMembershipPage /></SuperAdminRoute>} />
+            <Route path="/admin/loyalty-settings" element={<SuperAdminRoute><AdminLoyaltySettingsPage /></SuperAdminRoute>} />
+            <Route path="/admin/loyalty" element={<SuperAdminRoute><AdminLoyaltyReportsPage /></SuperAdminRoute>} />
             <Route path="/admin/reports" element={<SuperAdminRoute><ReportsPage scope="super-admin" /></SuperAdminRoute>} />
             <Route path="/admin/users" element={<SuperAdminRoute><SuperAdminUsersPage /></SuperAdminRoute>} />
             <Route path="/admin/profile" element={<SuperAdminRoute><SuperAdminProfilePage /></SuperAdminRoute>} />
             <Route path="/admin/settings" element={<SuperAdminRoute><SuperAdminSettingsPage /></SuperAdminRoute>} />
+            <Route path="/admin/settings/gst" element={<SuperAdminRoute><SuperAdminGstSettingsPage /></SuperAdminRoute>} />
             <Route path="/admin/content" element={<SuperAdminRoute><HomepageBuilderPage /></SuperAdminRoute>} />
             <Route path="/franchise/dashboard" element={<FranchiseRoute><FranchiseDashboardPage /></FranchiseRoute>} />
             <Route path="/franchise/products" element={<FranchiseRoute><FranchiseProductsPage /></FranchiseRoute>} />

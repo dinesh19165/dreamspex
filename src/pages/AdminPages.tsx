@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowRight, ChevronLeft, ChevronRight, CircleDollarSign, Copy, Download, Eye, MapPin, MessageCircle, PackageOpen, PackageCheck, Pencil, Plus, RefreshCw, RotateCcw, Save, ShoppingCart, Trash2, Users, X } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, CircleDollarSign, Copy, Download, Eye, MapPin, MessageCircle, PackageOpen, PackageCheck, Pencil, Plus, Printer, RefreshCw, RotateCcw, Save, ShoppingCart, Trash2, Users, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
@@ -13,6 +13,11 @@ import { DashboardShell } from './FranchiseSystemPages';
 import { deliveryBatchService, type ActiveDeliveryBatchLink, type AdminDeliveryBatchDetails, type CreatedDeliveryBatch, type DeliveryBatchSummary, type DeliveryOtp, type EligibleDeliveryOrder } from '../services/deliveryBatchService';
 import { getDeliveryBatchFormState } from '../utils/deliveryBatchForm';
 import { canRegenerateDeliveryOtp, getDeliveryOtpWhatsAppMessage, getDeliveryOtpWhatsAppUrl } from '../utils/deliveryOtp';
+import GstBreakdown from '../components/ui/GstBreakdown';
+import { toGstBreakdown } from '../utils/gst';
+import AdminDateRangeFilter from '../components/ui/AdminDateRangeFilter';
+import { downloadReportExcel, downloadReportPdf, printReport } from '../utils/adminReportExport';
+import AdminAlertCenter from '../components/admin/AdminAlertCenter';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -70,6 +75,17 @@ function nextOrderStatuses(currentStatus: string) {
   return transitions[currentStatus] ?? [];
 }
 
+function reportDate(value: string) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date(value));
+}
+
+function defaultOrderRange() {
+  const end = reportDate(new Date().toISOString());
+  const start = new Date(`${end}T00:00:00+05:30`);
+  start.setUTCDate(start.getUTCDate() - 29);
+  return { start: start.toISOString().slice(0, 10), end };
+}
+
 export function AdminDashboardPage() {
   const request = useAdminRequest();
   const [dashboard, setDashboard] = useState<AdminDashboard | null>(null);
@@ -119,9 +135,15 @@ export function AdminDashboardPage() {
   const metrics: DashboardMetric[] = dashboard ? [
     ['Total revenue', formatCurrency(dashboard.revenue), CircleDollarSign, '/admin/reports'],
     ['Total orders', dashboard.orders, ShoppingCart, '/admin/orders'],
+    ['Paid orders', orders.filter((order) => order.paymentStatus === 'PAID').length, CircleDollarSign, '/admin/orders?paymentStatus=PAID'],
+    ['Pending orders', dashboard.pendingOrders, RefreshCw, '/admin/orders?status=PENDING_PAYMENT'],
+    ['Processing orders', orders.filter((order) => order.status === 'PROCESSING').length, PackageCheck, '/admin/orders?status=PROCESSING'],
+    ['Shipped orders', orders.filter((order) => order.status === 'SHIPPED').length, PackageCheck, '/admin/orders?status=SHIPPED'],
+    ['Delivered orders', orders.filter((order) => order.status === 'DELIVERED').length, PackageCheck, '/admin/orders?status=DELIVERED'],
+    ['Cancelled orders', orders.filter((order) => order.status === 'CANCELLED').length, X, '/admin/orders?status=CANCELLED'],
+    ['Failed payments', orders.filter((order) => order.paymentStatus === 'FAILED').length, CircleDollarSign, '/admin/orders?paymentStatus=FAILED'],
     ['Customers', dashboard.customers, Users, '/admin/customers'],
     ['Products', dashboard.products, PackageOpen, '/admin/products'],
-    ['Pending orders', dashboard.pendingOrders, RefreshCw, '/admin/orders?status=PENDING_PAYMENT'],
     ['Low-stock variants', dashboard.lowStockVariants, PackageOpen, '/admin/inventory?filter=low-stock'],
     ['New return requests', returns.filter((item) => item.status === 'REQUESTED').length, RotateCcw, '/admin/returns?status=REQUESTED'],
   ] : [];
@@ -139,12 +161,18 @@ export function AdminDashboardPage() {
             && createdAt.getMonth() === month.getMonth();
         })
         .reduce((sum, order) => sum + order.total, 0);
-      return { label: month.toLocaleDateString('en-IN', { month: 'short' }), value };
+      return {
+        label: month.toLocaleDateString('en-IN', { month: 'short' }),
+        value,
+        startDate: `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-01`,
+        endDate: `${new Date(month.getFullYear(), month.getMonth() + 1, 0).getFullYear()}-${String(new Date(month.getFullYear(), month.getMonth() + 1, 0).getMonth() + 1).padStart(2, '0')}-${String(new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()).padStart(2, '0')}`,
+      };
     });
   }, [orders]);
   const chartMax = Math.max(1, ...revenueByMonth.map((month) => month.value));
 
   return <DashboardShell>
+    <AdminAlertCenter />
     <SectionTitle eyebrow="SUPER ADMIN" title="Operations overview" description="Current sales, orders, customers, catalogue, returns and stock signals from the admin services." />
     {loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]" role="status">Loading dashboard...</p>
       : error ? <div className="mt-8"><AdminError message={error} onRetry={() => void load()} /></div>
@@ -161,13 +189,13 @@ export function AdminDashboardPage() {
                 <div><h2 id="admin-revenue-heading" className="font-semibold">Paid order revenue</h2><p className="mt-1 text-xs text-[var(--text-secondary)]">Monthly totals based on paid, non-cancelled orders</p></div>
                 <Link to="/admin/reports" className="text-sm font-semibold text-[var(--brand-green-dark)]">View reports <ArrowRight className="ml-1 inline h-4 w-4" /></Link>
               </div>
-              <Link to="/admin/reports" className="mt-5 grid h-48 grid-cols-6 items-end gap-3 border-b border-[var(--border-subtle)] px-1 transition hover:bg-[var(--bg-secondary)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)] focus-visible:ring-offset-2" aria-label="Open reports for paid order revenue">
-                {revenueByMonth.map((month) => <div key={month.label} className="flex h-full flex-col items-center justify-end gap-2">
+              <div className="mt-5 grid h-48 grid-cols-6 items-end gap-3 border-b border-[var(--border-subtle)] px-1">
+                {revenueByMonth.map((month) => <Link key={month.label} to={`/admin/reports?startDate=${month.startDate}&endDate=${month.endDate}`} aria-label={`View revenue report for ${month.label}`} className="group flex h-full flex-col items-center justify-end gap-2 rounded-t-md transition hover:bg-[var(--bg-secondary)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)] focus-visible:ring-offset-2">
                   <span className="text-[10px] text-[var(--text-secondary)]">{month.value ? formatCurrency(month.value) : '—'}</span>
-                  <div className="w-full max-w-12 rounded-t-md bg-[#6b946d]" style={{ height: `${month.value ? Math.max(8, (month.value / chartMax) * 112) : 2}px` }} />
+                  <div className="w-full max-w-12 rounded-t-md bg-[#6b946d] transition group-hover:bg-[var(--brand-green-dark)]" style={{ height: `${month.value ? Math.max(8, (month.value / chartMax) * 112) : 2}px` }} />
                   <span className="text-[11px] text-[var(--text-secondary)]">{month.label}</span>
-                </div>)}
-              </Link>
+                </Link>)}
+              </div>
             </section>
             <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
               <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Inventory attention</h2><Link to="/admin/inventory" className="text-sm font-semibold text-[var(--brand-green-dark)]">Open inventory</Link></div>
@@ -185,17 +213,17 @@ export function AdminDashboardPage() {
           <div className="mt-5 grid gap-5 xl:grid-cols-2">
             <section className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
               <div className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] p-4"><h2 className="font-semibold">Recent orders</h2><Link to="/admin/orders" className="text-sm font-semibold text-[var(--brand-green-dark)]">View all</Link></div>
-              {orders.length ? <div className="divide-y divide-[var(--border-subtle)]">{orders.slice(0, 5).map((order) => <Link key={order.id} to="/admin/orders" className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--bg-secondary)]">
+              {orders.length ? <div className="divide-y divide-[var(--border-subtle)]">{orders.slice(0, 5).map((order) => <Link key={order.id} to={`/admin/orders?q=${encodeURIComponent(order.orderNumber)}`} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--bg-secondary)]">
                 <div><p className="text-sm font-semibold">{order.orderNumber}</p><p className="mt-0.5 text-xs text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</p></div>
                 <div className="text-right"><p className="text-sm font-semibold">{formatCurrency(order.total)}</p><p className="mt-0.5 text-xs text-[var(--text-secondary)]">{order.paymentStatus} · {order.status}</p></div>
               </Link>)}</div> : <p className="p-5 text-sm text-[var(--text-secondary)]">No orders have been created yet.</p>}
             </section>
             <section className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
               <div className="flex items-center justify-between gap-3 border-b border-[var(--border-subtle)] p-4"><h2 className="font-semibold">Recent customer activity</h2><Link to="/admin/customers" className="text-sm font-semibold text-[var(--brand-green-dark)]">View customers</Link></div>
-              {activityError ? <p role="alert" className="p-4 text-sm">{activityError}</p> : customers.length ? <div className="divide-y divide-[var(--border-subtle)]">{customers.map((customer) => <div key={customer.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              {activityError ? <p role="alert" className="p-4 text-sm">{activityError}</p> : customers.length ? <div className="divide-y divide-[var(--border-subtle)]">{customers.map((customer) => <Link key={customer.id} to={`/admin/customers?q=${encodeURIComponent(customer.email ?? customer.displayName ?? '')}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--bg-secondary)]">
                 <div className="min-w-0"><p className="truncate text-sm font-semibold">{customer.displayName}</p><p className="truncate text-xs text-[var(--text-secondary)]">{customer.email ?? customer.phone ?? 'Contact unavailable'}</p></div>
                 <div className="shrink-0 text-right"><p className="text-xs text-[var(--text-secondary)]">{new Date(customer.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p><p className="text-xs">{customer.orderCount} orders</p></div>
-              </div>)}</div> : <p className="p-5 text-sm text-[var(--text-secondary)]">No customer activity is available.</p>}
+              </Link>)}</div> : <p className="p-5 text-sm text-[var(--text-secondary)]">No customer activity is available.</p>}
             </section>
           </div>
         </> : null}
@@ -204,12 +232,18 @@ export function AdminDashboardPage() {
 
 export function AdminOrdersPage() {
   const request = useAdminRequest();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
   const [status, setStatus] = useState(() => searchParams.get('status') ?? 'ALL');
-  const [paymentStatus, setPaymentStatus] = useState('ALL');
+  const [paymentStatus, setPaymentStatus] = useState(() => searchParams.get('paymentStatus') ?? 'ALL');
+  const [paymentMethod, setPaymentMethod] = useState('ALL');
+  const [productQuery, setProductQuery] = useState('');
+  const initialOrderRange = useMemo(defaultOrderRange, []);
+  const [startDate, setStartDate] = useState(() => searchParams.get('startDate') ?? initialOrderRange.start);
+  const [endDate, setEndDate] = useState(() => searchParams.get('endDate') ?? initialOrderRange.end);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState('');
   const [error, setError] = useState('');
@@ -219,7 +253,7 @@ export function AdminOrdersPage() {
     setLoading(true);
     setError('');
     try {
-      setOrders(await request(adminService.orders));
+      setOrders(await request(adminService.orderReports));
     } catch (reason) {
       setError(adminOrderErrorMessage(reason, 'Unable to load orders.'));
     } finally {
@@ -229,13 +263,72 @@ export function AdminOrdersPage() {
   }, [request]);
 
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { setStatus(searchParams.get('status') ?? 'ALL'); }, [searchParams]);
+  useEffect(() => {
+    setStatus(searchParams.get('status') ?? 'ALL');
+    setPaymentStatus(searchParams.get('paymentStatus') ?? 'ALL');
+    setPaymentMethod(searchParams.get('paymentMethod') ?? 'ALL');
+    setQuery(searchParams.get('q') ?? '');
+    setStartDate(searchParams.get('startDate') ?? (searchParams.get('date') ?? initialOrderRange.start));
+    setEndDate(searchParams.get('endDate') ?? (searchParams.get('date') ?? initialOrderRange.end));
+    setPage(0);
+  }, [initialOrderRange.end, initialOrderRange.start, searchParams]);
 
   const visibleOrders = useMemo(() => orders.filter((order) => {
     const normalizedQuery = query.trim().toLowerCase();
     const matchesQuery = !normalizedQuery || order.orderNumber.toLowerCase().includes(normalizedQuery) || (order.customer?.displayName ?? '').toLowerCase().includes(normalizedQuery) || (order.customer?.email ?? '').toLowerCase().includes(normalizedQuery) || (order.customer?.phone ?? '').includes(normalizedQuery);
-    return matchesQuery && (status === 'ALL' || order.status === status) && (paymentStatus === 'ALL' || order.paymentStatus === paymentStatus);
-  }), [orders, paymentStatus, query, status]);
+    const orderDate = reportDate(order.createdAt);
+    const matchesProduct = !productQuery.trim() || order.items.some((item) => item.productName.toLowerCase().includes(productQuery.trim().toLowerCase()));
+    return matchesQuery && (status === 'ALL' || order.status === status)
+      && (paymentStatus === 'ALL' || order.paymentStatus === paymentStatus)
+      && (!startDate || orderDate >= startDate)
+      && (!endDate || orderDate <= endDate)
+      && (paymentMethod === 'ALL' || order.paymentMethod === paymentMethod)
+      && matchesProduct;
+  }), [endDate, orders, paymentMethod, paymentStatus, productQuery, query, startDate, status]);
+
+  const updateOrderFilters = (updates: Record<string, string>) => {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => value && value !== 'ALL' ? next.set(key, value) : next.delete(key));
+    setSearchParams(next, { replace: true });
+  };
+
+  const orderReport = {
+    title: 'Customer orders',
+    startDate,
+    endDate,
+    columns: [
+      { label: 'Order number' }, { label: 'Customer name' }, { label: 'Email' }, { label: 'Phone' },
+      { label: 'Products' }, { label: 'Quantity', type: 'number' as const }, { label: 'Subtotal', type: 'currency' as const },
+      { label: 'Discount', type: 'currency' as const }, { label: 'Taxable value', type: 'currency' as const },
+      { label: 'GST', type: 'currency' as const }, { label: 'Shipping', type: 'currency' as const },
+      { label: 'Final total', type: 'currency' as const }, { label: 'Payment method' },
+      { label: 'Payment status' }, { label: 'Order status' }, { label: 'Order date', type: 'date' as const },
+    ],
+    rows: visibleOrders.map((order) => [
+      order.orderNumber,
+      order.customer?.displayName ?? '',
+      order.customer?.email ?? '',
+      order.customer?.phone ?? '',
+      order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', '),
+      order.items.reduce((sum, item) => sum + item.quantity, 0),
+      order.subtotal,
+      order.discount,
+      order.taxableAmount ?? order.gstSnapshot?.taxableAmount ?? 0,
+      order.gstAmount ?? order.gstSnapshot?.gstAmount ?? 0,
+      order.shipping,
+      order.total,
+      order.paymentMethod ?? '',
+      order.paymentStatus,
+      order.status,
+      reportDate(order.createdAt),
+    ]),
+    summary: [
+      { label: 'Matching orders', value: visibleOrders.length },
+      { label: 'Final total', value: formatCurrency(visibleOrders.reduce((sum, order) => sum + order.total, 0)) },
+      { label: 'Discounts', value: formatCurrency(visibleOrders.reduce((sum, order) => sum + order.discount, 0)) },
+      { label: 'GST collected', value: formatCurrency(visibleOrders.reduce((sum, order) => sum + (order.gstAmount ?? order.gstSnapshot?.gstAmount ?? 0), 0)) },
+    ],
+  };
 
   const updateStatus = async (order: AdminOrder, nextStatus: string) => {
     setSavingId(order.id);
@@ -260,10 +353,14 @@ export function AdminOrdersPage() {
   return <DashboardShell>
     <SectionTitle eyebrow="Orders" title="Customer orders" description="Review live orders and update their fulfilment status." />
     <div className="mt-6 flex min-h-[100px] flex-wrap items-center gap-3 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
-      <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search order number or customer" className="h-12 min-w-0 flex-1 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm outline-none sm:basis-[280px]" />
-      <select value={status} onChange={(event) => setStatus(event.target.value)} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[210px] sm:flex-none"><option value="ALL">All order statuses</option>{['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((value) => <option key={value}>{value}</option>)}</select>
-      <select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value)} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[210px] sm:flex-none"><option value="ALL">All payment statuses</option>{['PENDING', 'PAID', 'FAILED'].map((value) => <option key={value}>{value}</option>)}</select>
+      <input value={query} onChange={(event) => { setQuery(event.target.value); updateOrderFilters({ q: event.target.value }); }} placeholder="Search order number or customer" className="h-12 min-w-0 flex-1 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm outline-none sm:basis-[280px]" />
+      <input value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder="Filter by product" className="h-12 min-w-0 flex-1 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm outline-none sm:basis-[200px]" />
+      <select value={status} onChange={(event) => { setStatus(event.target.value); updateOrderFilters({ status: event.target.value }); }} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[210px] sm:flex-none"><option value="ALL">All order statuses</option>{['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((value) => <option key={value}>{value}</option>)}</select>
+      <select value={paymentStatus} onChange={(event) => { setPaymentStatus(event.target.value); updateOrderFilters({ paymentStatus: event.target.value }); }} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[210px] sm:flex-none"><option value="ALL">All payment statuses</option>{['PENDING', 'PAID', 'FAILED'].map((value) => <option key={value}>{value}</option>)}</select>
+      <select value={paymentMethod} onChange={(event) => { setPaymentMethod(event.target.value); updateOrderFilters({ paymentMethod: event.target.value }); setPage(0); }} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[200px] sm:flex-none"><option value="ALL">All payment methods</option>{[...new Set(orders.map((order) => order.paymentMethod).filter((value): value is string => Boolean(value)))].map((value) => <option key={value}>{value}</option>)}</select>
+      <AdminDateRangeFilter startDate={startDate} endDate={endDate} onApply={(from, to) => { setStartDate(from); setEndDate(to); updateOrderFilters({ startDate: from, endDate: to, date: '' }); setPage(0); }} />
       <Button type="button" variant="ghost" className="h-12 w-[140px] flex-none px-3 py-2" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
+      <div className="ml-auto flex gap-2"><Button type="button" variant="secondary" onClick={() => downloadReportExcel(orderReport)}><Download className="mr-2 h-4 w-4" />Excel</Button><Button type="button" variant="secondary" onClick={() => void downloadReportPdf(orderReport)}>PDF</Button><Button type="button" variant="secondary" onClick={() => printReport(orderReport)}><Printer className="mr-2 h-4 w-4" />Print</Button></div>
     </div>
     <DeliveryBatchesPanel />
     {error ? <div className="mt-4"><AdminError message={error} onRetry={() => void load()} /></div> : null}
@@ -273,11 +370,12 @@ export function AdminOrdersPage() {
         <table className="w-full table-fixed text-left text-sm">
           <colgroup><col className="w-[12%]" /><col className="w-[16%]" /><col className="w-[11%]" /><col className="w-[19%]" /><col className="w-[9%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[14%]" /></colgroup>
           <thead><tr className="border-b border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]"><th className="px-3 py-4">Order</th><th className="px-3 py-4">Customer</th><th className="px-3 py-4">Date</th><th className="px-3 py-4">Products</th><th className="px-3 py-4">Total</th><th className="px-3 py-4">Payment</th><th className="px-3 py-4">Status</th><th className="px-3 py-4">Actions</th></tr></thead>
-          <tbody>{visibleOrders.map((order) => <tr key={order.id} className="border-b border-[var(--border-subtle)] align-top last:border-0"><td className="break-words px-3 py-4 font-semibold">{order.orderNumber}</td><td className="break-words px-3 py-4"><p>{order.customer?.displayName || 'Customer information unavailable'}</p><p className="mt-1 break-all text-xs text-[var(--text-secondary)]">{order.customer?.email ?? order.customer?.phone ?? 'No contact'}</p></td><td className="px-3 py-4 text-xs text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</td><td className="break-words px-3 py-4 text-xs text-[var(--text-secondary)]">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</td><td className="whitespace-nowrap px-3 py-4 font-semibold">{formatCurrency(order.total)}</td><td className="break-words px-3 py-4 text-xs">{order.paymentStatus}</td><td className="break-words px-3 py-4 text-xs">{order.status}</td><td className="px-3 py-4"><div className="flex flex-col items-stretch gap-2"><Button type="button" variant="ghost" className="whitespace-nowrap px-3 py-2 text-xs" onClick={() => setSelectedOrder(order)}>View details</Button><select aria-label={`Update ${order.orderNumber} status`} disabled={savingId === order.id} value={order.status} onChange={(event) => void updateStatus(order, event.target.value)} className="min-w-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-2 text-xs"><option value={order.status}>{order.status}</option>{nextOrderStatuses(order.status).map((value) => <option key={value}>{value}</option>)}</select></div></td></tr>)}</tbody>
+          <tbody>{visibleOrders.slice(page * 25, (page + 1) * 25).map((order) => <tr key={order.id} className="border-b border-[var(--border-subtle)] align-top last:border-0"><td className="break-words px-3 py-4 font-semibold"><button type="button" onClick={() => setSelectedOrder(order)} className="text-left underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{order.orderNumber}</button></td><td className="break-words px-3 py-4"><p>{order.customer?.displayName || 'Customer information unavailable'}</p><p className="mt-1 break-all text-xs text-[var(--text-secondary)]">{order.customer?.email ?? order.customer?.phone ?? 'No contact'}</p></td><td className="px-3 py-4 text-xs text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td><td className="break-words px-3 py-4 text-xs text-[var(--text-secondary)]">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</td><td className="whitespace-nowrap px-3 py-4 font-semibold">{formatCurrency(order.total)}</td><td className="break-words px-3 py-4 text-xs"><Link to={`/admin/orders?paymentStatus=${encodeURIComponent(order.paymentStatus)}`} className="rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{order.paymentStatus}</Link></td><td className="break-words px-3 py-4 text-xs"><Link to={`/admin/orders?status=${encodeURIComponent(order.status)}`} className="rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{order.status}</Link></td><td className="px-3 py-4"><div className="flex flex-col items-stretch gap-2"><Button type="button" variant="ghost" className="whitespace-nowrap px-3 py-2 text-xs" onClick={() => setSelectedOrder(order)}>View details</Button><select aria-label={`Update ${order.orderNumber} status`} disabled={savingId === order.id} value={order.status} onChange={(event) => void updateStatus(order, event.target.value)} className="min-w-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-2 text-xs"><option value={order.status}>{order.status}</option>{nextOrderStatuses(order.status).map((value) => <option key={value}>{value}</option>)}</select></div></td></tr>)}</tbody>
         </table>
       </div>
-      <div className="grid gap-4 lg:hidden">{visibleOrders.map((order) => <article key={order.id} className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words font-semibold">{order.orderNumber}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</p></div><p className="whitespace-nowrap font-semibold">{formatCurrency(order.total)}</p></div><div className="mt-4 grid gap-3 border-t border-[var(--border-subtle)] pt-4 text-sm"><div><p className="text-xs text-[var(--text-secondary)]">Customer</p><p className="break-words">{order.customer?.displayName || 'Customer information unavailable'}</p><p className="break-all text-xs text-[var(--text-secondary)]">{order.customer?.email ?? order.customer?.phone ?? 'No contact'}</p></div><div><p className="text-xs text-[var(--text-secondary)]">Products and quantity</p><p className="break-words">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</p></div><div className="grid grid-cols-2 gap-3"><div><p className="text-xs text-[var(--text-secondary)]">Payment</p><p>{order.paymentStatus}</p></div><div><p className="text-xs text-[var(--text-secondary)]">Order status</p><p>{order.status}</p></div></div><div className="grid grid-cols-[1fr_auto] items-center gap-3"><select aria-label={`Update ${order.orderNumber} status`} disabled={savingId === order.id} value={order.status} onChange={(event) => void updateStatus(order, event.target.value)} className="min-w-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-xs"><option value={order.status}>{order.status}</option>{nextOrderStatuses(order.status).map((value) => <option key={value}>{value}</option>)}</select><Button type="button" variant="ghost" className="whitespace-nowrap px-3 py-2 text-xs" onClick={() => setSelectedOrder(order)}>View details</Button></div></div></article>)}</div>
+      <div className="grid gap-4 lg:hidden">{visibleOrders.slice(page * 25, (page + 1) * 25).map((order) => <article key={order.id} className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><button type="button" onClick={() => setSelectedOrder(order)} className="break-words text-left font-semibold underline-offset-2 hover:underline">{order.orderNumber}</button><p className="mt-1 text-xs text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</p></div><p className="whitespace-nowrap font-semibold">{formatCurrency(order.total)}</p></div><div className="mt-4 grid gap-3 border-t border-[var(--border-subtle)] pt-4 text-sm"><div><p className="text-xs text-[var(--text-secondary)]">Customer</p><p className="break-words">{order.customer?.displayName || 'Customer information unavailable'}</p><p className="break-all text-xs text-[var(--text-secondary)]">{order.customer?.email ?? order.customer?.phone ?? 'No contact'}</p></div><div><p className="text-xs text-[var(--text-secondary)]">Products and quantity</p><p className="break-words">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</p></div><div className="grid grid-cols-2 gap-3"><div><p className="text-xs text-[var(--text-secondary)]">Payment</p><Link to={`/admin/orders?paymentStatus=${encodeURIComponent(order.paymentStatus)}`} className="underline-offset-2 hover:underline">{order.paymentStatus}</Link></div><div><p className="text-xs text-[var(--text-secondary)]">Order status</p><Link to={`/admin/orders?status=${encodeURIComponent(order.status)}`} className="underline-offset-2 hover:underline">{order.status}</Link></div></div><div className="grid grid-cols-[1fr_auto] items-center gap-3"><select aria-label={`Update ${order.orderNumber} status`} disabled={savingId === order.id} value={order.status} onChange={(event) => void updateStatus(order, event.target.value)} className="min-w-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-xs"><option value={order.status}>{order.status}</option>{nextOrderStatuses(order.status).map((value) => <option key={value}>{value}</option>)}</select><Button type="button" variant="ghost" className="whitespace-nowrap px-3 py-2 text-xs" onClick={() => setSelectedOrder(order)}>View details</Button></div></div></article>)}</div>
       {!visibleOrders.length ? <p className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-center text-sm text-[var(--text-secondary)]">No orders match the selected filters.</p> : null}
+      {visibleOrders.length ? <div className="mt-4 flex items-center justify-between text-sm"><span>{visibleOrders.length} matching orders · Page {page + 1} of {Math.max(1, Math.ceil(visibleOrders.length / 25))}</span><div className="flex gap-2"><Button type="button" variant="ghost" disabled={!page} onClick={() => setPage((current) => current - 1)}>Previous</Button><Button type="button" variant="ghost" disabled={(page + 1) * 25 >= visibleOrders.length} onClick={() => setPage((current) => current + 1)}>Next</Button></div></div> : null}
     </div>}
     {selectedOrder ? <AdminOrderDetails order={selectedOrder} onClose={() => setSelectedOrder(null)} /> : null}
   </DashboardShell>;
@@ -331,6 +429,23 @@ function DeliveryBatchesPanel() {
       setLoading(false);
     });
   }, [loadBatches, loadEligible]);
+
+  useEffect(() => {
+    const refreshBatches = () => {
+      if (document.visibilityState !== 'visible') return;
+      void loadBatches().catch((reason: unknown) => {
+        setError(adminOrderErrorMessage(reason, 'Unable to refresh delivery batches.'));
+      });
+    };
+    const interval = window.setInterval(refreshBatches, 5000);
+    window.addEventListener('focus', refreshBatches);
+    document.addEventListener('visibilitychange', refreshBatches);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshBatches);
+      document.removeEventListener('visibilitychange', refreshBatches);
+    };
+  }, [loadBatches]);
 
   const toggleOrder = (orderId: string) => {
     setSelectedIds((ids) => ids.includes(orderId) ? ids.filter((id) => id !== orderId) : [...ids, orderId]);
@@ -558,7 +673,7 @@ function DeliveryBatchesPanel() {
     </div> : <p className="mt-4 rounded-xl bg-[var(--bg-primary)] p-4 text-sm text-[var(--text-secondary)]">No paid orders in processing match this route filter.</p>}
 
     <h3 className="mt-7 font-semibold">Existing batches</h3>
-    {!batches.length ? <p className="mt-2 text-sm text-[var(--text-secondary)]">No delivery batches have been created.</p> : <div className="mt-3 grid gap-3 lg:grid-cols-2">
+    {!batches.length ? <p className="mt-2 text-sm text-[var(--text-secondary)]">No delivery batches need admin attention.</p> : <div className="mt-3 grid gap-3 lg:grid-cols-2">
       {batches.map((batch) => <article key={batch.id} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
         <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-semibold">{batch.routeName}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">{batch.orders.map((order) => order.postalCode).filter((value, index, values) => values.indexOf(value) === index).join(', ')}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">{batch.linkExpiresAt ? `Link expires ${new Date(batch.linkExpiresAt).toLocaleString('en-IN')}` : 'No active link'}</p></div><span className="rounded-full border border-[var(--border-subtle)] px-2 py-1 text-xs">{batch.status}</span></div>
         <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs"><span>Total<strong className="mt-1 block text-base">{batch.total}</strong></span><span>Pending<strong className="mt-1 block text-base">{batch.pending}</strong></span><span>Delivered<strong className="mt-1 block text-base">{batch.delivered}</strong></span><span>Failed<strong className="mt-1 block text-base">{batch.failed}</strong></span></div>
@@ -696,6 +811,7 @@ function AdminOrderDetails({ order, onClose }: { order: AdminOrder; onClose: () 
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState('');
   const [drafts, setDrafts] = useState<Record<string, { status: LensPreparationDetails['status']; notes: string }>>({});
+  const orderGst = toGstBreakdown(details.gstSnapshot);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -826,7 +942,7 @@ function AdminOrderDetails({ order, onClose }: { order: AdminOrder; onClose: () 
             </div>
           </section>;
         })}
-        <section className="mt-6 border-t border-[var(--border-subtle)] pt-6 text-sm"><div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(details.subtotal)}</span></div><div className="mt-2 flex justify-between"><span>Discount</span><span>-{formatCurrency(details.discount)}</span></div><div className="mt-2 flex justify-between"><span>Shipping</span><span>{formatCurrency(details.shipping)}</span></div><div className="mt-3 flex justify-between border-t border-[var(--border-subtle)] pt-3 text-lg font-semibold"><span>Total</span><span>{formatCurrency(details.total)}</span></div><p className="mt-4">Payment: <strong>{details.paymentStatus}</strong> · Order: <strong>{details.status}</strong></p></section>
+        <section className="mt-6 border-t border-[var(--border-subtle)] pt-6 text-sm"><div className="flex justify-between"><span>Subtotal</span><span>{formatCurrency(details.subtotal)}</span></div><div className="mt-2 flex justify-between"><span>Discount</span><span>-{formatCurrency(details.discount)}</span></div><div className="my-3 border-y border-[var(--border-subtle)] py-3"><GstBreakdown breakdown={orderGst} /></div><div className="mt-2 flex justify-between"><span>Shipping</span><span>{formatCurrency(details.shipping)}</span></div><div className="mt-3 flex justify-between border-t border-[var(--border-subtle)] pt-3 text-lg font-semibold"><span>Total</span><span>{formatCurrency(details.total)}</span></div><p className="mt-4">Payment: <strong>{details.paymentStatus}</strong> · Order: <strong>{details.status}</strong></p></section>
         <section className="mt-6 border-t border-[var(--border-subtle)] pt-6"><h3 className="font-semibold">Status timeline</h3><div className="mt-3 space-y-3">{details.history.map((entry) => <div key={`${entry.status}-${entry.createdAt}`}><p className="text-sm font-medium">{entry.status}</p><p className="text-xs text-[var(--text-secondary)]">{new Date(entry.createdAt).toLocaleString('en-IN')}</p>{entry.note ? <p className="text-xs text-[var(--text-secondary)]">{entry.note}</p> : null}</div>)}</div></section>
       </>}
     </aside>
@@ -839,13 +955,16 @@ function PrescriptionEyeDetails({ title, sph, cyl, axis, add }: { title: string;
 
 export function AdminCustomersPage() {
   const request = useAdminRequest();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
-  const [query, setQuery] = useState('');
-  const [appliedQuery, setAppliedQuery] = useState('');
+  const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  const [appliedQuery, setAppliedQuery] = useState(() => searchParams.get('q') ?? '');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<AdminCustomer | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const pageSize = 25;
 
   const load = useCallback(async () => {
@@ -863,12 +982,22 @@ export function AdminCustomersPage() {
   }, [appliedQuery, page, request]);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const nextQuery = searchParams.get('q') ?? '';
+    setQuery(nextQuery);
+    setAppliedQuery(nextQuery);
+    setPage(0);
+  }, [searchParams]);
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
     setPage(0);
     setAppliedQuery(query);
+    const next = new URLSearchParams(searchParams);
+    if (query.trim()) next.set('q', query.trim());
+    else next.delete('q');
+    setSearchParams(next, { replace: true });
   };
 
   return <DashboardShell>
@@ -880,10 +1009,100 @@ export function AdminCustomersPage() {
     </form>
     {error ? <div className="mt-4"><AdminError message={error} onRetry={() => void load()} /></div> : null}
     {loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]">Loading customers...</p> : <div className="mt-6 overflow-hidden rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-      {customers.length ? <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-[var(--bg-primary)] text-[var(--text-secondary)]"><tr>{['Name', 'Email', 'Phone', 'Joined', 'Orders', 'Status'].map((header) => <th key={header} className="whitespace-nowrap px-4 py-4 font-medium">{header}</th>)}</tr></thead><tbody>{customers.map((customer) => <tr key={customer.id} className="border-t border-[var(--border-subtle)]"><td className="max-w-[220px] break-words px-4 py-4 font-medium">{customer.displayName}</td><td className="max-w-[240px] break-all px-4 py-4 text-[var(--text-secondary)]">{customer.email ?? 'No email'}</td><td className="whitespace-nowrap px-4 py-4 text-[var(--text-secondary)]">{customer.phone ?? 'No phone'}</td><td className="whitespace-nowrap px-4 py-4 text-[var(--text-secondary)]">{new Date(customer.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</td><td className="px-4 py-4">{customer.orderCount}</td><td className="px-4 py-4"><span className="rounded-full bg-[var(--brand-green)]/12 px-3 py-1 text-xs font-medium">{customer.status}</span></td></tr>)}</tbody></table></div> : <div className="p-10 text-center"><Users className="mx-auto h-8 w-8 text-[var(--text-secondary)]" /><p className="mt-3 font-medium">No customers registered</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{appliedQuery ? 'No customers match your search.' : 'Registered customer accounts will appear here.'}</p></div>}
+      {customers.length ? <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-[var(--bg-primary)] text-[var(--text-secondary)]"><tr>{['Name', 'Email', 'Phone', 'Joined', 'Orders', 'Status'].map((header) => <th key={header} className="whitespace-nowrap px-4 py-4 font-medium">{header}</th>)}</tr></thead><tbody>{customers.map((customer) => <tr key={customer.id} className="border-t border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"><td className="max-w-[220px] break-words px-4 py-4 font-medium"><button type="button" onClick={() => setSelectedCustomer(customer)} className="rounded-sm text-left underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{customer.displayName}</button></td><td className="max-w-[240px] break-all px-4 py-4 text-[var(--text-secondary)]">{customer.email ?? 'No email'}</td><td className="whitespace-nowrap px-4 py-4 text-[var(--text-secondary)]">{customer.phone ?? 'No phone'}</td><td className="whitespace-nowrap px-4 py-4 text-[var(--text-secondary)]">{new Date(customer.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td><td className="px-4 py-4"><button type="button" onClick={() => setSelectedCustomer(customer)} className="rounded-sm font-medium underline-offset-2 hover:underline">{customer.orderCount} orders</button></td><td className="px-4 py-4"><span className="rounded-full bg-[var(--brand-green)]/12 px-3 py-1 text-xs font-medium">{customer.status}</span></td></tr>)}</tbody></table></div> : <div className="p-10 text-center"><Users className="mx-auto h-8 w-8 text-[var(--text-secondary)]" /><p className="mt-3 font-medium">No customers registered</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{appliedQuery ? 'No customers match your search.' : 'Registered customer accounts will appear here.'}</p></div>}
       {total > 0 ? <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] px-4 py-4 text-sm"><p className="text-[var(--text-secondary)]">Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} of {total}</p><div className="flex items-center gap-2"><Button type="button" variant="ghost" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>Previous</Button><span className="text-[var(--text-secondary)]">Page {page + 1} of {pageCount}</span><Button type="button" variant="ghost" disabled={page + 1 >= pageCount} onClick={() => setPage((current) => current + 1)}>Next</Button></div></div> : null}
     </div>}
+    {selectedCustomer ? <AdminCustomerHistory customer={selectedCustomer} onClose={() => setSelectedCustomer(null)} onOrderOpen={setSelectedOrder} /> : null}
+    {selectedOrder ? <AdminOrderDetails order={selectedOrder} onClose={() => setSelectedOrder(null)} /> : null}
   </DashboardShell>;
+}
+
+function AdminCustomerHistory({ customer, onClose, onOrderOpen }: { customer: AdminCustomer; onClose: () => void; onOrderOpen: (order: AdminOrder) => void }) {
+  const request = useAdminRequest();
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [returns, setReturns] = useState<AdminReturn[]>([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [allOrders, allReturns] = await Promise.all([
+        request(adminService.orders),
+        request((token) => returnService.adminList(token, {})),
+      ]);
+      setOrders(allOrders.filter((order) => order.customer?.id === customer.id));
+      setReturns(allReturns.filter((item) => item.customer.id === customer.id));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load this customer history.');
+    } finally {
+      setLoading(false);
+    }
+  }, [customer.id, request]);
+
+  useEffect(() => { void load(); }, [load]);
+  const visibleOrders = orders.filter((order) => {
+    const date = reportDate(order.createdAt);
+    return (!startDate || date >= startDate) && (!endDate || date <= endDate);
+  });
+  const successfulOrders = visibleOrders.filter((order) => order.paymentStatus === 'PAID' && order.status !== 'CANCELLED');
+  const customerReturns = returns.filter((item) => {
+    const date = reportDate(item.createdAt);
+    return (!startDate || date >= startDate) && (!endDate || date <= endDate);
+  });
+  const totalRefunds = customerReturns.flatMap((item) => item.refunds)
+    .filter((refund) => refund.status === 'PROCESSED')
+    .reduce((sum, refund) => sum + refund.amount, 0);
+  const report = {
+    title: `Customer order history - ${customer.displayName}`,
+    startDate,
+    endDate,
+    columns: [
+      { label: 'Order number' }, { label: 'Product names' }, { label: 'Order date', type: 'date' as const },
+      { label: 'Amount', type: 'currency' as const }, { label: 'Payment status' }, { label: 'Order status' },
+      { label: 'Delivery status' },
+    ],
+    rows: visibleOrders.map((order) => [
+      order.orderNumber, order.items.map((item) => item.productName).join(', '), reportDate(order.createdAt),
+      order.total, order.paymentStatus, order.status, order.status,
+    ]),
+    summary: [
+      { label: 'Total orders', value: visibleOrders.length },
+      { label: 'Successful orders', value: successfulOrders.length },
+      { label: 'Pending orders', value: visibleOrders.filter((order) => order.paymentStatus === 'PENDING').length },
+      { label: 'Cancelled orders', value: visibleOrders.filter((order) => order.status === 'CANCELLED').length },
+      { label: 'Total amount spent', value: formatCurrency(successfulOrders.reduce((sum, order) => sum + order.total, 0)) },
+      { label: 'Total discounts', value: formatCurrency(successfulOrders.reduce((sum, order) => sum + order.discount, 0)) },
+      { label: 'Total GST', value: formatCurrency(successfulOrders.reduce((sum, order) => sum + (order.gstAmount ?? order.gstSnapshot?.gstAmount ?? 0), 0)) },
+      { label: 'Total refunds', value: formatCurrency(totalRefunds) },
+    ],
+  };
+
+  return <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="customer-history-title">
+    <section className="max-h-[95vh] w-full max-w-6xl overflow-y-auto rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 shadow-2xl sm:p-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div><p className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-green-dark)]">Customer report</p><h2 id="customer-history-title" className="mt-1 text-2xl font-semibold">{customer.displayName}</h2><p className="mt-2 text-sm text-[var(--text-secondary)]">{customer.email ?? 'No email'} · {customer.phone ?? 'No phone'}</p><p className="mt-1 text-xs text-[var(--text-secondary)]">Registered {new Date(customer.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })} · {customer.status}</p></div>
+        <Button type="button" variant="ghost" onClick={onClose}><X className="mr-2 h-4 w-4" />Close</Button>
+      </header>
+      <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
+        <AdminDateRangeFilter startDate={startDate} endDate={endDate} onApply={(from, to) => { setStartDate(from); setEndDate(to); setPage(0); }} />
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" disabled={loading} onClick={() => downloadReportExcel(report)}><Download className="mr-2 h-4 w-4" />Excel</Button>
+          <Button type="button" variant="secondary" disabled={loading} onClick={() => void downloadReportPdf(report)}>PDF</Button>
+          <Button type="button" variant="secondary" disabled={loading} onClick={() => printReport(report)}><Printer className="mr-2 h-4 w-4" />Print</Button>
+        </div>
+      </div>
+      {error ? <div className="mt-4"><AdminError message={error} onRetry={() => void load()} /></div> : null}
+      {loading ? <p className="mt-5 text-sm text-[var(--text-secondary)]">Loading customer purchase history…</p> : <>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{report.summary?.map((metric) => <div key={metric.label} className="rounded-xl border border-[var(--border-subtle)] p-3"><p className="text-xs text-[var(--text-secondary)]">{metric.label}</p><p className="mt-1 font-semibold">{metric.value}</p></div>)}</div>
+        {visibleOrders.length ? <div className="mt-5 overflow-x-auto rounded-xl border border-[var(--border-subtle)]"><table className="min-w-full text-left text-sm"><thead className="bg-[var(--bg-primary)] text-xs text-[var(--text-secondary)]"><tr>{report.columns.map((column) => <th key={column.label} className="whitespace-nowrap px-3 py-3">{column.label}</th>)}</tr></thead><tbody>{visibleOrders.slice(page * 25, (page + 1) * 25).map((order) => <tr key={order.id} className="border-t border-[var(--border-subtle)]"><td className="px-3 py-3"><button type="button" onClick={() => onOrderOpen(order)} className="font-medium underline-offset-2 hover:underline">{order.orderNumber}</button></td><td className="px-3 py-3">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</td><td className="px-3 py-3">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td><td className="px-3 py-3">{formatCurrency(order.total)}</td><td className="px-3 py-3">{order.paymentStatus}</td><td className="px-3 py-3">{order.status}</td><td className="px-3 py-3">{order.status}</td></tr>)}</tbody></table><div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-3 py-2 text-xs"><span>{visibleOrders.length} customer orders · Page {page + 1} of {Math.max(1, Math.ceil(visibleOrders.length / 25))}</span><div className="flex gap-2"><Button type="button" variant="ghost" disabled={!page} onClick={() => setPage((current) => current - 1)}>Previous</Button><Button type="button" variant="ghost" disabled={(page + 1) * 25 >= visibleOrders.length} onClick={() => setPage((current) => current + 1)}>Next</Button></div></div></div> : <p className="mt-5 rounded-xl bg-[var(--bg-primary)] p-6 text-center text-sm text-[var(--text-secondary)]">No orders match this customer and date range.</p>}
+      </>}
+    </section>
+  </div>;
 }
 
 type LensCategory = LensOption['category'];

@@ -93,18 +93,33 @@ public class MembershipService {
     @Transactional(readOnly = true)
     public List<AdminMembershipResponse> adminMemberships() {
         Instant now = Instant.now();
+        java.util.Map<String, MembershipPayment> paymentByMembershipId = payments.findAllByOrderByCreatedAtDesc().stream()
+                .filter(payment -> payment.getMembership() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        payment -> payment.getMembership().getId(),
+                        payment -> payment,
+                        (first, ignored) -> first));
         return memberships.findAllByOrderByCreatedAtDesc().stream()
-                .map(membership -> new AdminMembershipResponse(
-                        membership.getId(),
-                        membership.getUser().getId(),
-                        membership.getUser().getDisplayName(),
-                        membership.getUser().getEmail(),
-                        membership.getPlan().getId(),
-                        membership.getPlan().getName(),
-                        effectiveStatus(membership, now),
-                        membership.getCreatedAt(),
-                        membership.getStartsAt(),
-                        membership.getExpiresAt()))
+                .map(membership -> {
+                    MembershipPayment payment = paymentByMembershipId.get(membership.getId());
+                    return new AdminMembershipResponse(
+                            membership.getId(),
+                            membership.getUser().getId(),
+                            membership.getUser().getDisplayName(),
+                            membership.getUser().getEmail(),
+                            membership.getUser().getPhone(),
+                            membership.getPlan().getId(),
+                            membership.getPlan().getName(),
+                            membership.getPlan().getPrice(),
+                            membership.getPlan().getDiscountPercentage(),
+                            effectiveStatus(membership, now),
+                            membership.getCreatedAt(),
+                            membership.getStartsAt(),
+                            membership.getExpiresAt(),
+                            payment == null ? "UNKNOWN" : payment.getStatus(),
+                            payment == null ? null : payment.getProviderPaymentId() == null
+                                    ? payment.getId() : payment.getProviderPaymentId());
+                })
                 .toList();
     }
 

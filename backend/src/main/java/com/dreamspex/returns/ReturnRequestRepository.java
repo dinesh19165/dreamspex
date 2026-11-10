@@ -13,6 +13,8 @@ public interface ReturnRequestRepository extends JpaRepository<ReturnRequest, St
     List<ReturnRequest> findByUserIdOrderByCreatedAtDesc(String userId);
     List<ReturnRequest> findByOrderId(String orderId);
     List<ReturnRequest> findAllByOrderByCreatedAtDesc();
+    List<ReturnRequest> findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+            java.time.Instant from, java.time.Instant to);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select request from ReturnRequest request where request.id = :id")

@@ -1,4 +1,5 @@
-package com.dreamspex.order;
+package com.dreamspex.order;
+
 import com.dreamspex.auth.entity.Address;
 import com.dreamspex.auth.entity.User;
 import com.dreamspex.auth.repository.AddressRepository;
@@ -20,7 +21,14 @@ import com.dreamspex.notification.NotificationService;
 import com.dreamspex.prescription.LensOption;
 import com.dreamspex.prescription.LensOptionRepository;
 import com.dreamspex.prescription.Prescription;
-import com.dreamspex.security.CurrentUser;import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dreamspex.security.CurrentUser;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dreamspex.gst.GstCalculationService;
+import com.dreamspex.gst.GstConfiguration;
+import com.dreamspex.gst.GstConfigurationRepository;
+import com.dreamspex.gst.GstPriceTreatment;
+import com.dreamspex.admin.Store;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +46,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceLensPricingTest {
@@ -52,6 +61,7 @@ class OrderServiceLensPricingTest {
     @Mock NotificationService notifications;
     @Mock LensOptionRepository lensOptions;
     @Mock DeliveryAvailabilityService deliveryAvailability;
+    @Mock GstConfigurationRepository gstConfigurations;
 
     private User user;
     private Product product;
@@ -92,8 +102,10 @@ class OrderServiceLensPricingTest {
         option.setAdditionalCost(new BigDecimal("100.00"));
 
         when(current.require(any())).thenReturn(user);
+        Address address = new Address();
+        address.setState("Telangana");
         when(addresses.findByIdAndUserIdAndDeletedAtIsNull("address", user.getId()))
-                .thenReturn(Optional.of(new Address()));
+                .thenReturn(Optional.of(address));
         when(carts.findByUserIdAndStatus(user.getId(), "ACTIVE")).thenReturn(Optional.of(cart));
         when(variants.findByIdAndStatus(variant.getId(), "ACTIVE")).thenReturn(Optional.of(variant));
         when(lensOptions.findByCode("SINGLE_VISION")).thenReturn(Optional.of(option));
@@ -104,7 +116,90 @@ class OrderServiceLensPricingTest {
                 couponService, memberships, new ObjectMapper(),
                 notifications, new ShippingProperties(new BigDecimal("2000.00"), new BigDecimal("99.00")), lensOptions,
                 org.mockito.Mockito.mock(com.dreamspex.prescription.PrescriptionFileRepository.class),
-                org.mockito.Mockito.mock(com.dreamspex.prescription.PrescriptionStorage.class), deliveryAvailability);
+                org.mockito.Mockito.mock(com.dreamspex.prescription.PrescriptionStorage.class), deliveryAvailability,
+                gstConfigurations, new GstCalculationService());
+    }
+
+    @Test
+    void quoteCalculatesInclusiveIntrastateGstWithoutIncreasingPayableTotal() {
+        Store store = store("Telangana");
+        availableDelivery(store);
+        when(gstConfigurations.findFirstByActiveTrueOrderByUpdatedAtDesc())
+                .thenReturn(Optional.of(configuration()));
+        product.setName("Frame");
+        product.setHsnCode("900311");
+        product.setGstRate(new BigDecimal("18.00"));
+
+        var quote = service.quote(auth(), new CheckoutRequest("address", null));
+
+        assertEquals(new BigDecimal("932.20"), quote.gstSnapshot().taxableAmount());
+        assertEquals(new BigDecimal("167.80"), quote.gstSnapshot().gstAmount());
+        assertEquals(new BigDecimal("83.90"), quote.gstSnapshot().cgstAmount());
+        assertEquals(new BigDecimal("83.90"), quote.gstSnapshot().sgstAmount());
+        assertEquals(BigDecimal.ZERO.setScale(2), quote.gstSnapshot().igstAmount());
+        assertEquals(new BigDecimal("1199.00"), quote.gstSnapshot().finalAmount());
+        assertEquals(quote.total(), quote.gstSnapshot().finalAmount());
+    }
+
+    @Test
+    void quoteUsesProductRateAndInterstateIgst() {
+        Store store = store("Telangana");
+        availableDelivery(store);
+        when(gstConfigurations.findFirstByActiveTrueOrderByUpdatedAtDesc())
+                .thenReturn(Optional.of(configuration()));
+        product.setName("Frame");
+        product.setHsnCode("900311");
+        product.setGstRate(new BigDecimal("12.00"));
+        addresses.findByIdAndUserIdAndDeletedAtIsNull("address", user.getId()).orElseThrow().setState("Karnataka");
+
+        var quote = service.quote(auth(), new CheckoutRequest("address", null));
+
+        assertEquals(new BigDecimal("117.86"), quote.gstSnapshot().gstAmount());
+        assertEquals(BigDecimal.ZERO.setScale(2), quote.gstSnapshot().cgstAmount());
+        assertEquals(BigDecimal.ZERO.setScale(2), quote.gstSnapshot().sgstAmount());
+        assertEquals(new BigDecimal("117.86"), quote.gstSnapshot().igstAmount());
+        assertEquals(new BigDecimal("1199.00"), quote.total());
+    }
+
+    @Test
+    void createdOrderPersistsGstSnapshotAndKeepsInclusivePayableAmount() {
+        Store store = store("Telangana");
+        availableDelivery(store);
+        when(gstConfigurations.findFirstByActiveTrueOrderByUpdatedAtDesc())
+                .thenReturn(Optional.of(configuration()));
+        when(orders.findByUserIdAndIdempotencyKey(user.getId(), "gst-order")).thenReturn(Optional.empty());
+        when(variants.findWithLockByIdAndStatus(variant.getId(), "ACTIVE")).thenReturn(Optional.of(variant));
+        when(orders.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        product.setName("Frame");
+        product.setHsnCode("900311");
+        product.setGstRate(new BigDecimal("18.00"));
+
+        var order = service.create(auth(), new CheckoutRequest("address", null), "gst-order");
+
+        assertEquals(new BigDecimal("1199.00"), order.total());
+        assertEquals(new BigDecimal("167.80"), order.gstSnapshot().gstAmount());
+        assertEquals(order.total(), order.gstSnapshot().finalAmount());
+        verify(orders).save(org.mockito.ArgumentMatchers.<Order>argThat(saved -> saved.getGstSnapshot() != null
+                && saved.getGstSnapshot().contains("\"hsnCode\":\"900311\"")));
+    }
+
+    private org.springframework.security.core.Authentication auth() {
+        return new UsernamePasswordAuthenticationToken("customer", null);
+    }
+
+    private Store store(String state) {
+        Store store = new Store();
+        store.setState(state);
+        return store;
+    }
+
+    private void availableDelivery(Store store) {
+        when(deliveryAvailability.evaluate(any())).thenReturn(new DeliveryAvailabilityService.Evaluation(
+                true, "AVAILABLE", store, BigDecimal.ONE, BigDecimal.TEN, "Delivery available."));
+    }
+
+    private GstConfiguration configuration() {
+        return new GstConfiguration(new BigDecimal("18.00"), GstPriceTreatment.INCLUSIVE, true, null);
     }
 
     @Test

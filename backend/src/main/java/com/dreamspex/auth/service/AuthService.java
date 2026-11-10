@@ -1,6 +1,7 @@
 package com.dreamspex.auth.service;
 
 
+import com.dreamspex.auth.PhoneNumberNormalizer;
 import com.dreamspex.auth.entity.CustomerProfile;
 import com.dreamspex.auth.entity.OtpChallenge;
 import com.dreamspex.auth.entity.RefreshToken;
@@ -14,6 +15,8 @@ import com.dreamspex.common.ApiException;
 import com.dreamspex.config.SecurityProperties;
 import com.dreamspex.audit.AuditLogService;
 import com.dreamspex.security.JwtService;
+import com.dreamspex.loyalty.LoyaltyService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -46,6 +49,8 @@ public class AuthService {
     private final AuditLogService auditLogs;
     private final SecureRandom random = new SecureRandom();
     private final SecretKeySpec otpKey;
+    @Autowired
+    private LoyaltyService loyaltyService;
 
     public AuthService(UserRepository users, RoleRepository roles, RefreshTokenRepository refreshTokens,
                        OtpChallengeRepository challenges, PasswordEncoder passwordEncoder, JwtService jwtService,
@@ -75,15 +80,19 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "IDENTIFIER_REQUIRED", "Email or phone is required.");
         }
         String email = normalizeEmail(request.email());
+        String phone = PhoneNumberNormalizer.normalize(request.phone());
+        if (request.phone() != null && !request.phone().isBlank() && phone == null) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_PHONE", "Enter a valid phone number, such as +91XXXXXXXXXX.");
+        }
         if (email != null && users.findByEmailIgnoreCaseAndDeletedAtIsNull(email).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "IDENTIFIER_EXISTS", "An account already exists.");
         }
-        if (request.phone() != null && users.findByPhoneAndDeletedAtIsNull(request.phone()).isPresent()) {
+        if (phone != null && users.findByPhoneAndDeletedAtIsNull(phone).isPresent()) {
             throw new ApiException(HttpStatus.CONFLICT, "IDENTIFIER_EXISTS", "An account already exists.");
         }
         User user = new User();
         user.setEmail(email);
-        user.setPhone(request.phone());
+        user.setPhone(phone);
         user.setDisplayName(request.name().trim());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setStatus("PENDING_VERIFICATION");
@@ -93,7 +102,11 @@ public class AuthService {
         profile.setUser(user);
         profile.setFirstName(request.name().trim());
         profiles.save(profile);
-        OtpChallenge challenge = createChallenge(user, email != null ? email : request.phone(), "REGISTRATION");
+        if (loyaltyService != null) loyaltyService.initializeCustomer(user);
+        if (request.referralCode() != null && !request.referralCode().isBlank()) {
+            loyaltyService.registerReferral(user, request.referralCode());
+        }
+        OtpChallenge challenge = createChallenge(user, email != null ? email : phone, "REGISTRATION");
         auditLogs.record(user, "AUTH_REGISTERED");
         return new RegisterResponse(user.getId(), true, Set.of(email != null ? "EMAIL" : "SMS"), challenge.getId());
     }

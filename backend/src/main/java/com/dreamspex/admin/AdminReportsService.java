@@ -47,6 +47,8 @@ public class AdminReportsService {
                         paidRevenue,
                         refundDeductions,
                         paidRevenue.subtract(refundDeductions),
+                        decimal(orderSummary, "discounts"),
+                        decimal(orderSummary, "gst_collected"),
                         reports.paidRevenue(today, today),
                         reports.paidRevenue(weekStart, today),
                         reports.paidRevenue(today.minusDays(29), today),
@@ -71,8 +73,11 @@ public class AdminReportsService {
                         number(returnSummary, "total"),
                         number(returnSummary, "approved"),
                         number(returnSummary, "rejected"),
+                        number(returnSummary, "pending"),
                         reports.processedRefundCount(start, end),
-                        refundDeductions));
+                        refundDeductions,
+                        reports.pendingRefundAmount(start, end)),
+                reports.membershipSummary(start, end));
     }
 
     private static long number(Map<String, Object> values, String key) {

@@ -52,9 +52,27 @@ export type AdminProduct = {
   badge: string | null;
   tryOnImageUrl: string | null;
   status: string;
+  hsnCode: string | null;
+  gstRate: number | null;
+  gstEnabled: boolean;
   categories: AdminCategory[];
   variants: AdminProductVariant[];
   images: AdminProductImage[];
+};
+
+export type AdminProductGstRequest = {
+  hsnCode: string | null;
+  useGlobalRate: boolean;
+  gstRate: number | null;
+  gstEnabled: boolean;
+};
+
+export type AdminProductGstResponse = {
+  productId: string;
+  hsnCode: string | null;
+  gstRate: number | null;
+  usesGlobalRate: boolean;
+  gstEnabled: boolean;
 };
 
 export type AdminProductRequest = {
@@ -144,6 +162,11 @@ export const adminProductService = {
     request<AdminProduct>('/api/v1/admin/products', { method: 'POST', body: JSON.stringify(product) }),
   update: (id: string, product: AdminProductRequest) =>
     request<AdminProduct>(`/api/v1/admin/products/${id}`, { method: 'PATCH', body: JSON.stringify(product) }),
+  updateGst: (id: string, gst: AdminProductGstRequest) =>
+    request<AdminProductGstResponse>(`/api/v1/admin/products/${encodeURIComponent(id)}/gst`, {
+      method: 'PUT',
+      body: JSON.stringify(gst),
+    }),
   delete: (id: string) =>
     request<void>(`/api/v1/admin/products/${id}`, { method: 'DELETE' }),
   setStatus: (id: string, status: string) =>

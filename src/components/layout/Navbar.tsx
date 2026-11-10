@@ -9,6 +9,11 @@ import { resolveCmsMediaUrl } from '../../config/api';
 import { catalogService, type CatalogCategory, type CatalogProduct } from '../../services/catalogService';
 import { fetchOffers, type Offer } from '../../services/offerService';
 import { fetchMembershipPlans, type MembershipPlan } from '../../services/membershipService';
+import {
+  membershipDiscountLabel,
+  membershipPlanDescription,
+  membershipValidityLabel,
+} from '../../utils/membershipPlanDisplay';
 
 const utilityNavItems = [
   { label: 'Collections', path: '/categories' },
@@ -428,9 +433,13 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
                       : membershipError
                         ? <p className="customer-mega-menu__empty" role="alert">{membershipError}</p>
                         : membershipPlans.length
-                          ? membershipPlans.slice(0, 3).map((plan) => <Link key={plan.id} to={`/membership/checkout?plan=${encodeURIComponent(plan.name.toLowerCase())}`} onClick={() => setMegaMenuOpen(null)} className="customer-mega-menu__plan">
-                            <span>{plan.name}</span>
-                            <span>{plan.description}</span>
+                          ? membershipPlans.slice(0, 3).map((plan) => <Link key={plan.id} to={`/membership/checkout?plan=${encodeURIComponent(plan.id)}`} onClick={() => setMegaMenuOpen(null)} className="customer-mega-menu__plan">
+                            <span className="customer-mega-menu__plan-name">{plan.name}</span>
+                            <span className="customer-mega-menu__plan-benefits">
+                              <span className="customer-mega-menu__plan-discount">{membershipDiscountLabel(plan)}</span>
+                              <span className="customer-mega-menu__plan-validity">{membershipValidityLabel(plan)}</span>
+                            </span>
+                            <span className="customer-mega-menu__plan-description">{membershipPlanDescription(plan)}</span>
                           </Link>)
                           : <Link to="/membership" onClick={() => setMegaMenuOpen(null)} className="customer-mega-menu__empty">Explore Dream Spex membership</Link> : null}
                   </div>
@@ -483,6 +492,23 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
               </button>
               {mobileMenuOpen === item.label ? <div className="border-t border-[var(--border-subtle)] px-2 py-2">
                 {(megaMenus.find((menu) => menu.label === item.label)?.groups ?? []).flatMap((group) => group.items).map((menuItem) => <Link key={menuItem.label} to={menuItem.path} onClick={() => { setOpen(false); setMobileMenuOpen(null); }} className="block rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] hover:text-cyan-300">{menuItem.label}</Link>)}
+                {item.label === 'Offers' ? membershipLoading
+                  ? <p className="px-3 py-2 text-xs text-[var(--text-secondary)]" role="status">Loading membership plans...</p>
+                  : membershipError
+                    ? <p className="px-3 py-2 text-xs text-rose-500" role="alert">{membershipError}</p>
+                    : membershipPlans.length
+                      ? <div className="mt-2 grid gap-2 px-2">
+                        {membershipPlans.slice(0, 3).map((plan) => <Link key={plan.id} to={`/membership/checkout?plan=${encodeURIComponent(plan.id)}`} onClick={() => { setOpen(false); setMobileMenuOpen(null); }} className="grid min-w-0 gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-3 py-3 text-left transition hover:border-[var(--brand-green)]">
+                          <span className="text-sm font-semibold text-[var(--text-primary)]">{plan.name}</span>
+                          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                            <span className="font-semibold text-[var(--brand-green-dark)]">{membershipDiscountLabel(plan)}</span>
+                            <span className="text-[var(--text-secondary)]">{membershipValidityLabel(plan)}</span>
+                          </span>
+                          <span className="text-xs leading-5 text-[var(--text-secondary)]">{membershipPlanDescription(plan)}</span>
+                        </Link>)}
+                      </div>
+                      : null
+                  : null}
                 <Link to={item.path} onClick={() => { setOpen(false); setMobileMenuOpen(null); }} className="mt-1 block rounded-xl bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-300">View all {item.label}</Link>
               </div> : null}
             </div>

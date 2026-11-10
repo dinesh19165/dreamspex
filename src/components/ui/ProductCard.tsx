@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import type { Product } from '../../types';
 import { formatINR } from '../../utils/currency';
+import { getDiscountPercentage } from '../../utils/pricing';
 import LuxuryModal from './LuxuryModal';
 
 type ProductCardProps = {
@@ -18,6 +19,7 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
   const [added, setAdded] = useState(false);
   const supportsPrescription = product.category !== 'Contact Lenses';
   const unavailable = product.stock === 'Out of Stock' || !product.variantId;
+  const discountPercentage = getDiscountPercentage(product.price, product.oldPrice);
 
   const handleAddToCart = () => {
     if (unavailable) return;
@@ -56,10 +58,18 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
           <p className="mt-2 flex items-center gap-1 text-xs text-[var(--text-secondary)]" aria-label={`Sample catalogue rating ${product.rating} out of 5`}><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> <span className="font-semibold text-[var(--text-primary)]">{product.rating.toFixed(1)}</span><span>· {product.reviews} ratings</span></p>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{product.description}</p>
           {supportsPrescription ? <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold"><span className="inline-flex items-center gap-1 text-[var(--brand-green-dark)]"><FileText className="h-3 w-3" /> Prescription Available</span><Link to={`/virtual-try-on?productId=${product.id}`} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200"><Glasses className="h-3 w-3" /> Virtual Try-On</Link></div> : null}
-          <div className="mt-auto flex items-center justify-between pt-4">
-            <div>
-              <p className="text-base font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p>
-              {product.oldPrice ? <p className="text-xs text-[var(--text-secondary)] line-through">{formatINR(product.oldPrice)} <span className="ml-1 no-underline text-cyan-600">{Math.round((1 - product.price / product.oldPrice) * 100)}% off</span></p> : null}
+          <div className="mt-auto flex items-end justify-between gap-3 pt-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-bold leading-tight text-[var(--text-primary)]">{formatINR(product.price)}</p>
+              {product.oldPrice && discountPercentage != null ? <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <p className="text-sm leading-5 text-[var(--text-secondary)] line-through">{formatINR(product.oldPrice)}</p>
+                <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-[var(--brand-green)]/15 px-2.5 py-1 text-xs font-bold leading-4 tracking-wide text-[var(--brand-green-dark)]">{discountPercentage}% OFF</span>
+              </div> : null}
+              {product.gstEnabled === false
+                ? <p className="mt-1 text-[10px] text-[var(--text-secondary)]">GST disabled</p>
+                : product.gstRate != null
+                  ? <p className="mt-1 text-[10px] text-[var(--text-secondary)]">GST rate: {product.gstRate}%{product.hsnCode ? ` · HSN ${product.hsnCode}` : ''}</p>
+                  : null}
             </div>
             <button onClick={handleAddToCart} disabled={unavailable} className={`rounded-full p-2.5 text-[var(--text-primary)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 ${isInCart(product.id) ? 'bg-emerald-500' : 'bg-gradient-to-r from-cyan-400 to-blue-600'}`} aria-label={unavailable ? `${product.name} is out of stock` : `Add ${product.name} to cart`}>
               <ShoppingCart className="h-4 w-4" />

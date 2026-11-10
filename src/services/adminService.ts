@@ -1,6 +1,6 @@
 import { apiFetch as fetch } from './apiClient';
 
-import type { OrderHistoryResponse, OrderItemResponse, OrderResponse } from './orderService';
+import type { GstOrderSnapshot, OrderHistoryResponse, OrderItemResponse, OrderResponse } from './orderService';
 import type { LensOption } from './prescriptionService';
 import { apiBaseUrl, resolveCmsMediaUrl } from '../config/api';
 import type { Offer, OfferRequest } from './offerService';
@@ -9,12 +9,22 @@ import type { AdminCategory, AdminCategoryRequest } from './adminProductService'
 export type AdminOrder = {
   id: string;
   orderNumber: string;
+  paymentMethod?: string | null;
   status: string;
   paymentStatus: string;
   subtotal: number;
   discount: number;
   shipping: number;
   total: number;
+  gstRate?: number | null;
+  taxableAmount?: number | null;
+  gstAmount?: number | null;
+  cgstAmount?: number | null;
+  sgstAmount?: number | null;
+  igstAmount?: number | null;
+  appliedRate?: number | null;
+  priceTreatment?: 'INCLUSIVE' | 'EXCLUSIVE' | null;
+  gstSnapshot?: GstOrderSnapshot | null;
   couponCode: string | null;
   createdAt: string;
   customer: { id: string; displayName: string | null; email: string | null; phone: string | null } | null;
@@ -32,12 +42,28 @@ export type AdminOrder = {
   history: OrderHistoryResponse[];
 };
 
+export type AdminGstSettings = {
+  id: string;
+  defaultRate: number;
+  priceTreatment: 'INCLUSIVE' | 'EXCLUSIVE';
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  updatedById: string | null;
+  updatedByName: string | null;
+};
+
+export type AdminGstSettingsRequest = Pick<AdminGstSettings, 'defaultRate' | 'priceTreatment' | 'enabled'>;
+export type AdminGstHistoryEntry = AdminGstSettings & { active: boolean };
+
 export type AdminOrderItem = OrderItemResponse & {
   lensAdditionalPrice: number;
   selectedLensCodes: string[];
   prescription: AdminPrescriptionDetails | null;
   lensPreparation: LensPreparationDetails | null;
 };
+
+type AdminOrderReportRow = { order: AdminOrder; paymentMethod: string | null };
 
 export type AdminPrescriptionDetails = {
   id: string;
@@ -96,6 +122,8 @@ export type AdminReport = {
     paidRevenue: number;
     refundDeductions: number;
     netRevenue: number;
+    discounts: number;
+    gstCollected: number;
     today: number;
     last7Days: number;
     last30Days: number;
@@ -127,8 +155,16 @@ export type AdminReport = {
     total: number;
     approved: number;
     rejected: number;
+    pending: number;
     processedRefunds: number;
     refundedAmount: number;
+    pendingRefundAmount: number;
+  };
+  memberships: {
+    active: number;
+    expired: number;
+    revenue: number;
+    planCounts: Array<{ planName: string; count: number }>;
   };
 };
 
@@ -267,6 +303,10 @@ export const adminService = {
   updateStore: (accessToken: string, id: string, store: AdminStoreRequest) =>
     request<AdminStore>(accessToken, `/api/v1/admin/stores/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(store) }),
   settings: (accessToken: string) => request<AdminSettings>(accessToken, '/api/v1/admin/settings'),
+  gstSettings: (accessToken: string) => request<AdminGstSettings>(accessToken, '/api/v1/admin/gst/settings'),
+  updateGstSettings: (accessToken: string, settings: AdminGstSettingsRequest) =>
+    request<AdminGstSettings>(accessToken, '/api/v1/admin/gst/settings', { method: 'PUT', body: JSON.stringify(settings) }),
+  gstHistory: (accessToken: string) => request<AdminGstHistoryEntry[]>(accessToken, '/api/v1/admin/gst/history'),
   saveSettings: (accessToken: string, settings: AdminSettingsRequest) =>
     request<AdminSettings>(accessToken, '/api/v1/admin/settings', { method: 'PUT', body: JSON.stringify(settings) }),
   changeAdminPassword: (accessToken: string, currentPassword: string, newPassword: string) =>
@@ -278,6 +318,10 @@ export const adminService = {
   sendTestEmail: (accessToken: string, recipient: string) =>
     request<void>(accessToken, '/api/v1/admin/settings/smtp/test-email', { method: 'POST', body: JSON.stringify({ recipient }) }),
   orders: (accessToken: string) => request<AdminOrder[]>(accessToken, '/api/v1/admin/orders'),
+  orderReports: async (accessToken: string) => {
+    const rows = await request<AdminOrderReportRow[]>(accessToken, '/api/v1/admin/orders/report');
+    return rows.map(({ order, paymentMethod }) => ({ ...order, paymentMethod }));
+  },
   order: (accessToken: string, orderId: string) => request<AdminOrder>(accessToken, `/api/v1/admin/orders/${encodeURIComponent(orderId)}`),
   updateLensPreparation: (accessToken: string, orderId: string, itemId: string, status: LensPreparationDetails['status'], notes: string) =>
     request<LensPreparationDetails>(accessToken, `/api/v1/admin/orders/${encodeURIComponent(orderId)}/items/${encodeURIComponent(itemId)}/lens-preparation`, {
@@ -381,7 +425,7 @@ export const adminService = {
     request<AdminCategory>(accessToken, '/api/v1/admin/categories', { method: 'POST', body: JSON.stringify(category) })
       .then((category) => ({ ...category, imageUrl: resolveCmsMediaUrl(category.imageUrl) })),
   updateCategory: (accessToken: string, id: string, category: AdminCategoryRequest) =>
-    request<AdminCategory>(accessToken, `/api/v1/categories/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(category) })
+    request<AdminCategory>(accessToken, `/api/v1/admin/categories/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(category) })
       .then((category) => ({ ...category, imageUrl: resolveCmsMediaUrl(category.imageUrl) })),
   deleteCategory: (accessToken: string, id: string) =>
     request<void>(accessToken, `/api/v1/admin/categories/${encodeURIComponent(id)}`, { method: 'DELETE' }),

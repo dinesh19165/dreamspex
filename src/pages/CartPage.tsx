@@ -9,6 +9,10 @@ import { getCartItemKey } from '../utils/cart';
 import { formatINR } from '../utils/currency';
 import { useAuth } from '../context/useAuth';
 import { membershipService } from '../services/membershipService';
+import GstBreakdown from '../components/ui/GstBreakdown';
+import { addressService } from '../services/addressService';
+import { orderService, type CheckoutQuoteResponse } from '../services/orderService';
+import { toGstBreakdown } from '../utils/gst';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total, cartLoading, cartError, cartNotice } = useShop();
@@ -18,6 +22,32 @@ export default function CartPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [membershipDiscountPercentage, setMembershipDiscountPercentage] = useState<number | null>(null);
   const [membershipError, setMembershipError] = useState('');
+  const [cartQuote, setCartQuote] = useState<CheckoutQuoteResponse | null>(null);
+  const [cartQuoteLoading, setCartQuoteLoading] = useState(false);
+  const [cartQuoteError, setCartQuoteError] = useState('');
+  useEffect(() => {
+    let active = true;
+    setCartQuote(null);
+    setCartQuoteError('');
+    if (!user?.accessToken || cart.length === 0) {
+      setCartQuoteLoading(false);
+      return () => { active = false; };
+    }
+
+    setCartQuoteLoading(true);
+    addressService.list(user.accessToken)
+      .then((addresses) => {
+        const address = addresses.find((item) => item.defaultAddress) ?? addresses[0];
+        if (!address) throw new Error('Add a delivery address to calculate the backend GST quote.');
+        return orderService.quote(user.accessToken!, address.id, appliedCoupon?.code ?? null);
+      })
+      .then((quote) => { if (active) setCartQuote(quote); })
+      .catch((reason: unknown) => {
+        if (active) setCartQuoteError(reason instanceof Error ? reason.message : 'Unable to load the backend GST quote.');
+      })
+      .finally(() => { if (active) setCartQuoteLoading(false); });
+    return () => { active = false; };
+  }, [appliedCoupon?.code, cart.length, discount, subtotal, user?.accessToken]);
   useEffect(() => {
     let active = true;
     setMembershipError('');
@@ -101,7 +131,7 @@ export default function CartPage() {
                 </div>
                 <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
                   <p className="text-sm text-[var(--text-secondary)]">Subtotal</p>
-                  <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{formatINR(subtotal)}</p>
+                  <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{formatINR(cartQuote?.subtotal ?? subtotal)}</p>
                 </div>
                 <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
                   <label htmlFor="cart-coupon" className="text-sm text-[var(--text-secondary)]">Have a coupon code?</label>
@@ -111,8 +141,14 @@ export default function CartPage() {
                   {estimatedMembershipDiscount > 0 ? <p className="mt-3 text-xs text-cyan-200">Estimated membership discount · {formatINR(estimatedMembershipDiscount)}. Final eligibility and total are verified at checkout.</p> : null}
                   {membershipError ? <p className="mt-2 text-xs text-rose-300" role="alert">{membershipError}</p> : null}
                 </div>
-                {appliedCoupon ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon.code} applied</span><span>-{formatINR(discount)}</span></div> : null}
-                <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-base font-semibold text-[var(--text-primary)]"><span>Total</span><span>{formatINR(total)}</span></div>
+                {(cartQuote?.discount ?? discount) > 0 ? <div className="flex items-center justify-between text-sm text-cyan-200"><span>{appliedCoupon?.code ?? 'Discount'}</span><span>-{formatINR(cartQuote?.discount ?? discount)}</span></div> : null}
+                <div className="border-t border-[var(--border-subtle)] pt-4">
+                  {cartQuoteLoading ? <p className="text-xs text-[var(--text-secondary)]" role="status">Loading backend GST quote...</p> : null}
+                  {cartQuoteError ? <p className="text-xs text-amber-700" role="status">{cartQuoteError}</p> : null}
+                  <GstBreakdown breakdown={toGstBreakdown(cartQuote?.gstSnapshot)} />
+                </div>
+                {cartQuote ? <div className="flex items-center justify-between text-sm text-[var(--text-secondary)]"><span>Shipping</span><span>{cartQuote.shipping === 0 ? 'FREE' : formatINR(cartQuote.shipping)}</span></div> : null}
+                <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-4 text-base font-semibold text-[var(--text-primary)]"><span>{cartQuote ? 'Backend total' : 'Subtotal before shipping'}</span><span>{formatINR(cartQuote?.total ?? total)}</span></div>
                 <p className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 text-sm leading-6 text-[var(--text-secondary)]">Delivery options and payment methods are shown in the demo checkout. No real payment is processed.</p>
               </div>
 

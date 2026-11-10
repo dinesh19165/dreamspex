@@ -1,4 +1,5 @@
-package com.dreamspex.order;
+package com.dreamspex.order;
+
 import com.dreamspex.auth.entity.Address;
 import com.dreamspex.auth.entity.User;
 import com.dreamspex.auth.dto.AuthDtos.AddressResponse;
@@ -13,13 +14,20 @@ import com.dreamspex.shopping.entity.CartItem;
 import com.dreamspex.shopping.repository.CartItemRepository;
 import com.dreamspex.shopping.repository.CartRepository;
 import com.dreamspex.admin.Store;
-import com.dreamspex.admin.StoreRepository;import com.dreamspex.prescription.LensOption;
+import com.dreamspex.admin.StoreRepository;
+import com.dreamspex.prescription.LensOption;
 import com.dreamspex.prescription.LensOptionRepository;
 import com.dreamspex.prescription.Prescription;
 import com.dreamspex.prescription.PrescriptionFile;
 import com.dreamspex.prescription.PrescriptionFileRepository;
 import com.dreamspex.prescription.PrescriptionRepository;
-import com.dreamspex.prescription.PrescriptionStorage;import org.junit.jupiter.api.Test;
+import com.dreamspex.prescription.PrescriptionStorage;
+import org.junit.jupiter.api.Test;
+import com.dreamspex.gst.GstConfiguration;
+import com.dreamspex.gst.GstConfigurationRepository;
+import com.dreamspex.gst.GstPriceTreatment;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -78,7 +86,13 @@ class OrderCreationJpaIntegrationTest {
     @Autowired PrescriptionFileRepository prescriptionFiles;
     @Autowired PrescriptionStorage prescriptionStorage;
     @Autowired ObjectMapper objectMapper;
+    @Autowired GstConfigurationRepository gstConfigurations;
     private final List<String> storedFiles = new ArrayList<>();
+
+    @BeforeEach
+    void createGstConfiguration() {
+        gstConfigurations.save(new GstConfiguration(new BigDecimal("18.00"), GstPriceTreatment.INCLUSIVE, true, null));
+    }
 
     @Test
     void customerAddressesStoreValidatedCoordinatePairs() throws Exception {

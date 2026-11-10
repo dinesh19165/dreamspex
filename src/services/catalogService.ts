@@ -51,6 +51,9 @@ export type CatalogProduct = {
   badge: string | null;
   tryOnImageUrl: string | null;
   status: string;
+  hsnCode: string | null;
+  gstRate: number | null;
+  gstEnabled: boolean;
   categories: CatalogCategory[];
   variants: CatalogVariant[];
   images: CatalogImage[];
@@ -98,6 +101,9 @@ export function toProduct(product: CatalogProduct): Product {
     id: stableNumericId(product.id),
     backendId: product.id,
     variantId: firstVariant?.id,
+    hsnCode: product.hsnCode,
+    gstRate: product.gstRate,
+    gstEnabled: product.gstEnabled,
     name: product.name,
     category: product.categories[0]?.name ?? 'Eyewear',
     gender: product.gender ?? undefined,

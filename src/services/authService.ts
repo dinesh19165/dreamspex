@@ -2,7 +2,7 @@ import { apiFetch as fetch } from './apiClient';
 import { apiBaseUrl } from '../config/api';
 
 export type LoginPayload = { identifier: string; password: string };
-export type RegisterPayload = { name: string; email: string; phone: string; password: string };
+export type RegisterPayload = { name: string; email: string; phone: string; password: string; referralCode?: string };
 
 export type AuthUserResponse = {
   id: string;

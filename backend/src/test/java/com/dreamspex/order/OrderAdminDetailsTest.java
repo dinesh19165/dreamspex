@@ -48,7 +48,9 @@ class OrderAdminDetailsTest {
                 new com.dreamspex.config.ShippingProperties(null, null), mock(LensOptionRepository.class),
                 mock(com.dreamspex.prescription.PrescriptionFileRepository.class),
                 mock(com.dreamspex.prescription.PrescriptionStorage.class),
-                mock(DeliveryAvailabilityService.class));
+                mock(DeliveryAvailabilityService.class),
+                mock(com.dreamspex.gst.GstConfigurationRepository.class),
+                mock(com.dreamspex.gst.GstCalculationService.class));
 
         OrderDtos.AdminOrderResponse response = service.adminOrder("order-id");
 

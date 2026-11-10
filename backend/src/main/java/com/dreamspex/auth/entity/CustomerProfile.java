@@ -22,6 +22,14 @@ public class CustomerProfile {
     private String gender;
     @Column(name = "marketing_opt_in", nullable = false)
     private boolean marketingOptIn;
+    @Column(name = "whatsapp_marketing_opt_in", nullable = false)
+    private boolean whatsappMarketingOptIn;
+    @Column(name = "whatsapp_marketing_opt_out", nullable = false)
+    private boolean whatsappMarketingOptOut;
+    @Column(name = "whatsapp_consent_at")
+    private Instant whatsappConsentAt;
+    @Column(name = "whatsapp_consent_source", length = 80)
+    private String whatsappConsentSource;
     @Column(name = "membership_status", nullable = false)
     private String membershipStatus = "NONE";
     @Column(name = "created_at", nullable = false)
@@ -42,5 +50,17 @@ public class CustomerProfile {
     public void setGender(String gender) { this.gender = gender; }
     public boolean isMarketingOptIn() { return marketingOptIn; }
     public void setMarketingOptIn(boolean marketingOptIn) { this.marketingOptIn = marketingOptIn; }
+    public boolean isWhatsappMarketingOptIn() { return whatsappMarketingOptIn && !whatsappMarketingOptOut; }
+    public boolean isWhatsappMarketingOptOut() { return whatsappMarketingOptOut; }
+    public void setWhatsappMarketingOptIn(boolean value) {
+        if (value && whatsappMarketingOptIn && !whatsappMarketingOptOut) return;
+        if (!value && !whatsappMarketingOptIn && whatsappMarketingOptOut) return;
+        whatsappMarketingOptIn = value;
+        whatsappMarketingOptOut = !value;
+        whatsappConsentAt = Instant.now();
+        whatsappConsentSource = "CUSTOMER_ACCOUNT";
+    }
+    public Instant getWhatsappConsentAt() { return whatsappConsentAt; }
+    public String getWhatsappConsentSource() { return whatsappConsentSource; }
     public String getMembershipStatus() { return membershipStatus; }
 }

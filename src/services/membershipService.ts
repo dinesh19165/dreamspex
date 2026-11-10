@@ -76,12 +76,17 @@ export type AdminMembership = {
   customerId: string;
   customerName: string | null;
   customerEmail: string | null;
+  customerPhone: string | null;
   planId: string;
   planName: string;
+  planPrice: number;
+  discountPercentage: number | null;
   status: string;
   purchasedAt: string;
   startsAt: string;
   expiresAt: string;
+  paymentStatus: string;
+  paymentReference: string | null;
 };
 
 export type AdminMembershipPayment = {

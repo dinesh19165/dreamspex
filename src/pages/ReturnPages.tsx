@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, CheckCircle2, FileImage, RefreshCw, RotateCcw, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Download, FileImage, Printer, RefreshCw, RotateCcw, ShieldCheck } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import SectionTitle from '../components/ui/SectionTitle';
@@ -16,6 +16,8 @@ import {
   type ReturnPolicy,
   type ReturnableProduct,
 } from '../services/returnService';
+import AdminDateRangeFilter from '../components/ui/AdminDateRangeFilter';
+import { downloadReportExcel, downloadReportPdf, printReport } from '../utils/adminReportExport';
 
 const returnStatuses = [
   'REQUESTED', 'APPROVED', 'REJECTED', 'PICKUP_SCHEDULED', 'PICKED_UP', 'RECEIVED',
@@ -33,6 +35,17 @@ const reasonOptions = [
 
 function statusLabel(status: string) {
   return status.replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function reportDate(value: Date) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(value);
+}
+
+function defaultReturnsRange() {
+  const end = reportDate(new Date());
+  const start = new Date(`${end}T00:00:00+05:30`);
+  start.setUTCDate(start.getUTCDate() - 29);
+  return { start: start.toISOString().slice(0, 10), end };
 }
 
 function statusClass(status: string) {
@@ -274,19 +287,24 @@ export function AdminReturnsPage() {
   const request = useAdminReturnRequest();
   const [searchParams] = useSearchParams();
   const requestedStatus = searchParams.get('status') ?? '';
+  const requestedOrderId = searchParams.get('orderId') ?? '';
+  const requestedRequestId = searchParams.get('requestId') ?? '';
   const [policy, setPolicy] = useState<ReturnPolicy | null>(null);
   const [windowDays, setWindowDays] = useState('');
   const [policyEnabled, setPolicyEnabled] = useState(false);
   const [products, setProducts] = useState<ReturnableProduct[]>([]);
   const [returns, setReturns] = useState<AdminReturn[]>([]);
-  const [selectedId, setSelectedId] = useState('');
+  const [selectedId, setSelectedId] = useState(requestedRequestId);
   const [statusFilter, setStatusFilter] = useState(requestedStatus);
-  const [orderFilter, setOrderFilter] = useState('');
-  const [fromFilter, setFromFilter] = useState('');
-  const [toFilter, setToFilter] = useState('');
+  const initialRange = defaultReturnsRange();
+  const [fromFilter, setFromFilter] = useState(() => searchParams.get('from') ?? initialRange.start);
+  const [toFilter, setToFilter] = useState(() => searchParams.get('to') ?? initialRange.end);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refundStatusFilter, setRefundStatusFilter] = useState('');
+  const [page, setPage] = useState(0);
   const [productQuery, setProductQuery] = useState('');
   const [appliedProductQuery, setAppliedProductQuery] = useState('');
-  const [appliedFilters, setAppliedFilters] = useState({ status: requestedStatus, orderId: '', from: '', to: '' });
+  const [appliedFilters, setAppliedFilters] = useState({ status: requestedStatus, orderId: requestedOrderId, from: initialRange.start, to: initialRange.end });
   const [adminRemarks, setAdminRemarks] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -340,6 +358,45 @@ export function AdminReturnsPage() {
   }, [searchParams]);
   const selected = returns.find((item) => item.id === selectedId) ?? null;
   const latestRefund = selected?.refunds.at(-1) ?? null;
+  const visibleReturns = useMemo(() => returns.filter((item) => {
+    const query = searchQuery.trim().toLowerCase();
+    const refund = item.refunds.at(-1);
+    const matchesSearch = !query || [
+      item.customer.displayName, item.customer.email, item.orderNumber, item.requestNumber,
+      ...item.refunds.flatMap((entry) => [entry.id, entry.providerRefundId]),
+    ].some((value) => value?.toLowerCase().includes(query));
+    return matchesSearch && (!refundStatusFilter || refund?.status === refundStatusFilter);
+  }), [refundStatusFilter, returns, searchQuery]);
+  const returnReport = {
+    title: 'Returns and refunds',
+    startDate: appliedFilters.from,
+    endDate: appliedFilters.to,
+    columns: [
+      { label: 'Return request ID' }, { label: 'Order number' }, { label: 'Customer name' },
+      { label: 'Customer email' }, { label: 'Product' }, { label: 'Return reason' },
+      { label: 'Request date', type: 'date' as const }, { label: 'Return status' },
+      { label: 'Refund amount', type: 'currency' as const }, { label: 'Refund method' },
+      { label: 'Refund transaction reference' }, { label: 'Refund status' },
+      { label: 'Refund completion date', type: 'date' as const },
+    ],
+    rows: visibleReturns.map((item) => {
+      const refund = item.refunds.at(-1);
+      return [
+        item.requestNumber, item.orderNumber, item.customer.displayName ?? '', item.customer.email ?? '',
+        item.items.map((entry) => `${entry.productName} × ${entry.quantity}`).join(', '),
+        statusLabel(item.reasonCode), reportDate(new Date(item.createdAt)), statusLabel(item.status),
+        refund?.amount ?? item.refundAmount, refund?.provider ?? item.resolution,
+        refund?.providerRefundId ?? '', refund?.status ?? 'PENDING',
+        refund?.processedAt ? reportDate(new Date(refund.processedAt)) : '',
+      ];
+    }),
+    summary: [
+      { label: 'Matching return requests', value: visibleReturns.length },
+      { label: 'Approved returns', value: visibleReturns.filter((item) => item.status === 'APPROVED').length },
+      { label: 'Pending refund amount', value: formatINR(visibleReturns.filter((item) => !['PROCESSED', 'FAILED'].includes(item.refunds.at(-1)?.status ?? '')).reduce((sum, item) => sum + item.refundAmount, 0)) },
+      { label: 'Completed refunds', value: visibleReturns.filter((item) => item.refunds.at(-1)?.status === 'PROCESSED').length },
+    ],
+  };
 
   const savePolicy = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -429,16 +486,17 @@ export function AdminReturnsPage() {
       </div>
 
       <section className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Return requests</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">{returns.length} matching request{returns.length === 1 ? '' : 's'}</p></div><button type="button" onClick={() => void load()} className="rounded-full border border-[var(--border-subtle)] p-2" aria-label="Refresh return requests"><RefreshCw className="h-4 w-4" /></button></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Return requests</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">{visibleReturns.length} matching request{visibleReturns.length === 1 ? '' : 's'}</p></div><div className="flex flex-wrap gap-2"><Button type="button" variant="secondary" onClick={() => downloadReportExcel(returnReport)}><Download className="mr-2 h-4 w-4" />Excel</Button><Button type="button" variant="secondary" onClick={() => void downloadReportPdf(returnReport)}>PDF</Button><Button type="button" variant="secondary" onClick={() => printReport(returnReport)}><Printer className="mr-2 h-4 w-4" />Print</Button><button type="button" onClick={() => void load()} className="rounded-full border border-[var(--border-subtle)] p-2" aria-label="Refresh return requests"><RefreshCw className="h-4 w-4" /></button></div></div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-[var(--text-secondary)]">Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className={inputClass}><option value="">All statuses</option>{returnStatuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></label>
-          <label className="text-xs text-[var(--text-secondary)]">Order ID / number<input value={orderFilter} onChange={(event) => setOrderFilter(event.target.value)} className={inputClass} /></label>
-          <label className="text-xs text-[var(--text-secondary)]">From<input type="date" value={fromFilter} onChange={(event) => setFromFilter(event.target.value)} className={inputClass} /></label>
-          <label className="text-xs text-[var(--text-secondary)]">To<input type="date" value={toFilter} onChange={(event) => setToFilter(event.target.value)} className={inputClass} /></label>
-          <div className="flex items-end"><Button type="button" variant="secondary" onClick={() => setAppliedFilters({ status: statusFilter, orderId: orderFilter, from: fromFilter, to: toFilter })}>Apply filters</Button></div>
+          <label className="text-xs text-[var(--text-secondary)]">Search customer, order or refund ID<input value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setPage(0); }} className={inputClass} /></label>
+          <label className="text-xs text-[var(--text-secondary)]">Refund status<select value={refundStatusFilter} onChange={(event) => { setRefundStatusFilter(event.target.value); setPage(0); }} className={inputClass}><option value="">All refund statuses</option>{['PENDING', 'PROCESSING', 'PROCESSED', 'FAILED', 'CREATED', 'SUBMITTING'].map((value) => <option key={value}>{value}</option>)}</select></label>
+          <AdminDateRangeFilter startDate={fromFilter} endDate={toFilter} onApply={(from, to) => { setFromFilter(from); setToFilter(to); setPage(0); setAppliedFilters((current) => ({ ...current, from, to })); }} />
+          <div className="flex items-end"><Button type="button" variant="secondary" onClick={() => { setAppliedFilters({ status: statusFilter, orderId: '', from: fromFilter, to: toFilter }); setPage(0); }}>Apply filters</Button></div>
         </div>
-        {loading ? <p className="mt-5 text-sm text-[var(--text-secondary)]">Loading requests...</p> : <div className="mt-5 max-h-[34rem] space-y-2 overflow-y-auto">{returns.map((item) => <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setAdminRemarks(item.adminRemarks ?? ''); }} className={`w-full rounded-2xl border p-4 text-left transition ${selectedId === item.id ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/8' : 'border-[var(--border-subtle)] hover:border-[var(--brand-green)]/40'}`}><div className="flex justify-between gap-2"><span className="font-semibold">{item.requestNumber}</span><span className={`rounded-full px-2.5 py-1 text-[10px] ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></div><p className="mt-1 text-xs text-[var(--text-secondary)]">Order {item.orderNumber} · {item.customer.displayName || item.customer.email || 'Customer'} · {formatDate(item.createdAt)}</p></button>)}</div>}
-        {!loading && returns.length === 0 ? <p className="mt-6 rounded-xl bg-[var(--bg-primary)] p-5 text-sm text-[var(--text-secondary)]">No return requests match these filters.</p> : null}
+        {loading ? <p className="mt-5 text-sm text-[var(--text-secondary)]">Loading requests...</p> : <div className="mt-5 max-h-[34rem] space-y-2 overflow-y-auto">{visibleReturns.slice(page * 25, (page + 1) * 25).map((item) => <button key={item.id} type="button" onClick={() => { setSelectedId(item.id); setAdminRemarks(item.adminRemarks ?? ''); }} className={`w-full rounded-2xl border p-4 text-left transition ${selectedId === item.id ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/8' : 'border-[var(--border-subtle)] hover:border-[var(--brand-green)]/40'}`}><div className="flex justify-between gap-2"><span className="font-semibold">{item.requestNumber}</span><span className={`rounded-full px-2.5 py-1 text-[10px] ${statusClass(item.status)}`}>{statusLabel(item.status)}</span></div><p className="mt-1 text-xs text-[var(--text-secondary)]">Order {item.orderNumber} · {item.customer.displayName || item.customer.email || 'Customer'} · {formatDate(item.createdAt)}</p></button>)}</div>}
+        {!loading && visibleReturns.length === 0 ? <p className="mt-6 rounded-xl bg-[var(--bg-primary)] p-5 text-sm text-[var(--text-secondary)]">No return requests match these filters.</p> : null}
+        {visibleReturns.length > 25 ? <div className="mt-3 flex items-center justify-between text-xs"><span>Page {page + 1} of {Math.ceil(visibleReturns.length / 25)}</span><div className="flex gap-2"><Button type="button" variant="ghost" disabled={!page} onClick={() => setPage((current) => current - 1)}>Previous</Button><Button type="button" variant="ghost" disabled={(page + 1) * 25 >= visibleReturns.length} onClick={() => setPage((current) => current + 1)}>Next</Button></div></div> : null}
         {selected ? <div className="mt-6 border-t border-[var(--border-subtle)] pt-6">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">{selected.requestNumber}</p><h3 className="mt-1 text-xl font-semibold">Order {selected.orderNumber}</h3></div><span className={`rounded-full px-3 py-1.5 text-xs ${statusClass(selected.status)}`}>{statusLabel(selected.status)}</span></div>
           <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2"><p>Customer: {selected.customer.displayName ?? '—'} · {selected.customer.email ?? 'No email'}</p><p>Resolution: {selected.resolution}</p><p>Reason: {statusLabel(selected.reasonCode)}</p><p>Refund amount: {formatINR(selected.refundAmount)}</p>{selected.payment ? <p className="sm:col-span-2">Payment: {selected.payment.provider} · {selected.payment.providerPaymentId} · {selected.payment.status} · {formatINR(selected.payment.amount)} {selected.payment.currency}</p> : <p className="sm:col-span-2 text-amber-200">No captured payment is available for refund.</p>}</div>

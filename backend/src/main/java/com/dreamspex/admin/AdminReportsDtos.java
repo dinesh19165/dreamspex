@@ -14,13 +14,16 @@ public final class AdminReportsDtos {
             Orders orders,
             Customers customers,
             Products products,
-            Returns returns
+            Returns returns,
+            Memberships memberships
     ) {}
 
     public record Revenue(
             BigDecimal paidRevenue,
             BigDecimal refundDeductions,
             BigDecimal netRevenue,
+            BigDecimal discounts,
+            BigDecimal gstCollected,
             BigDecimal today,
             BigDecimal last7Days,
             BigDecimal last30Days,
@@ -47,7 +50,12 @@ public final class AdminReportsDtos {
             List<LowStockProduct> lowStock
     ) {}
 
-    public record Returns(long total, long approved, long rejected, long processedRefunds, BigDecimal refundedAmount) {}
+    public record Returns(long total, long approved, long rejected, long pending, long processedRefunds,
+            BigDecimal refundedAmount, BigDecimal pendingRefundAmount) {}
+
+    public record Memberships(long active, long expired, BigDecimal revenue, List<PlanMembershipCount> planCounts) {}
+
+    public record PlanMembershipCount(String planName, long count) {}
 
     public record TrendPoint(LocalDate date, BigDecimal value, long count) {}
 

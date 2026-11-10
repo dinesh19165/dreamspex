@@ -18,6 +18,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import com.dreamspex.common.ApiException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import javax.crypto.Mac;
@@ -36,6 +37,38 @@ class PaymentServiceTest {
     @Mock NotificationService notifications;
     @Mock RazorpayGateway razorpay;
     @Mock ReturnRefundProcessor returnRefundProcessor;
+
+    @Test
+    void razorpayOrderUsesTheSavedOrderPayableAmount() {
+        User user = new User();
+        Order order = order(user);
+        when(current.require(any())).thenReturn(user);
+        when(orders.findByIdAndUserId("order-id", user.getId())).thenReturn(Optional.of(order));
+        when(payments.findByProviderAndOrderId("RAZORPAY_TEST", order.getId())).thenReturn(Optional.empty());
+        when(razorpay.createOrder("DS-1", order.getTotalAmount(), "INR")).thenReturn("provider-order");
+        when(payments.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = service().create(auth(), "order-id");
+
+        assertEquals(order.getTotalAmount(), response.payment().amount());
+        verify(razorpay).createOrder("DS-1", order.getTotalAmount(), "INR");
+    }
+
+    @Test
+    void existingPaymentMustMatchTheSavedOrderTotal() {
+        User user = new User();
+        Order order = order(user);
+        Payment payment = payment(order);
+        payment.setAmount(new java.math.BigDecimal("10.98"));
+        when(current.require(any())).thenReturn(user);
+        when(orders.findByIdAndUserId("order-id", user.getId())).thenReturn(Optional.of(order));
+        when(payments.findByProviderAndOrderId("RAZORPAY_TEST", order.getId())).thenReturn(Optional.of(payment));
+
+        ApiException error = assertThrows(ApiException.class, () -> service().create(auth(), "order-id"));
+
+        assertEquals("PAYMENT_AMOUNT_MISMATCH", error.code());
+        verifyNoInteractions(razorpay);
+    }
 
     @Test
     void invalidWebhookSignatureIsRejected() {

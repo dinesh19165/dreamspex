@@ -16,7 +16,12 @@ public interface OrderRepository extends JpaRepository<Order,String>{
  Optional<Order> findByIdAndUserIdForUpdate(@Param("id") String id,@Param("userId") String userId);
  List<Order> findByUserIdOrderByCreatedAtDesc(String userId);
  List<Order> findAllByOrderByCreatedAtDesc();
+ List<Order> findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(java.time.Instant from,java.time.Instant to);
  long countByUserId(String userId);
+ long countByUserIdAndPaymentStatusAndStatusIn(String userId,String paymentStatus,Collection<String> statuses);
+ interface UserOrderCount { String getUserId(); long getOrderCount(); }
+ @Query("select o.user.id as userId, count(o.id) as orderCount from Order o where o.user.id in :userIds group by o.user.id")
+ List<UserOrderCount> countByUserIds(@Param("userIds") Collection<String> userIds);
  long countByCouponCodeIgnoreCase(String couponCode);
  long countByUserIdAndCouponCodeIgnoreCase(String userId,String couponCode);
 }

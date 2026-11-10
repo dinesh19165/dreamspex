@@ -28,6 +28,12 @@ public class AccountController {
         return service.updateProfile(authentication, request);
     }
 
+    @PatchMapping("/marketing/whatsapp-consent")
+    ProfileResponse updateWhatsappMarketingConsent(Authentication authentication,
+                                                     @Valid @RequestBody WhatsappMarketingConsentRequest request) {
+        return service.updateWhatsappMarketingConsent(authentication, request.optedIn());
+    }
+
     @GetMapping("/addresses")
     List<AddressResponse> listAddresses(Authentication authentication) { return service.listAddresses(authentication); }
 

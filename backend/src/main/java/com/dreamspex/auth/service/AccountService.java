@@ -2,6 +2,7 @@ package com.dreamspex.auth.service;
 
 
 import com.dreamspex.auth.entity.Address;
+import com.dreamspex.auth.PhoneNumberNormalizer;
 import com.dreamspex.auth.entity.CustomerProfile;
 import com.dreamspex.auth.entity.Role;
 import com.dreamspex.auth.entity.User;
@@ -57,6 +58,20 @@ public class AccountService {
         if (request.dateOfBirth() != null) profile.setDateOfBirth(request.dateOfBirth());
         if (request.gender() != null) profile.setGender(request.gender().trim());
         if (request.marketingOptIn() != null) profile.setMarketingOptIn(request.marketingOptIn());
+        profiles.save(profile);
+        return profileResponse(user, profile);
+    }
+
+    @Transactional
+    public ProfileResponse updateWhatsappMarketingConsent(
+            org.springframework.security.core.Authentication authentication, boolean optedIn) {
+        User user = currentUser.require(authentication);
+        CustomerProfile profile = profiles.findByUserId(user.getId()).orElseGet(() -> {
+            CustomerProfile value = new CustomerProfile();
+            value.setUser(user);
+            return value;
+        });
+        profile.setWhatsappMarketingOptIn(optedIn);
         profiles.save(profile);
         return profileResponse(user, profile);
     }
@@ -134,10 +149,15 @@ public class AccountService {
     private static String trim(String value) { return value == null ? null : value.trim(); }
 
     private static ProfileResponse profileResponse(User user, CustomerProfile profile) {
-        return new ProfileResponse(user.getId(), user.getDisplayName(), user.getEmail(), user.getPhone(),
+        return new ProfileResponse(user.getId(), user.getDisplayName(), user.getEmail(),
+                PhoneNumberNormalizer.normalizeOrOriginal(user.getPhone()),
                 profile == null ? null : profile.getFirstName(), profile == null ? null : profile.getLastName(),
                 profile == null ? null : profile.getDateOfBirth(), profile == null ? null : profile.getGender(),
                 profile != null && profile.isMarketingOptIn(),
+                profile != null && profile.isWhatsappMarketingOptIn(),
+                profile != null && profile.isWhatsappMarketingOptOut(),
+                profile == null ? null : profile.getWhatsappConsentAt(),
+                profile == null ? null : profile.getWhatsappConsentSource(),
                 user.getRoles().stream().map(Role::getCode).collect(java.util.stream.Collectors.toSet()));
     }
 

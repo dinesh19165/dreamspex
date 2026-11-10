@@ -23,6 +23,9 @@ public class Product {
     @Column(nullable = false) private String status = "DRAFT";
     private String badge;
     @Column(name = "try_on_image_url", length = 1000) private String tryOnImageUrl;
+    @Column(name = "hsn_code", length = 16) private String hsnCode;
+    @Column(name = "gst_rate", precision = 5, scale = 2) private BigDecimal gstRate;
+    @Column(name = "gst_enabled", nullable = false) private boolean gstEnabled = true;
     @Column(name = "deleted_at") private Instant deletedAt;
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "product_categories", joinColumns = @JoinColumn(name = "product_id"),
@@ -50,6 +53,9 @@ public class Product {
     public String getStatus() { return status; } public void setStatus(String v) { status = v; }
     public String getBadge() { return badge; } public void setBadge(String v) { badge = v; }
     public String getTryOnImageUrl() { return tryOnImageUrl; } public void setTryOnImageUrl(String v) { tryOnImageUrl = v; }
+    public String getHsnCode() { return hsnCode; } public void setHsnCode(String v) { hsnCode = v; }
+    public BigDecimal getGstRate() { return gstRate; } public void setGstRate(BigDecimal v) { gstRate = v; }
+    public boolean isGstEnabled() { return gstEnabled; } public void setGstEnabled(boolean v) { gstEnabled = v; }
     public Instant getDeletedAt() { return deletedAt; } public void setDeletedAt(Instant v) { deletedAt = v; }
     public Set<Category> getCategories() { return categories; }
     public List<ProductVariant> getVariants() { return variants; }

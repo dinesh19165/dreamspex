@@ -10,11 +10,21 @@ import { formatINR } from '../utils/currency';
 import { useAuth } from '../context/useAuth';
 import { addressService, type CustomerAddress, type CustomerAddressRequest } from '../services/addressService';
 import { orderService, OrderApiError, type CheckoutQuoteResponse } from '../services/orderService';
+import {
+  LoyaltyApiError,
+  loyaltyService,
+  parseLoyaltyPointsInput,
+  validateLoyaltyRedemption,
+  type LoyaltySettings,
+  type RedemptionPreview,
+} from '../services/loyaltyService';
 import { paymentService } from '../services/paymentService';
 import CustomerLocationPicker from '../components/addresses/CustomerLocationPicker';
 import { isValidCoordinates, normalizeCoordinates, type Coordinates } from '../utils/deliveryNavigation';
 import { addressChanged } from '../utils/checkoutAddress';
 import { mergeReverseGeocodedAddress, reverseGeocodeCoordinates } from '../services/reverseGeocodeService';
+import GstBreakdown from '../components/ui/GstBreakdown';
+import { toGstBreakdown } from '../utils/gst';
 
 const NEW_ADDRESS_VALUE = '__new_address__';
 
@@ -79,11 +89,23 @@ export default function CheckoutPage() {
   const [locationNotice, setLocationNotice] = useState('');
   const [shippingOption, setShippingOption] = useState('standard');
   const [checkoutQuote, setCheckoutQuote] = useState<CheckoutQuoteResponse | null>(null);
+  const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+  const [loyaltyAvailablePoints, setLoyaltyAvailablePoints] = useState<number | null>(null);
+  const [loyaltyPointsInput, setLoyaltyPointsInput] = useState('');
+  const [redemptionPreview, setRedemptionPreview] = useState<{
+    value: RedemptionPreview;
+    eligibleAmount: number;
+  } | null>(null);
+  const [redemptionPreviewError, setRedemptionPreviewError] = useState('');
+  const [redemptionPreviewLoading, setRedemptionPreviewLoading] = useState(false);
+  const [redemptionPreviewRetry, setRedemptionPreviewRetry] = useState(0);
+  const [loyaltySettingsError, setLoyaltySettingsError] = useState('');
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
   const [paymentState, setPaymentState] = useState('');
+  const checkoutGst = toGstBreakdown(checkoutQuote?.gstSnapshot);
 
   useEffect(() => {
     if (!user?.accessToken) return;
@@ -104,6 +126,44 @@ export default function CheckoutPage() {
     () => normalizeCoordinates(selectedAddress),
     [selectedAddress],
   );
+
+  useEffect(() => {
+    if (!user?.accessToken) {
+      setLoyaltySettings(null);
+      setLoyaltyAvailablePoints(null);
+      setLoyaltySettingsError('');
+      return;
+    }
+
+    let active = true;
+    setLoyaltySettingsError('');
+    const loadLoyaltySettings = async () => {
+      try {
+        let token = user.accessToken!;
+        try {
+          const dashboard = await loyaltyService.dashboard(token);
+          if (active) {
+            setLoyaltySettings(dashboard.settings);
+            setLoyaltyAvailablePoints(dashboard.availablePoints);
+          }
+        } catch (reason) {
+          if (!(reason instanceof LoyaltyApiError) || reason.status !== 401 || !(await refreshSession())) throw reason;
+          const stored = JSON.parse(localStorage.getItem('dream-spex-auth-session') ?? '{}') as { accessToken?: string };
+          token = stored.accessToken ?? token;
+          const dashboard = await loyaltyService.dashboard(token);
+          if (active) {
+            setLoyaltySettings(dashboard.settings);
+            setLoyaltyAvailablePoints(dashboard.availablePoints);
+          }
+        }
+      } catch (reason) {
+        if (active) setLoyaltySettingsError(reason instanceof Error ? reason.message : 'Unable to load loyalty settings.');
+      }
+    };
+
+    void loadLoyaltySettings();
+    return () => { active = false; };
+  }, [refreshSession, user?.accessToken]);
   const selectedLocationIsSaved = selectedAddress !== null
     && !addressChanged(selectedAddress, addressDraft, locationDraft ?? savedAddressCoordinates);
 
@@ -257,6 +317,65 @@ export default function CheckoutPage() {
     return () => { active = false; };
   }, [addressDraft, addressId, appliedCoupon?.code, cart, cart.length, cartLoading, locationDraft, refreshSession, savedAddressCoordinates, selectedAddress, selectedLocationIsSaved, shippingOption, user?.accessToken]);
 
+  const parsedLoyaltyPoints = parseLoyaltyPointsInput(loyaltyPointsInput);
+  const availableLoyaltyPoints = loyaltyAvailablePoints ?? checkoutQuote?.loyaltyPointsAvailable ?? 0;
+  const maximumRedeemablePoints = checkoutQuote?.loyaltyPointsMaxRedeemable ?? 0;
+  const baseOrderTotal = checkoutQuote?.total ?? 0;
+  const loyaltyValidation = validateLoyaltyRedemption(
+    loyaltyPointsInput,
+    loyaltySettings,
+    availableLoyaltyPoints,
+    maximumRedeemablePoints,
+    baseOrderTotal,
+  );
+  const currentRedemptionPreview = parsedLoyaltyPoints && redemptionPreview?.value.requestedPoints === parsedLoyaltyPoints
+    && redemptionPreview.eligibleAmount === baseOrderTotal
+    ? redemptionPreview.value
+    : null;
+  const loyaltyDiscount = currentRedemptionPreview?.discount ?? loyaltyValidation.discount;
+  const payableTotal = Math.max(0, baseOrderTotal - loyaltyDiscount);
+
+  useEffect(() => {
+    const points = parseLoyaltyPointsInput(loyaltyPointsInput);
+    if (!points || loyaltyValidation.error || !checkoutQuote || !user?.accessToken) {
+      setRedemptionPreview(null);
+      setRedemptionPreviewError('');
+      setRedemptionPreviewLoading(false);
+      return;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      setRedemptionPreviewLoading(true);
+      setRedemptionPreviewError('');
+      try {
+        let token = user.accessToken!;
+        let preview: RedemptionPreview;
+        try {
+          preview = await loyaltyService.previewRedemption(token, points, baseOrderTotal);
+        } catch (reason) {
+          if (!(reason instanceof LoyaltyApiError) || reason.status !== 401 || !(await refreshSession())) throw reason;
+          const stored = JSON.parse(localStorage.getItem('dream-spex-auth-session') ?? '{}') as { accessToken?: string };
+          token = stored.accessToken ?? token;
+          preview = await loyaltyService.previewRedemption(token, points, baseOrderTotal);
+        }
+        if (active) setRedemptionPreview({ value: preview, eligibleAmount: baseOrderTotal });
+      } catch (reason) {
+        if (active) {
+          setRedemptionPreview(null);
+          setRedemptionPreviewError(reason instanceof Error ? reason.message : 'Unable to validate loyalty redemption.');
+        }
+      } finally {
+        if (active) setRedemptionPreviewLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [baseOrderTotal, checkoutQuote, loyaltyPointsInput, loyaltyValidation.error, redemptionPreviewRetry, refreshSession, user?.accessToken]);
+
   const handleApplyCoupon = async () => {
     setCouponLoading(true);
     setCouponError('');
@@ -272,6 +391,16 @@ export default function CheckoutPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (loyaltyValidation.error) {
+      setPaymentError(loyaltyValidation.error);
+      return;
+    }
+    if (loyaltyValidation.points > 0
+      && (redemptionPreviewLoading || redemptionPreviewError || !currentRedemptionPreview)) {
+      setPaymentError(redemptionPreviewError || 'Wait for loyalty points to be validated before continuing.');
+      return;
+    }
+
     if (!checkoutQuote?.deliveryAvailability.available) {
       setPaymentError(checkoutQuote?.deliveryAvailability.message
         ?? 'Save your delivery address and select a valid map location before continuing.');
@@ -284,7 +413,14 @@ export default function CheckoutPage() {
     setPaymentState('');
     try {
       let accessToken = user.accessToken;
-      const createOrder = async () => orderService.create(accessToken, addressId, appliedCoupon?.code ?? null, crypto.randomUUID());
+      const idempotencyKey = crypto.randomUUID();
+      const createOrder = async () => orderService.create(
+        accessToken,
+        addressId,
+        appliedCoupon?.code ?? null,
+        idempotencyKey,
+        loyaltyValidation.points,
+      );
       let order;
       try { order = await createOrder(); } catch (reason) {
         if (!(reason instanceof Error) || !reason.message.includes('401') || !(await refreshSession())) throw reason;
@@ -432,7 +568,9 @@ export default function CheckoutPage() {
                 {paymentState ? <p className="text-sm text-amber-300" role="status">{paymentState}</p> : null}
                 <button
                   type="submit"
-                  disabled={!checkoutQuote?.deliveryAvailability.available || !addressId || paymentLoading || quoteLoading || !selectedLocationIsSaved}
+                  disabled={!checkoutQuote?.deliveryAvailability.available || !addressId || paymentLoading || quoteLoading || !selectedLocationIsSaved
+                    || Boolean(loyaltyValidation.error) || redemptionPreviewLoading || Boolean(redemptionPreviewError)
+                    || (loyaltyValidation.points > 0 && !currentRedemptionPreview)}
                   className="w-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-4 text-sm font-semibold text-[var(--text-primary)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {paymentLoading ? 'Opening Razorpay...' : 'Pay securely with Razorpay'}
@@ -456,6 +594,48 @@ export default function CheckoutPage() {
                 ))}
               </div>
               <div className="mt-6 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">Loyalty points</p>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                      {availableLoyaltyPoints} points available
+                    </p>
+                  </div>
+                  <button type="button" disabled={quoteLoading || !loyaltySettings || !loyaltySettings.enabled
+                    || maximumRedeemablePoints < (loyaltySettings?.minimumRedemptionPoints ?? 1)}
+                    onClick={() => {
+                      setLoyaltyPointsInput(String(maximumRedeemablePoints));
+                      setPaymentError('');
+                    }}
+                    className="rounded-full border border-[var(--border-subtle)] px-4 py-2 text-xs font-semibold text-cyan-200 disabled:opacity-50">
+                    Use maximum
+                  </button>
+                </div>
+                <label htmlFor="loyalty-points" className="mt-4 block text-xs text-[var(--text-secondary)]">Points to redeem</label>
+                <input id="loyalty-points" type="text" inputMode="numeric" pattern="[0-9]*"
+                  value={loyaltyPointsInput}
+                  onChange={(event) => {
+                    setLoyaltyPointsInput(event.target.value);
+                    setPaymentError('');
+                  }}
+                  className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" />
+                {loyaltyPointsInput ? <button type="button" onClick={() => {
+                  setLoyaltyPointsInput('');
+                  setPaymentError('');
+                }} className="mt-2 text-xs text-cyan-200 underline">Remove points</button> : null}
+                {loyaltyValidation.error ? <p className="mt-2 text-xs text-rose-300" role="alert">{loyaltyValidation.error}</p> : null}
+                {loyaltySettingsError && loyaltyPointsInput ? <p className="mt-2 text-xs text-rose-300" role="alert">{loyaltySettingsError}</p> : null}
+                {redemptionPreviewLoading ? <p className="mt-2 text-xs text-[var(--text-secondary)]" role="status">Validating points...</p> : null}
+                {redemptionPreviewError ? <div className="mt-2 flex items-center justify-between gap-3 text-xs text-rose-300" role="alert">
+                  <span>{redemptionPreviewError}</span>
+                  <button type="button" onClick={() => setRedemptionPreviewRetry((attempt) => attempt + 1)} className="underline">Retry</button>
+                </div> : null}
+                {loyaltyValidation.points > 0 && !loyaltyValidation.error && loyaltyDiscount > 0
+                  ? <p className="mt-2 text-xs text-emerald-300">
+                    {currentRedemptionPreview ? 'Loyalty discount' : 'Estimated loyalty discount'}: {formatINR(loyaltyDiscount)}
+                  </p> : null}
+              </div>
+              <div className="mt-6 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
                 <label htmlFor="checkout-coupon" className="text-sm text-[var(--text-secondary)]">Have a coupon code?</label>
                 <div className="mt-3 flex gap-2"><input id="checkout-coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Enter coupon code" className="min-w-0 flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" /><button type="button" disabled={couponLoading || !couponCode.trim()} onClick={handleApplyCoupon} className="rounded-full bg-[#7CBF00] px-4 py-3 text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50">{couponLoading ? 'Applying...' : 'Apply'}</button></div>
                 {couponError ? <p className="mt-2 text-xs text-rose-300" role="alert">{couponError}</p> : null}
@@ -465,8 +645,10 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-[var(--text-secondary)]"><span>Subtotal</span><span>{formatINR(checkoutQuote?.subtotal ?? subtotal)}</span></div>
                 {checkoutQuote?.couponDiscount ? <div className="flex justify-between text-cyan-200"><span>{appliedCoupon?.code ?? 'Coupon'} discount</span><span>-{formatINR(checkoutQuote.couponDiscount)}</span></div> : null}
                 {checkoutQuote?.membershipDiscount ? <div className="flex justify-between text-cyan-200"><span>Membership discount</span><span>-{formatINR(checkoutQuote.membershipDiscount)}</span></div> : null}
+                {loyaltyDiscount > 0 ? <div className="flex justify-between text-emerald-300"><span>Loyalty points ({loyaltyValidation.points})</span><span>-{formatINR(loyaltyDiscount)}</span></div> : null}
+                <div className="border-t border-[var(--border-subtle)] pt-3"><GstBreakdown breakdown={checkoutGst} /></div>
                 <div className="flex justify-between text-[var(--text-secondary)]"><span>Shipping</span><span>{checkoutQuote ? checkoutQuote.shipping === 0 ? 'FREE' : formatINR(checkoutQuote.shipping) : quoteLoading ? 'Calculating...' : '—'}</span></div>
-                <div className="flex justify-between border-t border-[var(--border-subtle)] pt-3 text-lg font-semibold text-[var(--text-primary)]"><span>Total</span><span>{checkoutQuote ? formatINR(checkoutQuote.total) : quoteLoading ? 'Calculating...' : '—'}</span></div>
+                <div className="flex justify-between border-t border-[var(--border-subtle)] pt-3 text-lg font-semibold text-[var(--text-primary)]"><span>Total</span><span>{checkoutQuote ? formatINR(payableTotal) : quoteLoading ? 'Calculating...' : '—'}</span></div>
                 {quoteError ? <p className="text-xs text-rose-300" role="alert">{quoteError}</p> : null}
               </div>
               <div className="mt-6 grid gap-4 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">

@@ -2,9 +2,14 @@ package com.dreamspex.order;
 
 import com.dreamspex.audit.AuditLogService;
 import com.dreamspex.prescription.PrescriptionFile;
+import com.dreamspex.loyalty.LoyaltyService;
+import com.dreamspex.payment.Payment;
+import com.dreamspex.payment.PaymentRepository;
 import com.dreamspex.security.CurrentUser;
 import jakarta.validation.Valid;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static com.dreamspex.order.OrderDtos.*;
 
@@ -23,14 +30,31 @@ import static com.dreamspex.order.OrderDtos.*;
 @RequestMapping("/api/v1/admin/orders")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
 public class AdminOrderController {
+    @Autowired private OrderRepository orderRepository;
+    @Autowired private LoyaltyService loyaltyService;
     private final OrderService service;
     private final CurrentUser current;
     private final AuditLogService audit;
+    private final PaymentRepository payments;
 
-    public AdminOrderController(OrderService service, CurrentUser current, AuditLogService audit) {
+    public AdminOrderController(OrderService service, CurrentUser current, AuditLogService audit, PaymentRepository payments) {
         this.service = service;
         this.current = current;
         this.audit = audit;
+        this.payments = payments;
+    }
+
+    public record AdminOrderReport(AdminOrderResponse order, String paymentMethod) {}
+
+    @GetMapping("/report")
+    List<AdminOrderReport> report() {
+        Map<String, String> paymentMethods = new LinkedHashMap<>();
+        for (Payment payment : payments.findAllByOrderByCreatedAtDesc()) {
+            paymentMethods.putIfAbsent(payment.getOrder().getId(), payment.getProvider());
+        }
+        return service.adminOrders().stream()
+                .map(order -> new AdminOrderReport(order, paymentMethods.get(order.id())))
+                .toList();
     }
 
     @GetMapping
@@ -83,9 +107,16 @@ public class AdminOrderController {
     }
 
     @PatchMapping({"/{id}", "/{id}/status"})
+    @Transactional
     OrderResponse status(Authentication authentication, @PathVariable String id,
                          @Valid @RequestBody StatusRequest request) {
         OrderResponse result = service.adminStatus(authentication, id, request);
+        if ("DELIVERED".equals(request.status())) {
+            orderRepository.findByIdForUpdate(id).ifPresent(loyaltyService::processDeliveredOrder);
+        } else if ("CANCELLED".equals(request.status())) {
+            orderRepository.findByIdForUpdate(id).ifPresent(order -> loyaltyService.restoreRedemption(order,
+                    "ORDER:" + id + ":ADMIN_CANCEL_REDEMPTION_REVERSAL", order.getTotalAmount()));
+        }
         audit.record(current.require(authentication), "ORDER_STATUS_CHANGED", "ORDER", id);
         return result;
     }

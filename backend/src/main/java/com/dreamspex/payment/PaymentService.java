@@ -6,6 +6,7 @@ import com.dreamspex.order.Order;
 import com.dreamspex.order.OrderRepository;
 import com.dreamspex.order.OrderStatusHistory;
 import com.dreamspex.returns.ReturnRefundProcessor;
+import com.dreamspex.loyalty.LoyaltyService;
 import com.dreamspex.security.CurrentUser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,12 +19,14 @@ import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import static com.dreamspex.order.OrderDtos.*;
 
 @Service
 public class PaymentService {
+    @Autowired private LoyaltyService loyaltyService;
     private static final Set<String> REFUND_WEBHOOK_EVENTS =
             Set.of("refund.created", "refund.processed", "refund.failed");
     private static final Set<String> REFUND_STATUSES = Set.of("created", "pending", "processed", "failed");
@@ -66,11 +69,12 @@ public class PaymentService {
             Payment created = new Payment();
             created.setOrder(order);
             created.setProvider(properties.provider());
-            created.setProviderOrderId(razorpay.createOrder(
-                    order.getOrderNumber(), order.getTotalAmount(), created.getCurrency()));
             created.setAmount(order.getTotalAmount());
+            created.setProviderOrderId(razorpay.createOrder(
+                    order.getOrderNumber(), created.getAmount(), created.getCurrency()));
             return payments.save(created);
         });
+        requireOrderAmount(payment);
         return new PaymentOrderResponse(paymentResponse(payment), properties.keyId());
     }
 
@@ -82,6 +86,7 @@ public class PaymentService {
                 .filter(value -> value.getOrder().getId().equals(orderId)
                         && value.getOrder().getUser().getId().equals(user.getId()))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "Payment was not found."));
+        requireOrderAmount(payment);
         if ("CAPTURED".equals(payment.getStatus())) {
             if (!request.providerPaymentId().equals(payment.getProviderPaymentId())) {
                 throw new ApiException(HttpStatus.CONFLICT, "PAYMENT_ALREADY_VERIFIED",
@@ -130,6 +135,15 @@ public class PaymentService {
         if (!"CAPTURED".equals(payment.getStatus())) {
             payment.setStatus("FAILED");
             payment.getOrder().setPaymentStatus("FAILED");
+            Order order = payment.getOrder();
+            if (loyaltyService != null && order.getLoyaltyPointsRedeemed() > 0) {
+                loyaltyService.restoreRedemption(order,
+                        "ORDER:" + order.getId() + ":PAYMENT_FAILED_REDEMPTION_REVERSAL",
+                        order.getTotalAmount());
+                order.setTotalAmount(order.getTotalAmount().add(order.getLoyaltyDiscountAmount()));
+                order.setLoyaltyDiscountAmount(BigDecimal.ZERO);
+                order.setLoyaltyPointsRedeemed(0);
+            }
             if (request.providerPaymentId() != null && !request.providerPaymentId().isBlank()) {
                 payment.setProviderPaymentId(request.providerPaymentId());
             }
@@ -261,6 +275,14 @@ public class PaymentService {
             history.setNote("Payment confirmed");
             history.setChangedBy(changedBy);
             order.getHistory().add(history);
+        }
+    }
+
+    private void requireOrderAmount(Payment payment) {
+        if (payment.getAmount() == null || payment.getOrder().getTotalAmount() == null
+                || payment.getAmount().compareTo(payment.getOrder().getTotalAmount()) != 0) {
+            throw new ApiException(HttpStatus.CONFLICT, "PAYMENT_AMOUNT_MISMATCH",
+                    "Payment amount does not match the saved order total.");
         }
     }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Camera, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
@@ -14,6 +14,12 @@ import { resolveCmsMediaUrl } from '../config/api';
 import { fetchOffers, type Offer } from '../services/offerService';
 import { fetchMembershipPlans, type MembershipPlan } from '../services/membershipService';
 import { formatINR } from '../utils/currency';
+import {
+  isDisplayableMembershipCopy,
+  membershipDiscountLabel,
+  membershipPlanDescription,
+  membershipValidityLabel,
+} from '../utils/membershipPlanDisplay';
 
 const colorSwatches: Record<string, string> = {
   Midnight: '#1f2937',
@@ -277,7 +283,6 @@ function CmsHero({ banners, isMobile, reducedMotion, onImageError }: { banners: 
 }
 
 export default function HomePage() {
-  const navigate = useNavigate();
   const [cms, setCms] = useState<HomepageResponse | null>(null);
   const [catalog, setCatalog] = useState<{ products: CatalogProduct[]; categories: CatalogCategory[] } | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -590,11 +595,30 @@ export default function HomePage() {
 
           <section hidden={cmsHidden(homepageSectionSlugs.membership, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
             <div className="overflow-hidden rounded-[32px] border border-[var(--border-subtle)] bg-[#e9eee4] text-[var(--text-primary)] shadow-[0_24px_60px_-42px_rgba(24,34,24,0.3)]">
-              <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-14">
+              <div className="grid lg:grid-cols-[1.5fr_0.8fr]">
+                <div className="flex flex-col justify-center p-6 sm:p-9 lg:p-11">
                   <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#4b781a]">Dream Spex membership</p>
-                  <h2 className="mt-3 max-w-lg font-serif text-4xl text-[#182116]">Better care, year after year.</h2>
-                  {membershipPlans.length ? <div className="mt-8 grid gap-3 sm:grid-cols-3">{membershipPlans.map((plan) => <button key={plan.id} onClick={() => navigate(`/membership/checkout?plan=${encodeURIComponent(plan.name.toLowerCase())}`)} className="rounded-2xl border border-[#d5dfd1] bg-white p-4 text-left text-[#182116] transition hover:border-[#689f24] hover:shadow-sm"><p className="text-sm font-semibold text-[#4b781a]">{plan.name}</p><p className="mt-2 text-2xl font-semibold">{formatINR(plan.price)}</p><p className="mt-3 text-xs leading-5 text-[#5f6c5b]">{plan.perks[0] ?? plan.description}</p></button>)}</div> : <p className="mt-6 text-sm text-[#5f6c5b]" role={membershipError ? 'alert' : 'status'}>{membershipLoading ? 'Loading membership plans...' : membershipError || 'Membership plans are not available right now.'}</p>}
+                  <h2 className="mt-3 max-w-lg font-serif text-4xl text-[#182116]">Membership benefits, made clear.</h2>
+                  {membershipPlans.length ? <div className="mt-8 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">{membershipPlans.map((plan) => {
+                    const perks = plan.perks.filter(isDisplayableMembershipCopy);
+                    return <article key={plan.id} className={`flex h-full flex-col rounded-2xl border bg-white p-5 text-[#182116] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${plan.recommended ? 'border-[#689f24] ring-1 ring-[#689f24]/20' : 'border-[#d5dfd1]'}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <h3 className="text-base font-semibold text-[#4b781a]">{plan.name}</h3>
+                        {plan.recommended ? <span className="rounded-full bg-[#edf4e7] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#4b781a]">Recommended</span> : null}
+                      </div>
+                      <p className="mt-4 text-2xl font-semibold">{membershipDiscountLabel(plan)}</p>
+                      <p className="mt-1 text-xs text-[#5f6c5b]">{membershipValidityLabel(plan)} from activation</p>
+                      <p className="mt-4 text-xl font-semibold">{formatINR(plan.price)}<span className="ml-1 text-xs font-normal text-[#5f6c5b]">membership price</span></p>
+                      <p className="mt-3 text-sm leading-6 text-[#5f6c5b]">{membershipPlanDescription(plan)}</p>
+                      {plan.discountPercentage != null && plan.discountPercentage > 0
+                        ? <p className="mt-3 text-xs leading-5 text-[#5f6c5b]">Discount applies to the eligible product subtotal while active. Coupon discounts take precedence at checkout.</p>
+                        : null}
+                      {perks.length ? <ul className="mt-4 flex-1 space-y-2 border-t border-[#e5ebdf] pt-4 text-xs leading-5 text-[#5f6c5b]">{perks.slice(0, 3).map((perk) => <li key={perk} className="flex gap-2"><span className="font-bold text-[#5d9417]" aria-hidden="true">✓</span><span>{perk}</span></li>)}</ul> : <div className="flex-1" />}
+                      <Link to={`/membership/checkout?plan=${encodeURIComponent(plan.id)}`} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#7cbf00] px-4 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[#9acd32] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b781a]">
+                        Join now <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </article>;
+                  })}</div> : <p className="mt-6 text-sm text-[#5f6c5b]" role={membershipError ? 'alert' : 'status'}>{membershipLoading ? 'Loading membership plans...' : membershipError || 'Membership plans are not available right now.'}</p>}
                   {!membershipPlans.length ? <Link to="/membership" className="mt-4 inline-flex text-sm font-semibold text-[#5d9417]">Explore membership <ArrowRight className="ml-1 h-4 w-4" /></Link> : null}
                 </div>
                 <div className="rounded-3xl border border-[#d5dfd1] bg-[#f0f4ed] p-8">

@@ -3,17 +3,21 @@ import com.dreamspex.auth.entity.User;
 import com.dreamspex.common.ApiException;
 import com.dreamspex.payment.Payment;
 import com.dreamspex.payment.PaymentRepository;
+import com.dreamspex.loyalty.LoyaltyService;
+import com.dreamspex.order.Order;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReturnRefundProcessor {
+    @Autowired private LoyaltyService loyaltyService;
     private final ReturnRequestRepository requests;
     private final ReturnRefundTransactionRepository refunds;
     private final PaymentRepository payments;
@@ -106,6 +110,14 @@ public class ReturnRefundProcessor {
                 request.setStatus("REFUNDED");
                 request.setUpdatedAt(Instant.now());
                 record(request, "REFUNDED", "The payment provider confirmed the refund.", null);
+                if (loyaltyService != null) {
+                    Order order = request.getOrder();
+                    loyaltyService.reverseEarnedPointsForRefund(order, transaction.getAmount(),
+                            "RETURN_REFUND:" + transaction.getId() + ":EARN_REVERSAL");
+                    loyaltyService.restoreRedemption(order,
+                            "RETURN_REFUND:" + transaction.getId() + ":REDEMPTION_REVERSAL",
+                            transaction.getAmount());
+                }
                 notifications.refundProcessed(transaction);
             }
         } else if ("failed".equals(normalized)) {

@@ -104,7 +104,7 @@ Keep entities/repositories internal to modules. Controllers accept request DTOs 
 
 ### Configuration
 
-Add a future frontend environment value such as `VITE_API_BASE_URL=https://api.dreamspex.in`. Do not hardcode production URLs or credentials. The current frontend should remain unchanged during this Phase 1 documentation task.
+Add a future frontend environment value such as `VITE_API_BASE_URL=https://api-dreamspex-test.rabbitsoftsolutions.com`. Do not hardcode production URLs or credentials. The current frontend should remain unchanged during this Phase 1 documentation task.
 
 Introduce one API client module later, using Axios or `fetch`, with:
 

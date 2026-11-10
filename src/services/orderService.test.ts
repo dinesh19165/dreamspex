@@ -48,4 +48,36 @@ describe('checkout quote requests', () => {
       message: 'One or more fields are invalid. addressId: must not be blank',
     });
   });
+
+  it('sends loyalty points with the order request for backend validation', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({
+      id: 'order-1',
+      orderNumber: 'DS-1',
+      status: 'PENDING_PAYMENT',
+      paymentStatus: 'PENDING',
+      subtotal: 1000,
+      discount: 0,
+      couponDiscount: 0,
+      membershipDiscount: 0,
+      shipping: 0,
+      total: 988,
+      couponCode: null,
+      createdAt: '2026-11-10T00:00:00Z',
+      items: [],
+      history: [],
+      loyaltyPointsRedeemed: 120,
+      loyaltyDiscount: 12,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await orderService.create('access-token', 'address-1', null, 'checkout-key', 120);
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({
+      addressId: 'address-1',
+      couponCode: null,
+      loyaltyPoints: 120,
+    });
+  });
 });

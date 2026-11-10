@@ -1,6 +1,29 @@
 import { apiFetch as fetch } from './apiClient';
 import { apiBaseUrl } from '../config/api';
 
+export type GstOrderSnapshot = {
+  taxableAmount: number;
+  gstAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
+  finalAmount: number;
+  appliedRate: number | null;
+  priceTreatment: 'INCLUSIVE' | 'EXCLUSIVE';
+  items: Array<{
+    productId: string;
+    productName: string;
+    hsnCode: string | null;
+    appliedRate: number;
+    taxableAmount: number;
+    gstAmount: number;
+    cgstAmount: number;
+    sgstAmount: number;
+    igstAmount: number;
+    grossAmount: number;
+  }>;
+};
+
 export type OrderResponse = {
   id: string;
   orderNumber: string;
@@ -12,6 +35,17 @@ export type OrderResponse = {
   membershipDiscount: number;
   shipping: number;
   total: number;
+  gstRate?: number | null;
+  taxableAmount?: number | null;
+  gstAmount?: number | null;
+  appliedRate?: number | null;
+  cgstAmount?: number | null;
+  sgstAmount?: number | null;
+  igstAmount?: number | null;
+  priceTreatment?: 'INCLUSIVE' | 'EXCLUSIVE' | null;
+  gstSnapshot?: GstOrderSnapshot | null;
+  loyaltyPointsRedeemed?: number;
+  loyaltyDiscount?: number;
   couponCode: string | null;
   createdAt: string;
   items: OrderItemResponse[];
@@ -25,6 +59,19 @@ export type CheckoutQuoteResponse = {
   membershipDiscount: number;
   shipping: number;
   total: number;
+  gstRate?: number | null;
+  taxableAmount?: number | null;
+  gstAmount?: number | null;
+  appliedRate?: number | null;
+  cgstAmount?: number | null;
+  sgstAmount?: number | null;
+  igstAmount?: number | null;
+  priceTreatment?: 'INCLUSIVE' | 'EXCLUSIVE' | null;
+  gstSnapshot?: GstOrderSnapshot | null;
+  loyaltyPointsAvailable?: number;
+  loyaltyPointsRedeemed?: number;
+  loyaltyDiscount?: number;
+  loyaltyPointsMaxRedeemable?: number;
   couponCode: string | null;
   deliveryAvailability: {
     available: boolean;
@@ -34,6 +81,7 @@ export type CheckoutQuoteResponse = {
     storeName: string | null;
     message: string;
   };
+
 };
 
 export type OrderItemResponse = {
@@ -91,18 +139,18 @@ async function request<T>(accessToken: string, path: string, init: RequestInit =
 }
 
 export const orderService = {
-  quote: (accessToken: string, addressId: string, couponCode: string | null) =>
+  quote: (accessToken: string, addressId: string, couponCode: string | null, loyaltyPoints = 0) =>
     request<CheckoutQuoteResponse>(accessToken, '/checkout/quote', {
       method: 'POST',
-      body: JSON.stringify({ addressId, couponCode }),
+      body: JSON.stringify({ addressId, couponCode, ...(loyaltyPoints > 0 ? { loyaltyPoints } : {}) }),
     }),
   list: (accessToken: string) => request<OrderResponse[]>(accessToken, '/orders'),
   get: (accessToken: string, orderId: string) =>
     request<OrderResponse>(accessToken, `/orders/${encodeURIComponent(orderId)}`),
-  create: (accessToken: string, addressId: string, couponCode: string | null, idempotencyKey: string) =>
+  create: (accessToken: string, addressId: string, couponCode: string | null, idempotencyKey: string, loyaltyPoints = 0) =>
     request<OrderResponse>(accessToken, '/orders', {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify({ addressId, couponCode }),
+      body: JSON.stringify({ addressId, couponCode, ...(loyaltyPoints > 0 ? { loyaltyPoints } : {}) }),
     }),
 };

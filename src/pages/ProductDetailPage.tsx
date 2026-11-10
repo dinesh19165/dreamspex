@@ -9,6 +9,8 @@ import { useShop } from '../context/ShopContext';
 import { catalogService, toProduct, type CatalogProduct } from '../services/catalogService';
 import { formatINR } from '../utils/currency';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { productGstInformation } from '../utils/gst';
+import { getDiscountPercentage } from '../utils/pricing';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -82,7 +84,7 @@ export default function ProductDetailPage() {
     cartTimerRef.current = window.setTimeout(() => setAddedToCart(false), 1400);
   };
 
-  const discountPercentage = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : 0;
+  const discountPercentage = getDiscountPercentage(product.price, product.oldPrice);
   const actionButtonBase = 'h-[48px] min-h-[48px] rounded-full px-3 text-sm font-semibold whitespace-nowrap transition-all duration-200 sm:h-[52px] sm:min-h-[52px] sm:px-4';
 
   return (
@@ -90,8 +92,10 @@ export default function ProductDetailPage() {
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-10 grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl">
-            <img src={product.image} alt={product.name} fetchPriority="high" className="h-[min(560px,60vh)] w-full rounded-[24px] object-cover" />
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 backdrop-blur-xl sm:p-5">
+            <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-[24px] bg-[var(--bg-secondary)] p-3 sm:p-5 lg:aspect-[4/3]">
+              <img src={product.image} alt={product.name} fetchPriority="high" className="h-full w-full object-contain" />
+            </div>
             <p className="mt-3 text-xs text-[var(--text-secondary)]">One product image is available in this sample catalogue.</p>
           </motion.div>
 
@@ -103,10 +107,18 @@ export default function ProductDetailPage() {
               <p className="mt-3 flex items-center gap-2 text-sm text-[var(--text-secondary)]" aria-label={`Sample catalogue rating ${product.rating} out of 5`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{product.rating.toFixed(1)}</strong><span>sample catalogue rating · {product.reviews} demo ratings</span></p>
               <p className="mt-4 text-base leading-8 text-[var(--text-secondary)]">{product.description}</p>
             </div>
-            <div className="flex items-center gap-4 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl">
-              <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Price</p><p className="mt-1 text-3xl font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p></div>
-              {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">List price</p><p className="mt-1 text-lg text-[var(--text-secondary)] line-through">{formatINR(product.oldPrice)}</p></div> : null}
-              {discountPercentage > 0 ? <span className="rounded-full bg-[var(--brand-green)]/15 px-3 py-1 text-sm font-semibold text-[var(--brand-green-dark)]">{discountPercentage}% off</span> : null}
+            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl">
+              <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+                <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Price</p><p className="mt-1 text-3xl font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p></div>
+                {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">List price</p><p className="mt-1 text-lg text-[var(--text-secondary)] line-through">{formatINR(product.oldPrice)}</p></div> : null}
+                {discountPercentage != null ? <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-[var(--brand-green)]/15 px-3 py-1.5 text-sm font-bold tracking-wide text-[var(--brand-green-dark)]">{discountPercentage}% OFF</span> : null}
+              </div>
+              <div className="mt-4 border-t border-[var(--border-subtle)] pt-4">
+                <p className="text-sm leading-6 text-[var(--text-secondary)]" aria-label="Product GST information">
+                  {productGstInformation(catalogProduct)}
+                </p>
+                {catalogProduct.hsnCode ? <p className="mt-2 text-xs text-[var(--text-secondary)]">HSN {catalogProduct.hsnCode}</p> : null}
+              </div>
               {catalogProduct.variants.length ? <label className="mt-4 block text-sm text-[var(--text-secondary)]"><span>Variant</span><select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)} className="mt-2 w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">{catalogProduct.variants.map((variant) => <option key={variant.id} value={variant.id} disabled={variant.status !== 'ACTIVE' || variant.availableQuantity < 1}>{[variant.color, variant.size, variant.lensType].filter(Boolean).join(' · ') || variant.sku} · {variant.availableQuantity} available</option>)}</select></label> : null}
             </div>
             <div className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 backdrop-blur-xl">

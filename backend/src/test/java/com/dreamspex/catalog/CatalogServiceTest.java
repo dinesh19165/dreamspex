@@ -11,6 +11,8 @@ import com.dreamspex.catalog.repository.CouponRepository;
 import com.dreamspex.catalog.repository.ProductRepository;
 import com.dreamspex.catalog.repository.ProductVariantRepository;
 import com.dreamspex.catalog.service.CatalogService;
+import com.dreamspex.gst.GstDtos.ProductGstRequest;
+import com.dreamspex.gst.GstDtos.ProductGstResponse;
 import com.dreamspex.common.ApiException;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -118,6 +120,35 @@ class CatalogServiceTest {
 
         assertEquals("/api/v1/cms/images/frame.webp", response.tryOnImageUrl());
         assertEquals("https://cdn.example.test/catalogue.jpg", response.images().get(0).imageUrl());
+    }
+
+    @Test
+    void updatesProductClassificationAndAllowsGlobalRateFallback() {
+        CatalogService service = service();
+        Product product = product("PUBLISHED");
+        when(products.findWithLockById("product-id")).thenReturn(Optional.of(product));
+        when(products.save(product)).thenReturn(product);
+
+        ProductGstResponse response = service.updateProductGst("product-id",
+                new ProductGstRequest("9004", true, null, true));
+
+        assertEquals("9004", response.hsnCode());
+        assertEquals(true, response.usesGlobalRate());
+        assertNull(response.gstRate());
+        assertEquals(true, response.gstEnabled());
+    }
+
+    @Test
+    void requiresAnExplicitProductRateWhenGlobalRateIsNotSelected() {
+        CatalogService service = service();
+        Product product = product("PUBLISHED");
+        when(products.findWithLockById("product-id")).thenReturn(Optional.of(product));
+
+        ApiException error = assertThrows(ApiException.class, () -> service.updateProductGst("product-id",
+                new ProductGstRequest("9004", false, null, true)));
+
+        assertEquals("PRODUCT_GST_RATE_REQUIRED", error.code());
+        verify(products, never()).save(any(Product.class));
     }
 
     @Test

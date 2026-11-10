@@ -33,7 +33,8 @@ public final class CatalogDtos {
                                 boolean primaryImage) {}
     public record ProductResponse(String id, String sku, String name, String slug, String brand, String description,
                                   String material, String gender, String frameShape, String frameType,
-                                  BigDecimal basePrice, BigDecimal compareAtPrice, String badge, String tryOnImageUrl, String status,
+                                  BigDecimal basePrice, BigDecimal compareAtPrice, String badge, String tryOnImageUrl,
+                                  String hsnCode, BigDecimal gstRate, boolean gstEnabled, String status,
                                   List<CategoryResponse> categories, List<VariantResponse> variants,
                                   List<ImageResponse> images) {}
     public record PageResponse<T>(List<T> items, int page, int pageSize, long total) {}

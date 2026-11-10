@@ -23,6 +23,7 @@ public interface UserRepository extends JpaRepository<User, String> {
         """)
     Page<User> searchByRoleAndContact(@Param("role") String role, @Param("query") String query, Pageable pageable);
     long countByDeletedAtIsNullAndRoles_Code(String code);
+    long countByDeletedAtIsNullAndRoles_CodeAndPhoneIsNotNull(String code);
     long countByStatusAndDeletedAtIsNullAndRoles_Code(String status, String code);
     long countByStatusAndDeletedAtIsNull(String status);
 }

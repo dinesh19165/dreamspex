@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Transactional
 class DeliveryBatchServiceIntegrationTest {
     @Autowired DeliveryBatchService service;
+    @Autowired DeliveryBatchRepository batches;
     @Autowired UserRepository users;
     @Autowired OrderRepository orders;
     @Autowired DeliveryBatchOrderRepository batchOrders;
@@ -89,6 +90,20 @@ class DeliveryBatchServiceIntegrationTest {
         assertEquals(2, partial.total());
         assertEquals(1, partial.delivered());
         assertEquals(1, partial.pending());
+        assertEquals(1, service.listBatches().size());
+
+        advanceToOutForDelivery(token, second);
+        assertFalse(service.updateStatus(token, second.getId(),
+                new StatusRequest("FAILED_ATTEMPT", "Customer unavailable.", null)).rejected());
+        BatchSummary failedBatch = service.listBatches().getFirst();
+        assertEquals(0, failedBatch.pending());
+        assertEquals(1, failedBatch.failed());
+
+        service.updateStatus(token, second.getId(), new StatusRequest("OUT_FOR_DELIVERY", null, null));
+        assertFalse(service.updateStatus(token, second.getId(),
+                new StatusRequest("DELIVERED", null, secondOtp)).rejected());
+        assertTrue(service.listBatches().isEmpty());
+        assertTrue(batches.findById(created.batch().id()).isPresent());
     }
 
     @Test
@@ -311,6 +326,8 @@ class DeliveryBatchServiceIntegrationTest {
                 new StatusRequest("PICKED_UP", null, otp.otp())));
         assertEquals("DELIVERED", order.getStatus());
         assertEquals("APPROVED", returnRequests.findById(otherRequest.getId()).orElseThrow().getStatus());
+        assertFalse(service.updateStatus(token, otherRequest.getId(),
+                new StatusRequest("FAILED_ATTEMPT", "Pickup could not be completed.", null)).rejected());
         assertEquals("PICKED_UP", service.getDriverBatch(token).orders().stream()
                 .filter(item -> item.id().equals(request.getId())).findFirst().orElseThrow().status());
         assertTrue(service.getDriverBatch(token).orders().stream()
@@ -318,8 +335,15 @@ class DeliveryBatchServiceIntegrationTest {
                 .anyMatch(event -> "PICKED_UP".equals(event.status())
                         && "RETURN_REQUEST".equals(event.source())));
         assertEquals(1, service.getDriverBatch(token).completed());
-        assertEquals(1, service.getDriverBatch(token).pending());
+        assertEquals(0, service.getDriverBatch(token).pending());
+        assertEquals(1, service.getDriverBatch(token).failed());
         assertEquals("OPEN", service.listReturnBatches("RETURN_PICKUP").getFirst().status());
+        assertEquals(1, service.listReturnBatches("RETURN_PICKUP").getFirst().failed());
+
+        assertFalse(service.updateStatus(token, otherRequest.getId(),
+                new StatusRequest("PICKED_UP", null, otherOtp.otp())).rejected());
+        assertTrue(service.listReturnBatches("RETURN_PICKUP").isEmpty());
+        assertTrue(batches.findById(created.batch().id()).isPresent());
     }
 
     @Test

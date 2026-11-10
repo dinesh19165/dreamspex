@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.*;
 import static com.dreamspex.catalog.dto.CatalogDtos.*;
+import static com.dreamspex.gst.GstDtos.*;
 
 @Service
 public class CatalogService {
@@ -194,6 +195,31 @@ public class CatalogService {
         return product(products.save(value));
     }
     @Transactional
+    public ProductGstResponse updateProductGst(String id, ProductGstRequest request) {
+        Product value = products.findWithLockById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", "Product was not found."));
+        if (Boolean.FALSE.equals(request.useGlobalRate()) && request.gstRate() == null) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "PRODUCT_GST_RATE_REQUIRED",
+                    "A product GST rate is required when the global rate is not selected.");
+        }
+        if (Boolean.TRUE.equals(request.useGlobalRate()) && request.gstRate() != null) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "PRODUCT_GST_RATE_CONFLICT",
+                    "Remove the product GST rate when using the global rate.");
+        }
+        String hsnCode = request.hsnCode() == null || request.hsnCode().isBlank()
+                ? null : request.hsnCode().trim();
+        if (hsnCode != null && !hsnCode.matches("[0-9]{4}|[0-9]{6}|[0-9]{8}")) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_HSN_CODE",
+                    "HSN code must contain 4, 6, or 8 digits.");
+        }
+        value.setHsnCode(hsnCode);
+        value.setGstRate(Boolean.TRUE.equals(request.useGlobalRate()) ? null : request.gstRate());
+        value.setGstEnabled(Boolean.TRUE.equals(request.gstEnabled()));
+        Product saved = products.save(value);
+        return new ProductGstResponse(saved.getId(), saved.getHsnCode(), saved.getGstRate(),
+                saved.getGstRate() == null, saved.isGstEnabled());
+    }
+    @Transactional
     public void deleteProduct(String id) { Product value = products.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", "Product was not found.")); value.setDeletedAt(java.time.Instant.now()); value.setStatus("INACTIVE"); products.save(value); }
     @Transactional
     public ProductResponse setProductStatus(String id, String status) {
@@ -220,5 +246,5 @@ public class CatalogService {
         return values.stream().map(String::trim).filter(value -> !value.isEmpty())
                 .distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList();
     }
-    private ProductResponse product(Product v) { return new ProductResponse(v.getId(), v.getSku(), v.getName(), v.getSlug(), v.getBrand(), v.getDescription(), v.getMaterial(), v.getGender(), v.getFrameShape(), v.getFrameType(), v.getBasePrice(), v.getCompareAtPrice(), v.getBadge(), v.getTryOnImageUrl(), v.getStatus(), v.getCategories().stream().filter(c -> c.getDeletedAt() == null).map(this::category).toList(), v.getVariants().stream().map(x -> new VariantResponse(x.getId(), x.getSku(), x.getColor(), x.getSize(), x.getLensType(), x.getAdditionalPrice(), x.getQuantity(), x.getAvailableQuantity(), x.getStatus())).toList(), v.getImages().stream().map(x -> new ImageResponse(x.getId(), x.getImageUrl(), x.getStorageKey(), x.getAltText(), x.getSortOrder(), x.isPrimaryImage())).toList()); }
+    private ProductResponse product(Product v) { return new ProductResponse(v.getId(), v.getSku(), v.getName(), v.getSlug(), v.getBrand(), v.getDescription(), v.getMaterial(), v.getGender(), v.getFrameShape(), v.getFrameType(), v.getBasePrice(), v.getCompareAtPrice(), v.getBadge(), v.getTryOnImageUrl(), v.getHsnCode(), v.getGstRate(), v.isGstEnabled(), v.getStatus(), v.getCategories().stream().filter(c -> c.getDeletedAt() == null).map(this::category).toList(), v.getVariants().stream().map(x -> new VariantResponse(x.getId(), x.getSku(), x.getColor(), x.getSize(), x.getLensType(), x.getAdditionalPrice(), x.getQuantity(), x.getAvailableQuantity(), x.getStatus())).toList(), v.getImages().stream().map(x -> new ImageResponse(x.getId(), x.getImageUrl(), x.getStorageKey(), x.getAltText(), x.getSortOrder(), x.isPrimaryImage())).toList()); }
 }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import com.dreamspex.reviews.ReviewDtos.RatingSummary;
 import java.util.Set;
 
 public final class CatalogDtos {
@@ -36,13 +37,19 @@ public final class CatalogDtos {
                                   BigDecimal basePrice, BigDecimal compareAtPrice, String badge, String tryOnImageUrl,
                                   String hsnCode, BigDecimal gstRate, boolean gstEnabled, String status,
                                   List<CategoryResponse> categories, List<VariantResponse> variants,
-                                  List<ImageResponse> images) {}
+                                  List<ImageResponse> images, RatingSummary ratingSummary) {}
     public record PageResponse<T>(List<T> items, int page, int pageSize, long total) {}
     public record ProductFilterOptions(List<String> brands, List<String> materials, List<String> genders,
                                        List<String> frameShapes, List<String> frameTypes, List<String> colors,
                                        List<String> badges) {}
     public record CartItemRequest(@NotBlank String variantId, @Min(1) @Max(99) int quantity,
-                                  String prescriptionId, List<@NotBlank @Pattern(regexp="[A-Z0-9_]{2,64}") String> selectedLensCodes) {}
+                                  String prescriptionId, List<@NotBlank @Pattern(regexp="[A-Z0-9_]{2,64}") String> selectedLensCodes,
+                                  @Size(max=255) String franchiseId) {
+        public CartItemRequest(String variantId, int quantity, String prescriptionId,
+                               List<String> selectedLensCodes) {
+            this(variantId, quantity, prescriptionId, selectedLensCodes, null);
+        }
+    }
     public record CartItemResponse(String id, String variantId, String productId, String productName,
                                    String imageUrl, String sku, int quantity, BigDecimal unitPrice, BigDecimal lineTotal,
                                    int availableQuantity, String prescriptionId, List<String> selectedLensCodes,

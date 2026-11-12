@@ -109,7 +109,7 @@ class OrderServiceLensPricingTest {
         when(carts.findByUserIdAndStatus(user.getId(), "ACTIVE")).thenReturn(Optional.of(cart));
         when(variants.findByIdAndStatus(variant.getId(), "ACTIVE")).thenReturn(Optional.of(variant));
         when(lensOptions.findByCode("SINGLE_VISION")).thenReturn(Optional.of(option));
-        lenient().when(deliveryAvailability.evaluate(any())).thenReturn(new DeliveryAvailabilityService.Evaluation(
+        lenient().when(deliveryAvailability.evaluate(any(), any())).thenReturn(new DeliveryAvailabilityService.Evaluation(
                 false, "LOCATION_REQUIRED", null, null, null,
                 "Select a valid delivery location on the map to check availability."));
         service = new OrderService(current, addresses, carts, variants, orders, coupons,
@@ -194,7 +194,7 @@ class OrderServiceLensPricingTest {
     }
 
     private void availableDelivery(Store store) {
-        when(deliveryAvailability.evaluate(any())).thenReturn(new DeliveryAvailabilityService.Evaluation(
+        when(deliveryAvailability.evaluate(any(), any())).thenReturn(new DeliveryAvailabilityService.Evaluation(
                 true, "AVAILABLE", store, BigDecimal.ONE, BigDecimal.TEN, "Delivery available."));
     }
 

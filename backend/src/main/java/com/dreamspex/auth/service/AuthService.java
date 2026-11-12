@@ -11,6 +11,7 @@ import com.dreamspex.auth.repository.OtpChallengeRepository;
 import com.dreamspex.auth.repository.RefreshTokenRepository;
 import com.dreamspex.auth.repository.RoleRepository;
 import com.dreamspex.auth.repository.UserRepository;
+import com.dreamspex.franchise.FranchiseUserRepository;
 import com.dreamspex.common.ApiException;
 import com.dreamspex.config.SecurityProperties;
 import com.dreamspex.audit.AuditLogService;
@@ -51,6 +52,8 @@ public class AuthService {
     private final SecretKeySpec otpKey;
     @Autowired
     private LoyaltyService loyaltyService;
+    @Autowired
+    private FranchiseUserRepository franchiseUsers;
 
     public AuthService(UserRepository users, RoleRepository roles, RefreshTokenRepository refreshTokens,
                        OtpChallengeRepository challenges, PasswordEncoder passwordEncoder, JwtService jwtService,
@@ -138,6 +141,23 @@ public class AuthService {
     }
 
     @Transactional
+    public TokenResponse franchiseLogin(LoginRequest request) {
+        User user = findUser(request.identifier());
+        requireRole(user, "FRANCHISE_ADMIN");
+        boolean assignedToActiveFranchise = franchiseUsers != null
+                && franchiseUsers.findByUserId(user.getId())
+                .map(link -> link.getStore().isFranchiseManaged() && "ACTIVE".equals(link.getStore().getStatus()))
+                .orElse(false);
+        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())
+                || !"ACTIVE".equals(user.getStatus()) || !assignedToActiveFranchise) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials.");
+        }
+        user.setLastLoginAt(Instant.now());
+        auditLogs.record(user, "AUTH_FRANCHISE_LOGIN");
+        return tokensFor(user, UUID.randomUUID().toString());
+    }
+
+    @Transactional
     public SimpleResponse resendOtp(ResendOtpRequest request) {
         OtpChallenge challenge = challenges.findById(request.challengeId())
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CHALLENGE", "Invalid or expired challenge."));
@@ -196,6 +216,32 @@ public class AuthService {
         user.incrementTokenVersion();
         refreshTokens.revokeUserTokens(user.getId(), Instant.now());
         auditLogs.record(user, "AUTH_PASSWORD_RESET");
+        return new ResetPasswordResponse(true, true);
+    }
+
+    @Transactional
+    public ResetPasswordResponse setupFranchisePassword(FranchiseSetupRequest request) {
+        var link = franchiseUsers.findByInvitationTokenHashForUpdate(hash(request.token()))
+                .filter(value -> value.getInvitationExpiresAt() != null
+                        && value.getInvitationExpiresAt().isAfter(Instant.now()))
+                .filter(value -> value.getStore().isFranchiseManaged()
+                        && "ACTIVE".equals(value.getStore().getStatus()))
+                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "INVALID_INVITATION",
+                        "This franchise setup link is invalid or has expired."));
+        User user = link.getUser();
+        if (!"ACTIVE".equals(user.getStatus())
+                || user.getRoles().stream().noneMatch(role -> "FRANCHISE_ADMIN".equals(role.getCode()))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_INVITATION",
+                    "This franchise setup link is invalid or has expired.");
+        }
+        link.setInvitationTokenHash(null);
+        link.setInvitationExpiresAt(null);
+        franchiseUsers.save(link);
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setEmailVerifiedAt(Instant.now());
+        user.incrementTokenVersion();
+        refreshTokens.revokeUserTokens(user.getId(), Instant.now());
+        auditLogs.record(user, "AUTH_FRANCHISE_PASSWORD_SETUP");
         return new ResetPasswordResponse(true, true);
     }
 

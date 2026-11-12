@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Grid2X2, Home, LayoutDashboard, LogOut, Menu, Package, Search, ShoppingBag, ShoppingCart, Heart, Settings, UserRound, WalletCards, X, Sparkles, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
+import { ChevronDown, Grid2X2, Home, LayoutDashboard, LogOut, MapPin, Menu, Package, Search, ShoppingBag, ShoppingCart, Heart, Settings, Star, UserRound, WalletCards, X, Sparkles, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import { useAuth } from '../../context/useAuth';
+import { useFranchiseLocation } from '../../context/FranchiseLocationContext';
 import BrandLogo from '../ui/BrandLogo';
 import { resolveCmsMediaUrl } from '../../config/api';
 import { catalogService, type CatalogCategory, type CatalogProduct } from '../../services/catalogService';
 import { fetchOffers, type Offer } from '../../services/offerService';
 import { fetchMembershipPlans, type MembershipPlan } from '../../services/membershipService';
+import type { StorefrontFranchise } from '../../services/franchiseStoreService';
 import {
   membershipDiscountLabel,
   membershipPlanDescription,
@@ -21,6 +23,45 @@ const utilityNavItems = [
   { label: 'Eye Care', path: '/services' },
   { label: 'Services', path: '/services' },
 ];
+
+function FranchiseLocationPicker({
+  locations,
+  selectedLocation,
+  selectedLocationId,
+  selectLocation,
+  error,
+}: {
+  locations: StorefrontFranchise[];
+  selectedLocation: StorefrontFranchise | null;
+  selectedLocationId: string;
+  selectLocation: (id: string) => void;
+  error: string;
+}) {
+  const selectId = useId();
+  if (!locations.length) return null;
+
+  return <div
+    className="navbar-location-selector relative flex h-10 w-[min(42vw,180px)] shrink-0 items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 text-[var(--text-secondary)] shadow-inner shadow-black/10 transition hover:border-cyan-400/40 lg:w-[190px]"
+    title={error || (selectedLocation ? `${selectedLocation.name}, ${selectedLocation.city}` : 'Select a store')}
+  >
+    <MapPin className="h-4 w-4 shrink-0 text-cyan-300" aria-hidden="true" />
+    <span className="min-w-0 flex-1 truncate text-left text-xs font-medium text-[var(--text-primary)]">
+      {selectedLocation ? `${selectedLocation.name} · ${selectedLocation.city}` : 'Select a store'}
+    </span>
+    <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    <select
+      id={selectId}
+      aria-label="Shopping location"
+      aria-invalid={Boolean(error)}
+      value={selectedLocationId}
+      onChange={(event) => selectLocation(event.target.value)}
+      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+    >
+      {locations.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.city}</option>)}
+    </select>
+    {error ? <span role="alert" className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-rose-400/30 bg-[var(--bg-card)] p-2 text-xs text-rose-500 shadow-lg">{error}</span> : null}
+  </div>;
+}
 
 type MegaMenuGroupKind = 'products' | 'shapes' | 'brands' | 'materials' | 'colors' | 'featured' | 'categories' | 'offer-categories' | 'offers' | 'membership' | 'links';
 type MegaMenuItem = { label: string; path: string };
@@ -52,6 +93,7 @@ function swatchColor(value: string) {
 export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: boolean }) {
   const { wishlist, cart } = useShop();
   const { isAuthenticated, clearAuthenticated } = useAuth();
+  const { locations, selectedLocation, selectedLocationId, selectLocation, error: locationError } = useFranchiseLocation();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -146,7 +188,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
       ],
     },
     { label: 'Eye Care', groups: [{ title: 'Care and convenience', kind: 'links', items: [{ label: 'Services', path: '/services' }, { label: 'Virtual Try-On', path: '/virtual-try-on' }, { label: 'Store Locator', path: '/stores' }] }] },
-    { label: 'Services', groups: [{ title: 'Care and convenience', kind: 'links', items: [{ label: 'Virtual Try-On', path: '/virtual-try-on' }, { label: 'Eye Care', path: '/services' }, { label: 'Prescription support', path: prescriptionCategory ? `/shop?category=${encodeURIComponent(prescriptionCategory.slug)}` : '/shop' }, { label: 'Store Appointment', path: '/contact' }, { label: 'Contact Us', path: '/contact' }] }] },
+    { label: 'Services', groups: [{ title: 'Care and convenience', kind: 'links', items: [{ label: 'Virtual Try-On', path: '/virtual-try-on' }, { label: 'Eye Care', path: '/services' }, { label: 'Prescription support', path: prescriptionCategory ? `/shop?category=${encodeURIComponent(prescriptionCategory.slug)}` : '/shop' }] }] },
   ];
 
   useEffect(() => {
@@ -157,6 +199,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
         if (!controller.signal.aborted && import.meta.env.DEV) console.error('[Navigation] Could not load catalogue categories.', error);
       });
     const params = new URLSearchParams({ page: '0', pageSize: '100', sort: 'newest' });
+    if (selectedLocationId) params.set('franchiseId', selectedLocationId);
     catalogService.search(params, controller.signal)
       .then((result) => setCatalogProducts(result.items))
       .catch((error: unknown) => {
@@ -182,13 +225,14 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
       })
       .finally(() => { if (!controller.signal.aborted) setMembershipLoading(false); });
     return () => controller.abort();
-  }, []);
+  }, [selectedLocationId]);
 
   useEffect(() => {
     if (!searchOpen) return undefined;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams({ page: '0', pageSize: '8', sort: 'newest' });
+      if (selectedLocationId) params.set('franchiseId', selectedLocationId);
       if (searchQuery.trim()) params.set('q', searchQuery.trim());
       setSearchLoading(true);
       setSearchError('');
@@ -203,7 +247,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [searchOpen, searchQuery]);
+  }, [searchOpen, searchQuery, selectedLocationId]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -322,31 +366,20 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
         </div>
       </div> : null}
       <header className={`z-50 border-b border-[var(--border-subtle)] bg-[var(--bg-primary)]/95 transition-all duration-300 ${homepageOverlay ? 'navbar-home-overlay__header' : 'sticky top-0'} ${scrolled ? 'backdrop-blur-2xl' : ''}`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-1 px-4 py-3 sm:gap-3 lg:px-8">
-          <BrandLogo compact />
+        <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
+          <div className="flex min-w-0 items-center justify-between gap-2 py-2.5 sm:gap-3 lg:py-3">
+            <BrandLogo compact />
 
-          <nav className="hidden h-10 flex-1 items-center justify-center lg:flex" aria-label="Store information">
-            <div className="flex h-10 items-center gap-4 text-[15px] font-medium leading-none text-[var(--text-secondary)] lg:gap-5">
-              {navItems.filter((item) => ['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
-                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`group relative inline-flex h-10 items-center whitespace-nowrap leading-none transition-colors duration-200 hover:text-[var(--text-primary)] ${megaMenuOpen === item.label ? 'text-cyan-300' : ''}`}>
-                  <span className="inline-flex items-center leading-none">{item.label}</span>
-                  <span className={`absolute -bottom-1 left-0 h-0.5 w-full origin-left rounded-full bg-cyan-400 transition-transform duration-200 ${megaMenuOpen === item.label ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
-                </Link>
-              ))}
+            <div className={`hidden min-w-0 flex-1 items-center gap-3 lg:flex ${homepageOverlay ? 'navbar-home-overlay__search' : ''}`}>
+              <button onClick={openSearch} className="flex h-10 min-w-0 flex-1 items-center justify-between gap-3 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-sm leading-none text-[var(--text-secondary)] shadow-inner shadow-black/10">
+                <span className="flex min-w-0 items-center gap-2 whitespace-nowrap"><Search className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" /><span className="truncate">Search frames, styles, offers</span></span>
+                <span className="shrink-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--text-secondary)]">Ctrl / ⌘ K</span>
+              </button>
+              <FranchiseLocationPicker locations={locations} selectedLocation={selectedLocation}
+                selectedLocationId={selectedLocationId} selectLocation={selectLocation} error={locationError} />
             </div>
-          </nav>
 
-          <div className={`hidden h-10 flex-1 items-center justify-center px-5 lg:flex xl:px-10 ${homepageOverlay ? 'navbar-home-overlay__search' : ''}`}>
-            <button onClick={openSearch} className="flex h-10 min-w-[220px] w-full max-w-xl items-center justify-between rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-sm leading-none text-[var(--text-secondary)] shadow-inner shadow-black/10">
-              <span className="flex shrink-0 items-center gap-2 whitespace-nowrap"><Search className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" /> Search frames, styles, offers</span>
-              <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--text-secondary)]">Ctrl / ⌘ K</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={openSearch} className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50 lg:hidden" aria-label="Search">
-              <Search className="h-4 w-4" />
-            </button>
+            <div className="navbar-header-actions flex shrink-0 items-center gap-1.5 sm:gap-2 lg:gap-3">
             <Link to="/wishlist" className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-cyan-400/50">
               <Heart className="h-4 w-4" />
               <span className="absolute -right-1 -top-1 rounded-full bg-cyan-400 px-1.5 py-0.5 text-[10px] font-semibold text-slate-950">{wishlist.length}</span>
@@ -359,15 +392,32 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
             <button className="hidden rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] p-2.5 text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] md:flex lg:hidden" aria-label="Open menu" onClick={() => setOpen(true)}>
               <Menu className="h-4 w-4" />
             </button>
+            </div>
           </div>
+
+          <div className={`flex min-w-0 items-center gap-2 pb-2.5 lg:hidden ${homepageOverlay ? 'navbar-home-overlay__search' : ''}`}>
+            <button onClick={openSearch} className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-left text-sm text-[var(--text-secondary)] shadow-inner shadow-black/10" aria-label="Search frames, styles, and offers">
+              <Search className="h-4 w-4 shrink-0" />
+              <span className="truncate">Search frames, styles, offers</span>
+            </button>
+            <FranchiseLocationPicker locations={locations} selectedLocation={selectedLocation}
+              selectedLocationId={selectedLocationId} selectLocation={selectLocation} error={locationError} />
+          </div>
+
+          <nav aria-label="Store information" className="hidden border-t border-[var(--border-subtle)] lg:block">
+            <div className="mx-auto flex max-w-7xl items-center justify-center gap-5 overflow-x-auto px-2 py-2 text-sm font-medium text-[var(--text-secondary)] xl:gap-7">
+              {navItems.filter((item) => ['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
+                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`group relative inline-flex h-9 shrink-0 items-center whitespace-nowrap transition-colors duration-200 hover:text-[var(--text-primary)] ${megaMenuOpen === item.label ? 'text-cyan-300' : ''}`}>
+                  {item.label}<span className={`absolute -bottom-0.5 left-0 h-0.5 w-full origin-left rounded-full bg-cyan-400 transition-transform duration-200 ${megaMenuOpen === item.label ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+                </Link>
+              ))}
+              <span aria-hidden="true" className="h-5 shrink-0 border-l border-[var(--border-subtle)]" />
+              {navItems.filter((item) => !['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
+                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`shrink-0 whitespace-nowrap transition hover:text-[var(--brand-green-dark)] ${megaMenuOpen === item.label ? 'text-[var(--brand-green-dark)]' : ''}`}>{item.label}</Link>
+              ))}
+            </div>
+          </nav>
         </div>
-        <nav aria-label="Shop categories" className="hidden border-t border-[var(--border-subtle)] lg:block">
-          <div className="mx-auto flex max-w-7xl items-center justify-center gap-7 overflow-x-auto px-8 py-2.5 text-sm font-medium text-[var(--text-secondary)]">
-            {navItems.filter((item) => !['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
-              <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`whitespace-nowrap transition hover:text-[var(--brand-green-dark)] ${megaMenuOpen === item.label ? 'text-[var(--brand-green-dark)]' : ''}`}>{item.label}</Link>
-            ))}
-          </div>
-        </nav>
       </header>
 
       <AnimatePresence>
@@ -461,7 +511,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {searchResults.map((product) => (
-                  <button type="button" key={product.id} onClick={() => openProduct(product.id)} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 py-3 text-left text-sm text-[var(--text-secondary)] transition hover:border-cyan-400/40 hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]">{product.name}<span className="mt-1 block text-xs text-[var(--text-secondary)]">{product.categories[0]?.name ?? 'Eyewear'}</span></button>
+                  <button type="button" key={product.id} onClick={() => openProduct(product.id)} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 py-3 text-left text-sm text-[var(--text-secondary)] transition hover:border-cyan-400/40 hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]">{product.name}<span className="mt-1 block text-xs text-[var(--text-secondary)]">{product.categories[0]?.name ?? 'Eyewear'}</span><span className="mt-1 inline-flex items-center gap-1 text-xs"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{(product.ratingSummary?.averageRating ?? 0).toFixed(1)} · {product.ratingSummary?.totalReviews ?? 0} verified reviews</span></button>
                 ))}
                 {!searchResults.length && searchLoading ? <p className="sm:col-span-2 py-5 text-center text-sm text-[var(--text-secondary)]">Searching the catalogue...</p> : null}
                 {!searchResults.length && !searchLoading && searchError ? <p className="sm:col-span-2 py-5 text-center text-sm text-rose-300" role="alert">{searchError}</p> : null}

@@ -181,7 +181,10 @@ public class LoyaltyService {
 
     @Transactional
     public void processDeliveredOrder(Order order) {
-        if (!"DELIVERED".equals(order.getStatus()) || !"PAID".equals(order.getPaymentStatus())) return;
+        boolean fulfilled = "DELIVERED".equals(order.getStatus())
+                || ("PICKED_UP".equals(order.getStatus())
+                && ("PICKUP".equals(order.getFulfillmentType()) || "STORE_PICKUP".equals(order.getFulfillmentType())));
+        if (!fulfilled || !"PAID".equals(order.getPaymentStatus())) return;
         expireUserPoints(order.getUser().getId(), Instant.now());
         LoyaltySettings settings = settings();
         BigDecimal qualifyingAmount = orderTotalBeforeLoyalty(order);
@@ -297,7 +300,7 @@ public class LoyaltyService {
     public void claimReferral(Authentication authentication, String referralCode) {
         User user = current.require(authentication);
         if (orders.countByUserIdAndPaymentStatusAndStatusIn(user.getId(), "PAID",
-                List.of("PAID", "PROCESSING", "SHIPPED", "DELIVERED")) > 0) {
+                List.of("PAID", "PROCESSING", "SHIPPED", "DELIVERED", "PICKED_UP")) > 0) {
             throw conflict("REFERRAL_CLAIM_TOO_LATE", "A referral code must be applied before your first order.");
         }
         registerReferral(user, referralCode);

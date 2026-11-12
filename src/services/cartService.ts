@@ -56,14 +56,16 @@ async function request<T>(accessToken: string, path: string, init: RequestInit =
 }
 
 export const cartService = {
-  get: (accessToken: string) => request<CartResponse>(accessToken, ''),
-  add: (accessToken: string, variantId: string, quantity: number, prescriptionId?: string, selectedLensCodes?: string[]) =>
+  get: (accessToken: string, franchiseId?: string) =>
+    request<CartResponse>(accessToken, franchiseId ? `?franchiseId=${encodeURIComponent(franchiseId)}` : ''),
+  add: (accessToken: string, variantId: string, quantity: number, prescriptionId?: string,
+    selectedLensCodes?: string[], franchiseId?: string) =>
     request<CartResponse>(accessToken, '/items', {
       method: 'POST',
-      body: JSON.stringify({ variantId, quantity, prescriptionId, selectedLensCodes }),
+      body: JSON.stringify({ variantId, quantity, prescriptionId, selectedLensCodes, franchiseId }),
     }),
-  update: (accessToken: string, itemId: string, quantity: number) =>
-    request<CartResponse>(accessToken, `/items/${encodeURIComponent(itemId)}?quantity=${quantity}`, { method: 'PATCH' }),
+  update: (accessToken: string, itemId: string, quantity: number, franchiseId?: string) =>
+    request<CartResponse>(accessToken, `/items/${encodeURIComponent(itemId)}?quantity=${quantity}${franchiseId ? `&franchiseId=${encodeURIComponent(franchiseId)}` : ''}`, { method: 'PATCH' }),
   remove: (accessToken: string, itemId: string) =>
     request<void>(accessToken, `/items/${encodeURIComponent(itemId)}`, { method: 'DELETE' }),
 };

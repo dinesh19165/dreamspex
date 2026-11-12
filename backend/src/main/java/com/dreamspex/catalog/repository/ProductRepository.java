@@ -70,13 +70,27 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
             "and (lower(c.slug) = lower(:category) or lower(c.id) = lower(:category)))) " +
             "and (:color is null or exists (select v.id from ProductVariant v where v.product = p " +
             "and v.status = 'ACTIVE' and lower(v.color) = lower(:color))) " +
-            "and (:availableOnly = false or exists (select v.id from ProductVariant v where v.product = p " +
-            "and v.status = 'ACTIVE' and v.quantity > v.reservedQuantity)) " +
+            "and (:availableOnly = false or (:franchiseId is null and exists (select v.id from ProductVariant v " +
+            "where v.product = p and v.status = 'ACTIVE' and v.quantity > v.reservedQuantity)) " +
+            "or (:franchiseId is not null and exists (select inventory.id from FranchiseInventory inventory " +
+            "where inventory.store.id = :franchiseId and inventory.variant.product = p " +
+            "and inventory.availabilityStatus = 'ACTIVE' and inventory.quantity > inventory.reservedQuantity))) " +
+            "and (:franchiseId is null or exists (select store.id from Store store where store.id = :franchiseId " +
+            "and store.franchiseManaged = true and store.status = 'ACTIVE')) " +
             "and (:minPrice is null or p.basePrice >= :minPrice) and (:maxPrice is null or p.basePrice <= :maxPrice)")
-    Page<Product> search(@Param("q") String q, @Param("brand") String brand, @Param("category") String category,
+    Page<Product> searchWithFranchise(@Param("q") String q, @Param("brand") String brand, @Param("category") String category,
                          @Param("material") String material, @Param("gender") String gender,
                          @Param("frameShape") String frameShape, @Param("frameType") String frameType,
                          @Param("color") String color, @Param("badge") String badge, @Param("availableOnly") boolean availableOnly,
                          @Param("minPrice") java.math.BigDecimal minPrice, @Param("maxPrice") java.math.BigDecimal maxPrice,
+                         @Param("franchiseId") String franchiseId,
                          Pageable pageable);
+
+    default Page<Product> search(String q, String brand, String category, String material, String gender,
+                                 String frameShape, String frameType, String color, String badge,
+                                 boolean availableOnly, java.math.BigDecimal minPrice,
+                                 java.math.BigDecimal maxPrice, Pageable pageable) {
+        return searchWithFranchise(q, brand, category, material, gender, frameShape, frameType, color,
+                badge, availableOnly, minPrice, maxPrice, null, pageable);
+    }
 }

@@ -6,6 +6,7 @@ import java.text.NumberFormat;
 import java.util.Locale;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import java.util.Map;
 
 @Service
 public class ReturnRefundNotifications {
@@ -26,18 +27,45 @@ public class ReturnRefundNotifications {
         publish(transaction.getReturnRequest(), "REFUND_APPROVED", "Refund approved",
                 "Your refund has been approved and submitted to the payment provider.",
                 transaction.getStatus(), transaction.getProviderRefundId());
+        enqueueRefundSms(transaction, "REFUND_INITIATED");
     }
 
     public void refundProcessed(ReturnRefundTransaction transaction) {
         publish(transaction.getReturnRequest(), "REFUND_PROCESSED", "Refund processed",
                 "The payment provider has confirmed your refund.", "PROCESSED",
                 transaction.getProviderRefundId());
+        enqueueRefundSms(transaction, "REFUND_INITIATED");
+        enqueueRefundSms(transaction, "REFUND_COMPLETED");
     }
 
     public void refundFailed(ReturnRefundTransaction transaction) {
         publish(transaction.getReturnRequest(), "REFUND_FAILED", "Refund processing failed",
                 "The payment provider reported that the refund failed. Dream Spex will review the transaction.",
                 "FAILED", transaction.getProviderRefundId());
+    }
+
+    public void approved(ReturnRequest request) {
+        enqueueReturnSms(request, "RETURN_APPROVED");
+    }
+
+    public void pickupScheduled(ReturnRequest request) {
+        enqueueReturnSms(request, "RETURN_PICKUP_SCHEDULED");
+    }
+
+    private void enqueueReturnSms(ReturnRequest request, String type) {
+        String orderNumber = request.getOrder().getOrderNumber();
+        notifications.enqueueSms("return:" + request.getId() + ":" + type, type, request.getUser(),
+                request.getOrder().getId(), orderNumber,
+                Map.of("VAR1", request.getRequestNumber(), "VAR2", orderNumber), null);
+    }
+
+    private void enqueueRefundSms(ReturnRefundTransaction transaction, String type) {
+        ReturnRequest request = transaction.getReturnRequest();
+        String orderNumber = request.getOrder().getOrderNumber();
+        String reference = transaction.getProviderRefundId() == null ? "" : transaction.getProviderRefundId();
+        notifications.enqueueSms("refund:" + transaction.getId() + ":" + type, type, request.getUser(),
+                request.getOrder().getId(), orderNumber,
+                Map.of("VAR1", orderNumber, "VAR2", format(transaction.getAmount()), "VAR3", reference), null);
     }
 
     private void publish(ReturnRequest request, String type, String title, String summary,

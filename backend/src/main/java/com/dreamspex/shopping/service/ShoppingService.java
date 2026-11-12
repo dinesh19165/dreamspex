@@ -12,6 +12,7 @@ import com.dreamspex.shopping.repository.CartItemRepository;
 import com.dreamspex.shopping.repository.CartRepository;
 import com.dreamspex.shopping.repository.WishlistRepository;
 import com.dreamspex.common.ApiException;
+import com.dreamspex.franchise.FranchiseService;
 import com.dreamspex.prescription.LensOption;
 import com.dreamspex.prescription.LensOptionRepository;
 import com.dreamspex.prescription.Prescription;
@@ -26,9 +27,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class ShoppingService {
+    @Autowired(required = false)
+    private FranchiseService franchiseService;
     private final CurrentUser current;
     private final CartRepository carts;
     private final CartItemRepository items;
@@ -46,7 +50,12 @@ public class ShoppingService {
 
     @Transactional
     public CartResponse cart(org.springframework.security.core.Authentication auth) {
-        return cartResponse(cartEntity(current.require(auth)));
+        return cart(auth, null);
+    }
+
+    @Transactional
+    public CartResponse cart(org.springframework.security.core.Authentication auth, String franchiseId) {
+        return cartResponse(cartEntity(current.require(auth)), franchiseId);
     }
 
     @Transactional
@@ -72,23 +81,40 @@ public class ShoppingService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"PRESCRIPTION_REQUIRED","Prescription data is required for a lens selection.");
         }
         int quantity=item.getQuantity()+request.quantity();
-        if(quantity>variant.getAvailableQuantity())throw new ApiException(HttpStatus.CONFLICT,"INSUFFICIENT_STOCK","Requested quantity is unavailable.");
+        if (request.franchiseId() != null && !request.franchiseId().isBlank()) {
+            if (franchiseService == null) throw new IllegalStateException("Franchise inventory is unavailable.");
+            franchiseService.validateStorefrontCartItem(request.franchiseId(), variant.getId(), quantity);
+        } else if(quantity>variant.getAvailableQuantity()) {
+            throw new ApiException(HttpStatus.CONFLICT,"INSUFFICIENT_STOCK","Requested quantity is unavailable.");
+        }
         item.setQuantity(quantity);
         CartItem savedItem = items.save(item);
         String itemId = savedItem.getId();
         if (cart.getItems().stream().noneMatch(existing -> existing.getId().equals(itemId))) cart.getItems().add(savedItem);
-        return cartResponse(cart);
+        return cartResponse(cart, request.franchiseId());
     }
 
     @Transactional
     public CartResponse update(org.springframework.security.core.Authentication auth,String id,int quantity) {
+        return update(auth, id, quantity, null);
+    }
+
+    @Transactional
+    public CartResponse update(org.springframework.security.core.Authentication auth,String id,int quantity,String franchiseId) {
         User user=current.require(auth);
         CartItem item=items.findByIdAndCartUserId(id,user.getId())
                 .orElseThrow(()->new ApiException(HttpStatus.NOT_FOUND,"CART_ITEM_NOT_FOUND","Cart item was not found."));
-        if(quantity<1||quantity>item.getVariant().getAvailableQuantity())
+        int availableQuantity;
+        if (franchiseId != null && !franchiseId.isBlank()) {
+            if (franchiseService == null) throw new IllegalStateException("Franchise inventory is unavailable.");
+            availableQuantity = franchiseService.storefrontAvailableQuantity(franchiseId, item.getVariant().getId());
+        } else {
+            availableQuantity = item.getVariant().getAvailableQuantity();
+        }
+        if(quantity<1||quantity>availableQuantity)
             throw new ApiException(HttpStatus.CONFLICT,"INSUFFICIENT_STOCK","Requested quantity is unavailable.");
         item.setQuantity(quantity);
-        return cartResponse(item.getCart());
+        return cartResponse(item.getCart(), franchiseId);
     }
 
     @Transactional
@@ -165,6 +191,10 @@ public class ShoppingService {
     }
 
     private CartResponse cartResponse(Cart cart) {
+        return cartResponse(cart, null);
+    }
+
+    private CartResponse cartResponse(Cart cart, String franchiseId) {
         List<CartItemResponse> values=cart.getItems().stream().map(item->{
             List<String> codes=item.getSelectedLensCodes()==null||item.getSelectedLensCodes().isBlank()
                     ?List.of():Arrays.asList(item.getSelectedLensCodes().split(","));
@@ -173,10 +203,13 @@ public class ShoppingService {
                     .sorted(java.util.Comparator.comparing(com.dreamspex.catalog.entity.ProductImage::isPrimaryImage).reversed()
                             .thenComparingInt(com.dreamspex.catalog.entity.ProductImage::getSortOrder))
                     .map(com.dreamspex.catalog.entity.ProductImage::getImageUrl).findFirst().orElse(null);
+            int availableQuantity = franchiseId == null || franchiseId.isBlank() || franchiseService == null
+                    ? item.getVariant().getAvailableQuantity()
+                    : franchiseService.storefrontAvailableQuantity(franchiseId, item.getVariant().getId());
             return new CartItemResponse(item.getId(),item.getVariant().getId(),item.getVariant().getProduct().getId(),
                     item.getVariant().getProduct().getName(),imageUrl,item.getVariant().getSku(),item.getQuantity(),
                     item.getUnitPriceSnapshot(),item.getUnitPriceSnapshot().multiply(BigDecimal.valueOf(item.getQuantity())),
-                    item.getVariant().getAvailableQuantity(),item.getPrescription()==null?null:item.getPrescription().getId(),
+                    availableQuantity,item.getPrescription()==null?null:item.getPrescription().getId(),
                     codes,item.getLensAdditionalPrice());
         }).toList();
         return new CartResponse(cart.getId(),values,values.stream().map(CartItemResponse::lineTotal).reduce(BigDecimal.ZERO,BigDecimal::add));

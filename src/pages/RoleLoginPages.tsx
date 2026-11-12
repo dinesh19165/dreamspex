@@ -3,7 +3,6 @@ import { ArrowRight, Camera, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } fr
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from '../components/ui/BrandLogo';
 import { useAuth } from '../context/useAuth';
-import { mockDemoCredentials, getMockFranchiseUserByEmail } from '../data/mockAuth';
 import { adminLogin } from '../services/adminProductService';
 import { authService } from '../services/authService';
 import { intendedPath } from '../utils/authNavigation';
@@ -268,7 +267,7 @@ export function CustomerLoginPage() {
 
 export function FranchiseLoginPage() {
   const navigate = useNavigate();
-  const { loginAsFranchiseAdmin, isAuthenticated, role } = useAuth();
+  const { setAuthenticated, isAuthenticated, role } = useAuth();
 
   useEffect(() => {
     if (isAuthenticated && role === 'FRANCHISE_ADMIN') {
@@ -280,13 +279,19 @@ export function FranchiseLoginPage() {
     <FranchisePortalLayout>
       <RoleLoginForm
         kind="franchise"
-        onSubmit={(email, password) => {
-          const franchiseUser = getMockFranchiseUserByEmail(email);
-          const valid = franchiseUser && email.toLowerCase() === mockDemoCredentials.franchise.email && password === mockDemoCredentials.franchise.password;
-          if (!valid) {
-            throw new Error('Invalid franchise credentials');
-          }
-          loginAsFranchiseAdmin(franchiseUser.franchiseId);
+        onSubmit={async (email, password) => {
+          const login = await authService.franchiseLogin({ identifier: email, password });
+          setAuthenticated('FRANCHISE_ADMIN', {
+            id: login.user.id,
+            name: login.user.displayName,
+            email: login.user.email ?? email,
+            role: 'FRANCHISE_ADMIN',
+            franchiseId: undefined,
+            franchiseName: undefined,
+            accessToken: login.accessToken,
+            accessTokenExpiresAt: getTokenExpiration(login.accessToken) ?? Date.now() + login.expiresIn * 1000,
+            refreshToken: login.refreshToken,
+          });
           navigate('/franchise/dashboard', { replace: true });
         }}
       />

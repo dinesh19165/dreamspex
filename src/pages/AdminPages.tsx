@@ -14,10 +14,12 @@ import { deliveryBatchService, type ActiveDeliveryBatchLink, type AdminDeliveryB
 import { getDeliveryBatchFormState } from '../utils/deliveryBatchForm';
 import { canRegenerateDeliveryOtp, getDeliveryOtpWhatsAppMessage, getDeliveryOtpWhatsAppUrl } from '../utils/deliveryOtp';
 import GstBreakdown from '../components/ui/GstBreakdown';
+import { AdminOrderFulfillmentDetails } from '../components/admin/AdminOrderFulfillmentDetails';
 import { toGstBreakdown } from '../utils/gst';
 import AdminDateRangeFilter from '../components/ui/AdminDateRangeFilter';
 import { downloadReportExcel, downloadReportPdf, printReport } from '../utils/adminReportExport';
 import AdminAlertCenter from '../components/admin/AdminAlertCenter';
+import { nextOrderStatuses, orderStatusLabel } from '../utils/orderWorkflow';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -63,16 +65,6 @@ function adminOrderErrorMessage(reason: unknown, fallback: string) {
   if (reason instanceof AdminApiError && reason.status === 401) return 'Your admin session has expired. Please sign in again.';
   if (reason instanceof AdminApiError && reason.status === 403) return 'You are not authorized to manage orders.';
   return reason instanceof Error ? reason.message : fallback;
-}
-
-function nextOrderStatuses(currentStatus: string) {
-  const transitions: Record<string, string[]> = {
-    PENDING_PAYMENT: ['CANCELLED'],
-    PAID: ['PROCESSING', 'CANCELLED'],
-    PROCESSING: ['SHIPPED', 'CANCELLED'],
-    SHIPPED: ['DELIVERED'],
-  };
-  return transitions[currentStatus] ?? [];
 }
 
 function reportDate(value: string) {
@@ -355,7 +347,7 @@ export function AdminOrdersPage() {
     <div className="mt-6 flex min-h-[100px] flex-wrap items-center gap-3 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
       <input value={query} onChange={(event) => { setQuery(event.target.value); updateOrderFilters({ q: event.target.value }); }} placeholder="Search order number or customer" className="h-12 min-w-0 flex-1 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm outline-none sm:basis-[280px]" />
       <input value={productQuery} onChange={(event) => setProductQuery(event.target.value)} placeholder="Filter by product" className="h-12 min-w-0 flex-1 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm outline-none sm:basis-[200px]" />
-      <select value={status} onChange={(event) => { setStatus(event.target.value); updateOrderFilters({ status: event.target.value }); }} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[210px] sm:flex-none"><option value="ALL">All order statuses</option>{['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((value) => <option key={value}>{value}</option>)}</select>
+      <select value={status} onChange={(event) => { setStatus(event.target.value); updateOrderFilters({ status: event.target.value }); }} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[210px] sm:flex-none"><option value="ALL">All order statuses</option>{['PENDING_PAYMENT', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'READY_FOR_PICKUP', 'PICKED_UP', 'CANCELLED'].map((value) => <option key={value}>{value.replaceAll('_', ' ')}</option>)}</select>
       <select value={paymentStatus} onChange={(event) => { setPaymentStatus(event.target.value); updateOrderFilters({ paymentStatus: event.target.value }); }} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[210px] sm:flex-none"><option value="ALL">All payment statuses</option>{['PENDING', 'PAID', 'FAILED'].map((value) => <option key={value}>{value}</option>)}</select>
       <select value={paymentMethod} onChange={(event) => { setPaymentMethod(event.target.value); updateOrderFilters({ paymentMethod: event.target.value }); setPage(0); }} className="h-12 min-w-0 basis-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-3 text-sm sm:basis-[200px] sm:flex-none"><option value="ALL">All payment methods</option>{[...new Set(orders.map((order) => order.paymentMethod).filter((value): value is string => Boolean(value)))].map((value) => <option key={value}>{value}</option>)}</select>
       <AdminDateRangeFilter startDate={startDate} endDate={endDate} onApply={(from, to) => { setStartDate(from); setEndDate(to); updateOrderFilters({ startDate: from, endDate: to, date: '' }); setPage(0); }} />
@@ -366,27 +358,27 @@ export function AdminOrdersPage() {
     {error ? <div className="mt-4"><AdminError message={error} onRetry={() => void load()} /></div> : null}
     {notice ? <p className="mt-4 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{notice}</p> : null}
     {loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]">Loading orders...</p> : <div className="mt-6">
-      <div className="hidden overflow-x-auto rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] lg:block">
-        <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
-          <colgroup><col className="w-[12%]" /><col className="w-[18%]" /><col className="w-[10%]" /><col className="w-[18%]" /><col className="w-[9%]" /><col className="w-[9%]" /><col className="w-[10%]" /><col className="w-[14%]" /></colgroup>
-          <thead><tr className="border-b border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]"><th className="px-3 py-4">Order</th><th className="px-3 py-4">Customer</th><th className="px-3 py-4">Date</th><th className="px-3 py-4">Products</th><th className="px-3 py-4">Total</th><th className="px-3 py-4">Payment</th><th className="px-3 py-4">Status</th><th className="px-3 py-4">Actions</th></tr></thead>
+      <div className="hidden min-w-0 overflow-hidden rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] lg:block">
+        <table className="w-full table-fixed text-left text-[13px]">
+          <colgroup><col className="w-[10%]" /><col className="w-[15%]" /><col className="w-[9%]" /><col className="w-[20%]" /><col className="w-[9%]" /><col className="w-[8%]" /><col className="w-[11%]" /><col className="w-[18%]" /></colgroup>
+          <thead><tr className="border-b border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]"><th className="px-2 py-3">Order</th><th className="px-2 py-3">Customer</th><th className="px-2 py-3">Date</th><th className="px-2 py-3">Products</th><th className="px-2 py-3">Total</th><th className="px-2 py-3">Payment</th><th className="px-2 py-3">Status</th><th className="px-2 py-3">Actions</th></tr></thead>
           <tbody>{visibleOrders.slice(page * 25, (page + 1) * 25).map((order) => <tr key={order.id} className="border-b border-[var(--border-subtle)] align-top last:border-0">
-            <td className="px-3 py-4 font-semibold [overflow-wrap:anywhere] [word-break:break-word]">
+            <td className="px-2 py-3 font-semibold [overflow-wrap:anywhere] [word-break:break-word]">
               <button type="button" onClick={() => setSelectedOrder(order)} className="block w-full min-w-0 whitespace-normal text-left [overflow-wrap:anywhere] [word-break:break-word] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{order.orderNumber}</button>
             </td>
-            <td className="px-3 py-4">
+            <td className="px-2 py-3">
               <p className="min-w-0 [overflow-wrap:anywhere] [word-break:break-word]">{order.customer?.displayName || 'Customer information unavailable'}</p>
               <p className="mt-1 min-w-0 text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere] [word-break:break-word]">{order.customer?.email ?? order.customer?.phone ?? 'No contact'}</p>
             </td>
-            <td className="px-3 py-4 text-xs text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td>
-            <td className="px-3 py-4 text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere] [word-break:break-word]">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</td>
-            <td className="whitespace-nowrap px-3 py-4 font-semibold">{formatCurrency(order.total)}</td>
-            <td className="px-3 py-4 text-xs [overflow-wrap:anywhere] [word-break:break-word]"><Link to={`/admin/orders?paymentStatus=${encodeURIComponent(order.paymentStatus)}`} className="rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{order.paymentStatus}</Link></td>
-            <td className="px-3 py-4 text-xs [overflow-wrap:anywhere] [word-break:break-word]"><Link to={`/admin/orders?status=${encodeURIComponent(order.status)}`} className="rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{order.status}</Link></td>
-            <td className="px-3 py-4">
+            <td className="px-2 py-3 text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td>
+            <td className="px-2 py-3 text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere] [word-break:break-word]">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</td>
+            <td className="px-2 py-3 font-semibold [overflow-wrap:anywhere]">{formatCurrency(order.total)}</td>
+            <td className="px-2 py-3 text-xs [overflow-wrap:anywhere] [word-break:break-word]"><Link to={`/admin/orders?paymentStatus=${encodeURIComponent(order.paymentStatus)}`} className="rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{order.paymentStatus}</Link></td>
+            <td className="px-2 py-3 text-xs [overflow-wrap:anywhere] [word-break:break-word]"><Link to={`/admin/orders?status=${encodeURIComponent(order.status)}`} className="rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{orderStatusLabel(order.status, order.fulfillmentType)}</Link></td>
+            <td className="px-2 py-3">
               <div className="flex min-w-0 flex-col items-stretch gap-2">
-                <Button type="button" variant="ghost" className="w-full whitespace-normal px-2 py-2 text-xs" onClick={() => setSelectedOrder(order)}>View details</Button>
-                <select aria-label={`Update ${order.orderNumber} status`} disabled={savingId === order.id} value={order.status} onChange={(event) => void updateStatus(order, event.target.value)} className="w-full max-w-full min-w-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-2 text-xs"><option value={order.status}>{order.status}</option>{nextOrderStatuses(order.status).map((value) => <option key={value}>{value}</option>)}</select>
+                <Button type="button" variant="ghost" className="w-full min-w-0 whitespace-normal px-1.5 py-2 text-xs" onClick={() => setSelectedOrder(order)}>View details</Button>
+                <select aria-label={`Update ${order.orderNumber} status`} disabled={savingId === order.id} value={order.status} onChange={(event) => void updateStatus(order, event.target.value)} className="w-full max-w-full min-w-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-2 py-2 text-xs"><option value={order.status}>{orderStatusLabel(order.status, order.fulfillmentType)}</option>{nextOrderStatuses(order.status, order.fulfillmentType).map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select>
               </div>
             </td>
           </tr>)}</tbody>
@@ -412,10 +404,10 @@ export function AdminOrdersPage() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="min-w-0"><p className="text-xs text-[var(--text-secondary)]">Payment</p><Link to={`/admin/orders?paymentStatus=${encodeURIComponent(order.paymentStatus)}`} className="block [overflow-wrap:anywhere] [word-break:break-word] underline-offset-2 hover:underline">{order.paymentStatus}</Link></div>
-            <div className="min-w-0"><p className="text-xs text-[var(--text-secondary)]">Order status</p><Link to={`/admin/orders?status=${encodeURIComponent(order.status)}`} className="block [overflow-wrap:anywhere] [word-break:break-word] underline-offset-2 hover:underline">{order.status}</Link></div>
+            <div className="min-w-0"><p className="text-xs text-[var(--text-secondary)]">Order status</p><Link to={`/admin/orders?status=${encodeURIComponent(order.status)}`} className="block [overflow-wrap:anywhere] [word-break:break-word] underline-offset-2 hover:underline">{orderStatusLabel(order.status, order.fulfillmentType)}</Link></div>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-            <select aria-label={`Update ${order.orderNumber} status`} disabled={savingId === order.id} value={order.status} onChange={(event) => void updateStatus(order, event.target.value)} className="w-full max-w-full min-w-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-xs"><option value={order.status}>{order.status}</option>{nextOrderStatuses(order.status).map((value) => <option key={value}>{value}</option>)}</select>
+            <select aria-label={`Update ${order.orderNumber} status`} disabled={savingId === order.id} value={order.status} onChange={(event) => void updateStatus(order, event.target.value)} className="w-full max-w-full min-w-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-3 py-2 text-xs"><option value={order.status}>{orderStatusLabel(order.status, order.fulfillmentType)}</option>{nextOrderStatuses(order.status, order.fulfillmentType).map((value) => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select>
             <Button type="button" variant="ghost" className="whitespace-nowrap px-3 py-2 text-xs" onClick={() => setSelectedOrder(order)}>View details</Button>
           </div>
         </div>
@@ -853,6 +845,7 @@ function AdminOrderDetails({ order, onClose }: { order: AdminOrder; onClose: () 
   const request = useAdminRequest();
   const [details, setDetails] = useState(order);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState('');
@@ -861,11 +854,11 @@ function AdminOrderDetails({ order, onClose }: { order: AdminOrder; onClose: () 
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError('');
+    setLoadError('');
     try {
       setDetails(await request((token) => adminService.order(token, order.id)));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to load prescription and lens details.');
+      setLoadError(reason instanceof Error ? reason.message : 'Unable to load order details.');
     } finally {
       setLoading(false);
     }
@@ -944,14 +937,16 @@ function AdminOrderDetails({ order, onClose }: { order: AdminOrder; onClose: () 
     }
   };
 
-  const address = details.shippingAddress;
   return <div className="fixed inset-0 z-50 flex justify-end bg-black/50" onClick={onClose}>
     <aside className="h-full w-full max-w-3xl overflow-y-auto bg-[var(--bg-card)] p-5 shadow-2xl sm:p-6" onClick={(event) => event.stopPropagation()}>
       <div className="flex items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[0.25em] text-[var(--brand-green-dark)]">Order details</p><h2 className="mt-2 text-2xl font-semibold">{details.orderNumber}</h2></div><Button type="button" variant="ghost" onClick={onClose}>Close</Button></div>
       {error ? <div className="mt-5"><AdminError message={error} onRetry={() => void load()} /></div> : null}
       {notice ? <p className="mt-4 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{notice}</p> : null}
-      {loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]">Loading order and prescription details...</p> : <>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2"><section><h3 className="font-semibold">Customer</h3><p className="mt-2 text-sm">{details.customer?.displayName || 'Customer information unavailable'}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{details.customer?.email ?? 'No email'}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{details.customer?.phone ?? 'No phone'}</p></section><section><h3 className="font-semibold">Delivery address</h3><p className="mt-2 text-sm">{address.recipientName} · {address.phone}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{address.line1}{address.line2 ? `, ${address.line2}` : ''}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{address.city}, {address.state} {address.postalCode}, {address.countryCode}</p></section></div>
+      {loading ? <p role="status" className="mt-8 text-sm text-[var(--text-secondary)]">Loading order and prescription details...</p> : loadError ? <div className="mt-8"><AdminError message={loadError} onRetry={() => void load()} /></div> : <>
+        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <section><h3 className="font-semibold">Customer</h3><p className="mt-2 text-sm">{details.customer?.displayName || 'Customer information unavailable'}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{details.customer?.email ?? 'No email'}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{details.customer?.phone ?? 'No phone'}</p></section>
+          <AdminOrderFulfillmentDetails fulfillmentType={details.fulfillmentType} fulfillmentStore={details.fulfillmentStore} shippingAddress={details.shippingAddress} status={details.status} />
+        </div>
         <section className="mt-6 border-t border-[var(--border-subtle)] pt-6"><h3 className="font-semibold">Products</h3><div className="mt-3 space-y-3">{details.items.map((item) => <div key={item.id} className="flex items-center justify-between gap-4 text-sm"><div><p>{item.productName}</p><p className="text-[var(--text-secondary)]">SKU {item.sku} · Qty {item.quantity}</p></div><p className="font-semibold">{formatCurrency(item.lineTotal)}</p></div>)}</div></section>
         {details.items.filter((item) => item.prescription).map((item) => {
           const prescription = item.prescription!;
@@ -1055,7 +1050,34 @@ export function AdminCustomersPage() {
     </form>
     {error ? <div className="mt-4"><AdminError message={error} onRetry={() => void load()} /></div> : null}
     {loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]">Loading customers...</p> : <div className="mt-6 overflow-hidden rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-      {customers.length ? <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-[var(--bg-primary)] text-[var(--text-secondary)]"><tr>{['Name', 'Email', 'Phone', 'Joined', 'Orders', 'Status'].map((header) => <th key={header} className="whitespace-nowrap px-4 py-4 font-medium">{header}</th>)}</tr></thead><tbody>{customers.map((customer) => <tr key={customer.id} className="border-t border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]"><td className="max-w-[220px] break-words px-4 py-4 font-medium"><button type="button" onClick={() => setSelectedCustomer(customer)} className="rounded-sm text-left underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{customer.displayName}</button></td><td className="max-w-[240px] break-all px-4 py-4 text-[var(--text-secondary)]">{customer.email ?? 'No email'}</td><td className="whitespace-nowrap px-4 py-4 text-[var(--text-secondary)]">{customer.phone ?? 'No phone'}</td><td className="whitespace-nowrap px-4 py-4 text-[var(--text-secondary)]">{new Date(customer.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td><td className="px-4 py-4"><button type="button" onClick={() => setSelectedCustomer(customer)} className="rounded-sm font-medium underline-offset-2 hover:underline">{customer.orderCount} orders</button></td><td className="px-4 py-4"><span className="rounded-full bg-[var(--brand-green)]/12 px-3 py-1 text-xs font-medium">{customer.status}</span></td></tr>)}</tbody></table></div> : <div className="p-10 text-center"><Users className="mx-auto h-8 w-8 text-[var(--text-secondary)]" /><p className="mt-3 font-medium">No customers registered</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{appliedQuery ? 'No customers match your search.' : 'Registered customer accounts will appear here.'}</p></div>}
+      {customers.length ? <>
+        <div className="hidden overflow-hidden md:block">
+          <table className="w-full table-fixed text-left text-sm">
+            <colgroup><col className="w-[20%]" /><col className="w-[24%]" /><col className="w-[16%]" /><col className="w-[16%]" /><col className="w-[11%]" /><col className="w-[13%]" /></colgroup>
+            <thead className="bg-[var(--bg-primary)] text-[var(--text-secondary)]"><tr>{['Name', 'Email', 'Phone', 'Joined', 'Orders', 'Status'].map((header) => <th key={header} className="px-2 py-3 font-medium">{header}</th>)}</tr></thead>
+            <tbody>{customers.map((customer) => <tr key={customer.id} className="border-t border-[var(--border-subtle)] hover:bg-[var(--bg-secondary)]">
+              <td className="px-2 py-3 font-medium [overflow-wrap:anywhere]"><button type="button" onClick={() => setSelectedCustomer(customer)} className="rounded-sm text-left underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{customer.displayName}</button></td>
+              <td className="px-2 py-3 text-[var(--text-secondary)] [overflow-wrap:anywhere]">{customer.email ?? 'No email'}</td>
+              <td className="px-2 py-3 text-[var(--text-secondary)] [overflow-wrap:anywhere]">{customer.phone ?? 'No phone'}</td>
+              <td className="px-2 py-3 text-[var(--text-secondary)] [overflow-wrap:anywhere]">{new Date(customer.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td>
+              <td className="px-2 py-3"><button type="button" onClick={() => setSelectedCustomer(customer)} className="rounded-sm font-medium underline-offset-2 hover:underline">{customer.orderCount} orders</button></td>
+              <td className="px-2 py-3"><span className="rounded-full bg-[var(--brand-green)]/12 px-3 py-1 text-xs font-medium">{customer.status}</span></td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+        <div className="divide-y divide-[var(--border-subtle)] md:hidden">
+          {customers.map((customer) => <article key={customer.id} className="space-y-2 p-4 text-sm">
+            <button type="button" onClick={() => setSelectedCustomer(customer)} className="block max-w-full text-left font-semibold [overflow-wrap:anywhere] underline-offset-2 hover:underline">{customer.displayName}</button>
+            <p className="break-all text-[var(--text-secondary)]">{customer.email ?? 'No email'}</p>
+            <p className="break-words text-[var(--text-secondary)]">{customer.phone ?? 'No phone'}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="text-[var(--text-secondary)]">Joined {new Date(customer.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</span>
+              <span className="rounded-full bg-[var(--brand-green)]/12 px-3 py-1 font-medium">{customer.status}</span>
+            </div>
+            <button type="button" onClick={() => setSelectedCustomer(customer)} className="text-sm font-medium underline-offset-2 hover:underline">{customer.orderCount} orders · View customer</button>
+          </article>)}
+        </div>
+      </> : <div className="p-10 text-center"><Users className="mx-auto h-8 w-8 text-[var(--text-secondary)]" /><p className="mt-3 font-medium">No customers registered</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{appliedQuery ? 'No customers match your search.' : 'Registered customer accounts will appear here.'}</p></div>}
       {total > 0 ? <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] px-4 py-4 text-sm"><p className="text-[var(--text-secondary)]">Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} of {total}</p><div className="flex items-center gap-2"><Button type="button" variant="ghost" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>Previous</Button><span className="text-[var(--text-secondary)]">Page {page + 1} of {pageCount}</span><Button type="button" variant="ghost" disabled={page + 1 >= pageCount} onClick={() => setPage((current) => current + 1)}>Next</Button></div></div> : null}
     </div>}
     {selectedCustomer ? <AdminCustomerHistory customer={selectedCustomer} onClose={() => setSelectedCustomer(null)} onOrderOpen={setSelectedOrder} /> : null}
@@ -1145,7 +1167,37 @@ function AdminCustomerHistory({ customer, onClose, onOrderOpen }: { customer: Ad
       {error ? <div className="mt-4"><AdminError message={error} onRetry={() => void load()} /></div> : null}
       {loading ? <p className="mt-5 text-sm text-[var(--text-secondary)]">Loading customer purchase history…</p> : <>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{report.summary?.map((metric) => <div key={metric.label} className="rounded-xl border border-[var(--border-subtle)] p-3"><p className="text-xs text-[var(--text-secondary)]">{metric.label}</p><p className="mt-1 font-semibold">{metric.value}</p></div>)}</div>
-        {visibleOrders.length ? <div className="mt-5 overflow-x-auto rounded-xl border border-[var(--border-subtle)]"><table className="min-w-full text-left text-sm"><thead className="bg-[var(--bg-primary)] text-xs text-[var(--text-secondary)]"><tr>{report.columns.map((column) => <th key={column.label} className="whitespace-nowrap px-3 py-3">{column.label}</th>)}</tr></thead><tbody>{visibleOrders.slice(page * 25, (page + 1) * 25).map((order) => <tr key={order.id} className="border-t border-[var(--border-subtle)]"><td className="px-3 py-3"><button type="button" onClick={() => onOrderOpen(order)} className="font-medium underline-offset-2 hover:underline">{order.orderNumber}</button></td><td className="px-3 py-3">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</td><td className="px-3 py-3">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td><td className="px-3 py-3">{formatCurrency(order.total)}</td><td className="px-3 py-3">{order.paymentStatus}</td><td className="px-3 py-3">{order.status}</td><td className="px-3 py-3">{order.status}</td></tr>)}</tbody></table><div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-3 py-2 text-xs"><span>{visibleOrders.length} customer orders · Page {page + 1} of {Math.max(1, Math.ceil(visibleOrders.length / 25))}</span><div className="flex gap-2"><Button type="button" variant="ghost" disabled={!page} onClick={() => setPage((current) => current - 1)}>Previous</Button><Button type="button" variant="ghost" disabled={(page + 1) * 25 >= visibleOrders.length} onClick={() => setPage((current) => current + 1)}>Next</Button></div></div></div> : <p className="mt-5 rounded-xl bg-[var(--bg-primary)] p-6 text-center text-sm text-[var(--text-secondary)]">No orders match this customer and date range.</p>}
+        {visibleOrders.length ? <>
+          <div className="mt-5 hidden overflow-hidden rounded-xl border border-[var(--border-subtle)] md:block">
+            <table className="w-full table-fixed text-left text-sm">
+              <colgroup><col className="w-[15%]" /><col className="w-[27%]" /><col className="w-[14%]" /><col className="w-[12%]" /><col className="w-[10%]" /><col className="w-[11%]" /><col className="w-[11%]" /></colgroup>
+              <thead className="bg-[var(--bg-primary)] text-xs text-[var(--text-secondary)]"><tr>{report.columns.map((column) => <th key={column.label} className="px-2 py-3 [overflow-wrap:anywhere]">{column.label}</th>)}</tr></thead>
+              <tbody>{visibleOrders.slice(page * 25, (page + 1) * 25).map((order) => <tr key={order.id} className="border-t border-[var(--border-subtle)]">
+                <td className="px-2 py-3 [overflow-wrap:anywhere]"><button type="button" onClick={() => onOrderOpen(order)} className="font-medium underline-offset-2 hover:underline">{order.orderNumber}</button></td>
+                <td className="px-2 py-3 [overflow-wrap:anywhere] [word-break:break-word]">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</td>
+                <td className="px-2 py-3 text-xs [overflow-wrap:anywhere]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</td>
+                <td className="px-2 py-3 [overflow-wrap:anywhere]">{formatCurrency(order.total)}</td>
+                <td className="px-2 py-3 [overflow-wrap:anywhere]">{order.paymentStatus}</td>
+                <td className="px-2 py-3 [overflow-wrap:anywhere]">{order.status}</td>
+                <td className="px-2 py-3 [overflow-wrap:anywhere]">{order.status}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+          <div className="mt-5 divide-y divide-[var(--border-subtle)] overflow-hidden rounded-xl border border-[var(--border-subtle)] md:hidden">
+            {visibleOrders.slice(page * 25, (page + 1) * 25).map((order) => <article key={order.id} className="space-y-3 p-4 text-sm">
+              <button type="button" onClick={() => onOrderOpen(order)} className="block max-w-full text-left font-semibold [overflow-wrap:anywhere] underline-offset-2 hover:underline">{order.orderNumber}</button>
+              <p className="break-words">{order.items.map((item) => `${item.productName} × ${item.quantity}`).join(', ')}</p>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <p><span className="block text-[var(--text-secondary)]">Order date</span>{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium', timeZone: 'Asia/Kolkata' })}</p>
+                <p><span className="block text-[var(--text-secondary)]">Amount</span>{formatCurrency(order.total)}</p>
+                <p><span className="block text-[var(--text-secondary)]">Payment status</span>{order.paymentStatus}</p>
+                <p><span className="block text-[var(--text-secondary)]">Order status</span>{order.status}</p>
+                <p><span className="block text-[var(--text-secondary)]">Delivery status</span>{order.status}</p>
+              </div>
+            </article>)}
+          </div>
+          <div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-3 py-2 text-xs"><span>{visibleOrders.length} customer orders · Page {page + 1} of {Math.max(1, Math.ceil(visibleOrders.length / 25))}</span><div className="flex gap-2"><Button type="button" variant="ghost" disabled={!page} onClick={() => setPage((current) => current - 1)}>Previous</Button><Button type="button" variant="ghost" disabled={(page + 1) * 25 >= visibleOrders.length} onClick={() => setPage((current) => current + 1)}>Next</Button></div></div>
+        </> : <p className="mt-5 rounded-xl bg-[var(--bg-primary)] p-6 text-center text-sm text-[var(--text-secondary)]">No orders match this customer and date range.</p>}
       </>}
     </section>
   </div>;

@@ -1,0 +1,21 @@
+CREATE TABLE franchise_applications (
+    id VARCHAR(255) NOT NULL PRIMARY KEY,
+    reference_id VARCHAR(32) NOT NULL,
+    full_name VARCHAR(160) NOT NULL,
+    mobile_number VARCHAR(32) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    preferred_city VARCHAR(100) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    full_address TEXT NOT NULL,
+    investment_budget DECIMAL(14,2) NOT NULL,
+    preferred_store_format VARCHAR(100) NOT NULL,
+    additional_message TEXT NULL,
+    status VARCHAR(24) NOT NULL DEFAULT 'PENDING',
+    internal_notes TEXT NULL,
+    created_at DATETIME(6) NOT NULL,
+    updated_at DATETIME(6) NOT NULL,
+    UNIQUE KEY uk_franchise_application_reference (reference_id),
+    KEY ix_franchise_applications_status_created (status, created_at),
+    KEY ix_franchise_applications_email_city_status (email, preferred_city, status),
+    KEY ix_franchise_applications_mobile_city_status (mobile_number, preferred_city, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

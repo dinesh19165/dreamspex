@@ -56,6 +56,23 @@ class Phase5AdminAccessIntegrationTest {
     }
 
     @Test
+    void franchiseEditAndStatusApiIsSuperAdminOnly() throws Exception {
+        var customer = authentication(new UsernamePasswordAuthenticationToken("customer", null,
+                List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+        mockMvc.perform(get("/api/v1/admin/franchises").with(customer)).andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/v1/admin/franchises/store-id").with(customer)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/v1/admin/franchises/store-id")
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnauthorized());
+
+        var admin = authentication(new UsernamePasswordAuthenticationToken("super-admin", null,
+                List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))));
+        mockMvc.perform(get("/api/v1/admin/franchises").with(admin)).andExpect(status().isOk());
+    }
+
+    @Test
     void storeDeliveryConfigurationIsSuperAdminOnlyAndValidatesRadiusAndCoordinates() throws Exception {
         var customer = authentication(new UsernamePasswordAuthenticationToken("customer", null,
                 List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));

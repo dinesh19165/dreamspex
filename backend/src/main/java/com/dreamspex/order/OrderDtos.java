@@ -3,19 +3,25 @@ import jakarta.validation.constraints.*;
 import java.math.BigDecimal; import java.time.Instant; import java.time.LocalDate; import java.util.List;
 public final class OrderDtos {
  private OrderDtos(){}
- public record CheckoutRequest(@NotBlank String addressId,@Size(max=64) String couponCode,@Min(0) @Max(1000000) Integer loyaltyPoints){
-  public CheckoutRequest(String addressId,String couponCode){this(addressId,couponCode,0);}
+ @ValidCheckoutAddress
+ public record CheckoutRequest(@Size(max=255) String addressId,@Size(max=64) String couponCode,@Min(0) @Max(1000000) Integer loyaltyPoints,String franchiseId,
+                               @Pattern(regexp="DELIVERY|PICKUP|HOME_DELIVERY|STORE_PICKUP") String fulfillmentType){
+  public CheckoutRequest(String addressId,String couponCode,Integer loyaltyPoints,String franchiseId){this(addressId,couponCode,loyaltyPoints,franchiseId,"DELIVERY");}
+  public CheckoutRequest(String addressId,String couponCode,Integer loyaltyPoints){this(addressId,couponCode,loyaltyPoints,null,"DELIVERY");}
+  public CheckoutRequest(String addressId,String couponCode){this(addressId,couponCode,0,null,"DELIVERY");}
  }
  public record QuoteResponse(BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,String couponCode,DeliveryAvailability deliveryAvailability,GstOrderSnapshot gstSnapshot,long loyaltyPointsAvailable,int loyaltyPointsRedeemed,BigDecimal loyaltyDiscount,int loyaltyPointsMaxRedeemable){
   public QuoteResponse(BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,String couponCode,DeliveryAvailability deliveryAvailability,GstOrderSnapshot gstSnapshot){this(subtotal,discount,couponDiscount,membershipDiscount,shipping,total,couponCode,deliveryAvailability,gstSnapshot,0,0,BigDecimal.ZERO,0);}
  }
  public record DeliveryAvailability(boolean available,String status,BigDecimal distanceKm,BigDecimal radiusKm,String storeName,String message){}
- public record OrderResponse(String id,String orderNumber,String status,String paymentStatus,BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,String couponCode,Instant createdAt,List<ItemResponse> items,List<HistoryResponse> history,GstOrderSnapshot gstSnapshot,int loyaltyPointsRedeemed,BigDecimal loyaltyDiscount){
+ public record OrderResponse(String id,String orderNumber,String status,String paymentStatus,BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,String couponCode,Instant createdAt,List<ItemResponse> items,List<HistoryResponse> history,GstOrderSnapshot gstSnapshot,int loyaltyPointsRedeemed,BigDecimal loyaltyDiscount,String fulfillmentType,String fulfillmentStoreId,FulfillmentStoreResponse fulfillmentStore){
+  public OrderResponse(String id,String orderNumber,String status,String paymentStatus,BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,String couponCode,Instant createdAt,List<ItemResponse> items,List<HistoryResponse> history,GstOrderSnapshot gstSnapshot,int loyaltyPointsRedeemed,BigDecimal loyaltyDiscount){this(id,orderNumber,status,paymentStatus,subtotal,discount,couponDiscount,membershipDiscount,shipping,total,couponCode,createdAt,items,history,gstSnapshot,loyaltyPointsRedeemed,loyaltyDiscount,"DELIVERY",null,null);}
   public OrderResponse(String id,String orderNumber,String status,String paymentStatus,BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,String couponCode,Instant createdAt,List<ItemResponse> items,List<HistoryResponse> history,GstOrderSnapshot gstSnapshot){this(id,orderNumber,status,paymentStatus,subtotal,discount,couponDiscount,membershipDiscount,shipping,total,couponCode,createdAt,items,history,gstSnapshot,0,BigDecimal.ZERO);}
  }
- public record AdminOrderResponse(String id,String orderNumber,String status,String paymentStatus,BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,String couponCode,Instant createdAt,CustomerResponse customer,ShippingAddressResponse shippingAddress,List<AdminOrderItemResponse> items,List<HistoryResponse> history,GstOrderSnapshot gstSnapshot,int loyaltyPointsRedeemed,BigDecimal loyaltyDiscount){}
+ public record AdminOrderResponse(String id,String orderNumber,String status,String paymentStatus,BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,String couponCode,Instant createdAt,CustomerResponse customer,ShippingAddressResponse shippingAddress,String fulfillmentType,String fulfillmentStoreId,FulfillmentStoreResponse fulfillmentStore,List<AdminOrderItemResponse> items,List<HistoryResponse> history,GstOrderSnapshot gstSnapshot,int loyaltyPointsRedeemed,BigDecimal loyaltyDiscount){}
  public record CustomerResponse(String id,String displayName,String email,String phone){}
  public record ShippingAddressResponse(String recipientName,String phone,String line1,String line2,String city,String state,String postalCode,String countryCode){}
+ public record FulfillmentStoreResponse(String id,String name,String phone,String address,String city,String state,String postalCode){}
  public record ItemResponse(String id,String productName,String sku,BigDecimal unitPrice,int quantity,BigDecimal lineTotal,
                             LensPreparationProgress lensPreparation){}
  public record LensPreparationProgress(String status,Instant updatedAt){}

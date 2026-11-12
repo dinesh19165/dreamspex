@@ -14,6 +14,8 @@ import com.dreamspex.catalog.service.CatalogService;
 import com.dreamspex.gst.GstDtos.ProductGstRequest;
 import com.dreamspex.gst.GstDtos.ProductGstResponse;
 import com.dreamspex.common.ApiException;
+import com.dreamspex.reviews.ProductReviewService;
+import com.dreamspex.reviews.ReviewDtos.RatingSummary;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyString;
 import org.springframework.http.HttpStatus;
@@ -38,6 +41,7 @@ class CatalogServiceTest {
     @Mock ProductRepository products;
     @Mock ProductVariantRepository variants;
     @Mock CouponRepository coupons;
+    @Mock ProductReviewService reviews;
 
     @Test
     void publicProductHidesNonPublishedProducts() {
@@ -311,7 +315,10 @@ class CatalogServiceTest {
     }
 
     private CatalogService service() {
-        return new CatalogService(categories, products, variants, coupons);
+        lenient().when(reviews.ratingSummaries(anyList())).thenReturn(java.util.Map.of());
+        lenient().when(reviews.ratingSummary(anyList())).thenReturn(new RatingSummary(0, 0,
+                java.util.Map.of(1, 0L, 2, 0L, 3, 0L, 4, 0L, 5, 0L)));
+        return new CatalogService(categories, products, variants, coupons, reviews);
     }
 
     private ProductRequest request(List<VariantRequest> variants, List<ImageRequest> images, String tryOnImageUrl) {

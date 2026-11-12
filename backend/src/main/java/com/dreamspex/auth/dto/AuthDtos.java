@@ -25,6 +25,8 @@ public final class AuthDtos {
     public record VerifyOtpRequest(@NotBlank String challengeId, @NotBlank @Pattern(regexp = "^\\d{6}$") String otp) {}
     public record ResetPasswordRequest(@NotBlank String challengeId, @NotBlank @Pattern(regexp = "^\\d{6}$") String otp,
                                        @NotBlank @Size(min = 12, max = 128) @Utf8ByteSize(max = 72) String newPassword) {}
+    public record FranchiseSetupRequest(@NotBlank @Size(min = 40, max = 200) String token,
+                                        @NotBlank @Size(min = 12, max = 128) @Utf8ByteSize(max = 72) String newPassword) {}
     public record IdentifierRequest(@NotBlank String identifier) {}
     public record RefreshRequest(@NotBlank String refreshToken) {}
     public record RegisterResponse(String userId, boolean verificationRequired, Set<String> channels, String challengeId) {}

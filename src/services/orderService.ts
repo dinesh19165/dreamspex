@@ -50,6 +50,17 @@ export type OrderResponse = {
   createdAt: string;
   items: OrderItemResponse[];
   history: OrderHistoryResponse[];
+  fulfillmentType?: 'DELIVERY' | 'PICKUP' | 'STORE_PICKUP' | string;
+  fulfillmentStoreId?: string | null;
+  fulfillmentStore?: {
+    id: string;
+    name: string;
+    phone: string | null;
+    address: string;
+    city: string;
+    state: string;
+    postalCode: string;
+  } | null;
 };
 
 export type CheckoutQuoteResponse = {
@@ -75,7 +86,8 @@ export type CheckoutQuoteResponse = {
   couponCode: string | null;
   deliveryAvailability: {
     available: boolean;
-    status: 'AVAILABLE' | 'LOCATION_REQUIRED' | 'STORE_CONFIGURATION_REQUIRED' | 'OUTSIDE_DELIVERY_AREA';
+    status: 'AVAILABLE' | 'LOCATION_REQUIRED' | 'STORE_CONFIGURATION_REQUIRED' | 'OUTSIDE_DELIVERY_AREA'
+      | 'FRANCHISE_UNAVAILABLE' | 'FRANCHISE_REQUIRED' | 'FRANCHISE_STOCK_UNAVAILABLE';
     distanceKm: number | null;
     radiusKm: number | null;
     storeName: string | null;
@@ -139,18 +151,24 @@ async function request<T>(accessToken: string, path: string, init: RequestInit =
 }
 
 export const orderService = {
-  quote: (accessToken: string, addressId: string, couponCode: string | null, loyaltyPoints = 0) =>
+  quote: (accessToken: string, addressId: string | null, couponCode: string | null, loyaltyPoints = 0,
+    franchiseId?: string, fulfillmentType: 'DELIVERY' | 'PICKUP' = 'DELIVERY') =>
     request<CheckoutQuoteResponse>(accessToken, '/checkout/quote', {
       method: 'POST',
-      body: JSON.stringify({ addressId, couponCode, ...(loyaltyPoints > 0 ? { loyaltyPoints } : {}) }),
+      body: JSON.stringify({ ...(addressId ? { addressId } : {}), couponCode, fulfillmentType,
+        ...(loyaltyPoints > 0 ? { loyaltyPoints } : {}),
+        ...(franchiseId ? { franchiseId } : {}) }),
     }),
   list: (accessToken: string) => request<OrderResponse[]>(accessToken, '/orders'),
   get: (accessToken: string, orderId: string) =>
     request<OrderResponse>(accessToken, `/orders/${encodeURIComponent(orderId)}`),
-  create: (accessToken: string, addressId: string, couponCode: string | null, idempotencyKey: string, loyaltyPoints = 0) =>
+  create: (accessToken: string, addressId: string | null, couponCode: string | null, idempotencyKey: string,
+    loyaltyPoints = 0, franchiseId?: string, fulfillmentType: 'DELIVERY' | 'PICKUP' = 'DELIVERY') =>
     request<OrderResponse>(accessToken, '/orders', {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify({ addressId, couponCode, ...(loyaltyPoints > 0 ? { loyaltyPoints } : {}) }),
+      body: JSON.stringify({ ...(addressId ? { addressId } : {}), couponCode, fulfillmentType,
+        ...(loyaltyPoints > 0 ? { loyaltyPoints } : {}),
+        ...(franchiseId ? { franchiseId } : {}) }),
     }),
 };

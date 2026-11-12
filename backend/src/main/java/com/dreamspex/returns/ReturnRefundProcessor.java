@@ -4,6 +4,7 @@ import com.dreamspex.common.ApiException;
 import com.dreamspex.payment.Payment;
 import com.dreamspex.payment.PaymentRepository;
 import com.dreamspex.loyalty.LoyaltyService;
+import com.dreamspex.franchise.FranchiseService;
 import com.dreamspex.order.Order;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReturnRefundProcessor {
     @Autowired private LoyaltyService loyaltyService;
+    @Autowired(required = false) private FranchiseService franchiseService;
     private final ReturnRequestRepository requests;
     private final ReturnRefundTransactionRepository refunds;
     private final PaymentRepository payments;
@@ -120,6 +122,7 @@ public class ReturnRefundProcessor {
                 }
                 notifications.refundProcessed(transaction);
             }
+            if (franchiseService != null) franchiseService.restockReturnItems(request, null);
         } else if ("failed".equals(normalized)) {
             transaction.setStatus("FAILED");
             transaction.setErrorMessage("The payment provider reported that the refund failed.");

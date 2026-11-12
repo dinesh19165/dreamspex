@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { ArrowRight, ChevronLeft, ChevronRight, Glasses, Heart, ShieldCheck, Star, Truck } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
-import { reviews } from '../data/mockData';
 import Button from '../components/ui/Button';
 import { useShop } from '../context/ShopContext';
 import { catalogService, toProduct, type CatalogProduct } from '../services/catalogService';
@@ -14,18 +13,27 @@ import { getDiscountPercentage } from '../utils/pricing';
 import { getPrimaryGalleryImageIndex, getProductGalleryImages, getSwipeGalleryIndex } from '../utils/productGallery';
 import { useAuth } from '../context/useAuth';
 import { readPendingProductAction, savePendingProductAction, takePendingProductAction } from '../utils/pendingProductAction';
+import { reviewService, type ProductReviewFeed } from '../services/reviewService';
+import ProductCard from '../components/ui/ProductCard';
+import type { Product } from '../types';
+import { useFranchiseLocation } from '../context/FranchiseLocationContext';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useAuth();
+  const { selectedLocationId } = useFranchiseLocation();
   const { cart, cartLoading: sharedCartLoading, cartReady, toggleWishlist, isInWishlist, addToCart } = useShop();
   const [addedToCart, setAddedToCart] = useState(false);
   const [cartError, setCartError] = useState('');
   const [cartLoading, setCartLoading] = useState(false);
   const [catalogProduct, setCatalogProduct] = useState<CatalogProduct | null>(null);
   const [catalogError, setCatalogError] = useState('');
+  const [reviewFeed, setReviewFeed] = useState<ProductReviewFeed | null>(null);
+  const [reviewError, setReviewError] = useState('');
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [relatedError, setRelatedError] = useState('');
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const cartTimerRef = useRef<number | null>(null);
@@ -39,7 +47,7 @@ export default function ProductDetailPage() {
     if (!id) return;
     setCatalogProduct(null);
     setCatalogError('');
-    catalogService.get(id).then((value) => {
+    catalogService.get(id, selectedLocationId || undefined).then((value) => {
       setCatalogProduct(value);
       setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(value.images, value.imageUrl ?? '')));
       const pendingAction = readPendingProductAction();
@@ -51,6 +59,40 @@ export default function ProductDetailPage() {
         ?? value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)?.id
         ?? '');
     }).catch((reason) => setCatalogError(reason instanceof Error ? reason.message : 'Unable to load this product.'));
+  }, [id, selectedLocationId]);
+
+  useEffect(() => {
+    if (!catalogProduct) return;
+    let active = true;
+    setRelatedProducts([]);
+    setRelatedError('');
+    const category = catalogProduct.categories[0]?.slug;
+    const params = new URLSearchParams({ page: '0', pageSize: '8', sort: 'newest' });
+    if (selectedLocationId) params.set('franchiseId', selectedLocationId);
+    if (category) params.set('category', category);
+    else params.set('brand', catalogProduct.brand);
+    catalogService.search(params).then((result) => {
+      if (active) setRelatedProducts(result.items
+        .filter((item) => item.id !== catalogProduct.id)
+        .slice(0, 4)
+        .map(toProduct));
+    }).catch((reason) => {
+      if (active) setRelatedError(reason instanceof Error ? reason.message : 'Unable to load related products.');
+    });
+    return () => { active = false; };
+  }, [catalogProduct, selectedLocationId]);
+
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    setReviewFeed(null);
+    setReviewError('');
+    reviewService.product(id).then((value) => {
+      if (active) setReviewFeed(value);
+    }).catch((reason) => {
+      if (active) setReviewError(reason instanceof Error ? reason.message : 'Unable to load product reviews.');
+    });
+    return () => { active = false; };
   }, [id]);
 
   useEffect(() => {
@@ -84,6 +126,7 @@ export default function ProductDetailPage() {
   if (catalogError) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-red-600" role="alert">{catalogError}</p><Link to="/shop" className="mt-6 inline-flex rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold">Back to shop</Link></main><Footer /></div>;
   if (!product || !catalogProduct) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-[var(--text-secondary)]">Loading product...</p></main><Footer /></div>;
 
+  const ratingSummary = reviewFeed?.summary ?? catalogProduct.ratingSummary;
   const supportsPrescription = product.category !== 'Contact Lenses';
   const galleryImages = getProductGalleryImages(catalogProduct.images, product.image);
   const selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0];
@@ -221,7 +264,7 @@ export default function ProductDetailPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--text-secondary)]">{product.brand}</p>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{product.category}</p>
               <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">{product.name}</h1>
-              <p className="mt-3 flex items-center gap-2 text-sm text-[var(--text-secondary)]" aria-label={`Sample catalogue rating ${product.rating} out of 5`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{product.rating.toFixed(1)}</strong><span>sample catalogue rating · {product.reviews} demo ratings</span></p>
+              <p className="mt-3 flex items-center gap-2 text-sm text-[var(--text-secondary)]" aria-label={`${ratingSummary.averageRating.toFixed(1)} out of 5 from ${ratingSummary.totalReviews} verified reviews`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{ratingSummary.averageRating.toFixed(1)}</strong><span>· {ratingSummary.totalReviews} verified reviews</span></p>
               <p className="mt-4 text-base leading-8 text-[var(--text-secondary)]">{product.description}</p>
             </div>
             <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl">
@@ -321,27 +364,51 @@ export default function ProductDetailPage() {
           </motion.div>
         </div>
 
-        <section className="mt-16 rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 backdrop-blur-xl" aria-labelledby="customer-reviews">
+        <section className="mt-16 rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-8 backdrop-blur-xl" aria-labelledby="customer-reviews">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Sample review data</p>
-              <h2 id="customer-reviews" className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">Review UI preview</h2>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--brand-green-dark)]">Verified purchases</p>
+              <h2 id="customer-reviews" className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">Customer reviews</h2>
             </div>
-            <p className="flex items-center gap-2 text-sm text-[var(--text-secondary)]"><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{product.rating.toFixed(1)}</strong> sample rating · {product.reviews} demo ratings</p>
+            <p className="flex items-center gap-2 text-sm text-[var(--text-secondary)]"><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{ratingSummary.averageRating.toFixed(1)}</strong> average · {ratingSummary.totalReviews} verified reviews</p>
           </div>
-          <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">The entries below are frontend mock data only; they are not verified customer reviews.</p>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {reviews.map((review) => (
-              <article key={review.id} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
-                <p className="flex items-center gap-1 text-amber-400" aria-label={`${review.rating} out of 5 stars`}>
-                  {Array.from({ length: review.rating }, (_, index) => <Star key={index} className="h-4 w-4 fill-current" />)}
-                </p>
-                <h3 className="mt-3 font-semibold text-[var(--text-primary)]">{review.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{review.content}</p>
-                <p className="mt-4 text-xs font-semibold text-[var(--text-secondary)]">{review.name}</p>
-              </article>
-            ))}
-          </div>
+          {reviewError ? <p className="mt-5 text-sm text-red-600" role="alert">{reviewError}</p>
+            : !reviewFeed ? <p className="mt-5 text-sm text-[var(--text-secondary)]">Loading verified reviews...</p>
+              : <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(220px,.7fr)_1.3fr]">
+                <aside className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
+                  <p className="text-4xl font-semibold text-[var(--text-primary)]">{ratingSummary.averageRating.toFixed(1)}<span className="ml-1 text-lg text-[var(--text-secondary)]">/ 5</span></p>
+                  <p className="mt-2 text-sm text-[var(--text-secondary)]">Based on {ratingSummary.totalReviews} verified purchase{ratingSummary.totalReviews === 1 ? '' : 's'}</p>
+                  <div className="mt-5 space-y-2">{[5, 4, 3, 2, 1].map((stars) => {
+                    const count = ratingSummary.distribution[String(stars)] ?? 0;
+                    const percentage = ratingSummary.totalReviews ? count / ratingSummary.totalReviews * 100 : 0;
+                    return <div key={stars} className="grid grid-cols-[36px_1fr_30px] items-center gap-2 text-xs text-[var(--text-secondary)]">
+                      <span>{stars} star</span><span className="h-2 overflow-hidden rounded-full bg-[var(--border-subtle)]"><span className="block h-full rounded-full bg-amber-400" style={{ width: `${percentage}%` }} /></span><span className="text-right">{count}</span>
+                    </div>;
+                  })}</div>
+                </aside>
+                <div className="space-y-4">
+                  {reviewFeed.reviews.length ? reviewFeed.reviews.map((review) => <article key={review.id}
+                    className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
+                    <p className="flex items-center gap-1 text-amber-400" aria-label={`${review.rating} out of 5 stars`}>
+                      {Array.from({ length: 5 }, (_, index) => <Star key={index}
+                        className={`h-4 w-4 ${index < review.rating ? 'fill-current' : 'text-[var(--text-secondary)]'}`} />)}
+                    </p>
+                    <h3 className="mt-3 font-semibold text-[var(--text-primary)]">{review.title}</h3>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">{review.content}</p>
+                    {review.imageUrls.length ? <div className="mt-4 flex flex-wrap gap-3">{review.imageUrls.map((url) =>
+                      <img key={url} src={url} alt="Customer shared product" loading="lazy"
+                        className="h-20 w-20 rounded-xl object-cover" />)}</div> : null}
+                    <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-secondary)]">
+                      <span className="font-semibold text-[var(--text-primary)]">{review.customerName}</span>
+                      <span className="inline-flex items-center gap-1 text-[var(--brand-green-dark)]"><ShieldCheck className="h-3.5 w-3.5" />Verified Purchase</span>
+                      <time dateTime={review.submittedAt}>{new Date(review.submittedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</time>
+                    </p>
+                  </article>) : <div className="rounded-2xl border border-dashed border-[var(--border-subtle)] p-8 text-center">
+                    <p className="font-semibold text-[var(--text-primary)]">No public reviews yet</p>
+                    <p className="mt-2 text-sm text-[var(--text-secondary)]">Approved four- and five-star verified reviews will appear here.</p>
+                  </div>}
+                </div>
+              </div>}
         </section>
 
         <div className="mt-16">
@@ -349,6 +416,10 @@ export default function ProductDetailPage() {
             <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Related products</h2>
             <Link to="/shop" className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-300 transition hover:text-cyan-200">Discover more <ArrowRight className="h-4 w-4" /></Link>
           </div>
+          {relatedError ? <p className="mt-5 text-sm text-red-600" role="alert">{relatedError}</p>
+            : relatedProducts.length ? <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {relatedProducts.map((item) => <ProductCard key={item.backendId ?? item.id} product={item} />)}
+            </div> : null}
         </div>
       </main>
       <Footer />

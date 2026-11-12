@@ -10,6 +10,11 @@ import com.dreamspex.catalog.repository.CouponRepository;
 import com.dreamspex.catalog.repository.ProductRepository;
 import com.dreamspex.catalog.repository.ProductVariantRepository;
 import com.dreamspex.common.ApiException;
+import com.dreamspex.reviews.ProductReviewService;
+import com.dreamspex.reviews.ReviewDtos.RatingSummary;
+import com.dreamspex.franchise.FranchiseInventory;
+import com.dreamspex.franchise.FranchiseService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -25,10 +30,19 @@ public class CatalogService {
     private final ProductRepository products;
     private final ProductVariantRepository variants;
     private final CouponRepository coupons;
+    private final ProductReviewService reviews;
+    private final FranchiseService franchises;
+
+    @Autowired
+    public CatalogService(CategoryRepository categories, ProductRepository products, ProductVariantRepository variants,
+                          CouponRepository coupons, ProductReviewService reviews, FranchiseService franchises) {
+        this.categories = categories; this.products = products; this.variants = variants; this.coupons = coupons;
+        this.reviews = reviews; this.franchises = franchises;
+    }
 
     public CatalogService(CategoryRepository categories, ProductRepository products, ProductVariantRepository variants,
-                          CouponRepository coupons) {
-        this.categories = categories; this.products = products; this.variants = variants; this.coupons = coupons;
+                          CouponRepository coupons, ProductReviewService reviews) {
+        this(categories, products, variants, coupons, reviews, null);
     }
 
     @Transactional(readOnly = true)
@@ -46,7 +60,8 @@ public class CatalogService {
     public PageResponse<ProductResponse> search(String q, String brand, String category, String material,
                                                 String gender, String frameShape, String frameType, String color,
                                                 String badge, boolean availableOnly, BigDecimal minPrice,
-                                                BigDecimal maxPrice, int page, int pageSize, String sort) {
+                                                BigDecimal maxPrice, int page, int pageSize, String sort,
+                                                String franchiseId) {
         if (page < 0 || pageSize < 1 || pageSize > 100) throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_PAGINATION", "Invalid pagination.");
         if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_PRICE_RANGE", "Minimum price cannot exceed maximum price.");
@@ -57,10 +72,32 @@ public class CatalogService {
             case "name" -> Sort.by("name").ascending();
             default -> Sort.by("createdAt").descending();
         };
-        Page<Product> result = products.search(blank(q), blank(brand), blank(category), blank(material), blank(gender),
-                blank(frameShape), blank(frameType), blank(color), blank(badge), availableOnly,
-                minPrice, maxPrice, PageRequest.of(page, pageSize, ordering));
-        return new PageResponse<>(result.getContent().stream().map(this::product).toList(), page, pageSize, result.getTotalElements());
+        String selectedFranchiseId = franchiseId != null && !franchiseId.isBlank() ? franchiseId : null;
+        if (selectedFranchiseId != null) {
+            if (franchises == null) throw new IllegalStateException("Franchise catalog filtering is unavailable.");
+            franchises.requireStorefrontFranchise(selectedFranchiseId);
+        }
+        Page<Product> result = selectedFranchiseId == null
+                ? products.search(blank(q), blank(brand), blank(category), blank(material), blank(gender),
+                        blank(frameShape), blank(frameType), blank(color), blank(badge), availableOnly,
+                        minPrice, maxPrice, PageRequest.of(page, pageSize, ordering))
+                : products.searchWithFranchise(blank(q), blank(brand), blank(category), blank(material), blank(gender),
+                        blank(frameShape), blank(frameType), blank(color), blank(badge), availableOnly,
+                        minPrice, maxPrice, selectedFranchiseId, PageRequest.of(page, pageSize, ordering));
+        Map<String, RatingSummary> ratingSummaries = reviews.ratingSummaries(
+                result.getContent().stream().map(Product::getId).toList());
+        return new PageResponse<>(result.getContent().stream()
+                .map(value -> product(value, ratingSummaries.get(value.getId()), selectedFranchiseId)).toList(),
+                page, pageSize, result.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<ProductResponse> search(String q, String brand, String category, String material,
+                                                String gender, String frameShape, String frameType, String color,
+                                                String badge, boolean availableOnly, BigDecimal minPrice,
+                                                BigDecimal maxPrice, int page, int pageSize, String sort) {
+        return search(q, brand, category, material, gender, frameShape, frameType, color, badge,
+                availableOnly, minPrice, maxPrice, page, pageSize, sort, null);
     }
     @Transactional(readOnly = true)
     public ProductFilterOptions productFilterOptions() {
@@ -70,12 +107,30 @@ public class CatalogService {
                 sorted(products.findPublicBadges()));
     }
     @Transactional(readOnly = true)
+    public ProductResponse publicProduct(String id, String franchiseId) {
+        Product value = products.findByIdAndStatusAndDeletedAtIsNull(id, "PUBLISHED")
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", "Product was not found."));
+        if (franchiseId != null && !franchiseId.isBlank()) {
+            if (franchises == null || !franchises.storefrontProductIds(franchiseId).contains(id)) {
+                throw new ApiException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", "Product was not found.");
+            }
+        } else {
+            franchiseId = null;
+        }
+        return product(value, reviews.ratingSummary(List.of(id)), franchiseId);
+    }
+
+    @Transactional(readOnly = true)
     public ProductResponse publicProduct(String id) {
-        return product(products.findByIdAndStatusAndDeletedAtIsNull(id, "PUBLISHED")
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", "Product was not found.")));
+        return publicProduct(id, null);
     }
     @Transactional(readOnly = true)
-    public List<ProductResponse> adminProducts() { return products.findAll().stream().filter(p -> p.getDeletedAt() == null).map(this::product).toList(); }
+    public List<ProductResponse> adminProducts() {
+        List<Product> values = products.findAll().stream().filter(p -> p.getDeletedAt() == null).toList();
+        Map<String, RatingSummary> ratingSummaries = reviews.ratingSummaries(
+                values.stream().map(Product::getId).toList());
+        return values.stream().map(value -> product(value, ratingSummaries.get(value.getId()))).toList();
+    }
     @Transactional(readOnly = true)
     public List<CategoryResponse> adminCategories(String type) {
         return categories.findByCategoryTypeAndDeletedAtIsNullOrderBySortOrderAscNameAsc(categoryType(type))
@@ -192,7 +247,9 @@ public class CatalogService {
                 value.getImages().add(image);
             }
         }
-        return product(products.save(value));
+        Product saved = products.save(value);
+        if (franchises != null) franchises.syncPublishedProductInventory(saved);
+        return product(saved, reviews.ratingSummary(List.of(saved.getId())));
     }
     @Transactional
     public ProductGstResponse updateProductGst(String id, ProductGstRequest request) {
@@ -227,7 +284,9 @@ public class CatalogService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_PRODUCT_STATUS", "Invalid product status.");
         Product value = products.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", "Product was not found."));
         value.setStatus(status);
-        return product(products.save(value));
+        Product saved = products.save(value);
+        if (franchises != null) franchises.syncPublishedProductInventory(saved);
+        return product(saved, reviews.ratingSummary(List.of(saved.getId())));
     }
     private String blank(String value) { return value == null || value.isBlank() ? null : value.trim(); }
     private ApiException variantSkuConflict(String sku) {
@@ -246,5 +305,33 @@ public class CatalogService {
         return values.stream().map(String::trim).filter(value -> !value.isEmpty())
                 .distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList();
     }
-    private ProductResponse product(Product v) { return new ProductResponse(v.getId(), v.getSku(), v.getName(), v.getSlug(), v.getBrand(), v.getDescription(), v.getMaterial(), v.getGender(), v.getFrameShape(), v.getFrameType(), v.getBasePrice(), v.getCompareAtPrice(), v.getBadge(), v.getTryOnImageUrl(), v.getHsnCode(), v.getGstRate(), v.isGstEnabled(), v.getStatus(), v.getCategories().stream().filter(c -> c.getDeletedAt() == null).map(this::category).toList(), v.getVariants().stream().map(x -> new VariantResponse(x.getId(), x.getSku(), x.getColor(), x.getSize(), x.getLensType(), x.getAdditionalPrice(), x.getQuantity(), x.getAvailableQuantity(), x.getStatus())).toList(), v.getImages().stream().map(x -> new ImageResponse(x.getId(), x.getImageUrl(), x.getStorageKey(), x.getAltText(), x.getSortOrder(), x.isPrimaryImage())).toList()); }
+    private ProductResponse product(Product v) {
+        return product(v, reviews.ratingSummary(List.of(v.getId())));
+    }
+
+    private ProductResponse product(Product v, RatingSummary ratingSummary) {
+        return product(v, ratingSummary, null);
+    }
+
+    private ProductResponse product(Product v, RatingSummary ratingSummary, String franchiseId) {
+        Map<String, FranchiseInventory> stockByVariant = franchiseId == null || franchises == null
+                ? Map.of()
+                : franchises.storefrontProductInventory(franchiseId, v.getId()).stream()
+                .collect(java.util.stream.Collectors.toMap(row -> row.getVariant().getId(), row -> row));
+        return new ProductResponse(v.getId(), v.getSku(), v.getName(), v.getSlug(), v.getBrand(), v.getDescription(),
+                v.getMaterial(), v.getGender(), v.getFrameShape(), v.getFrameType(), v.getBasePrice(),
+                v.getCompareAtPrice(), v.getBadge(), v.getTryOnImageUrl(), v.getHsnCode(), v.getGstRate(),
+                v.isGstEnabled(), v.getStatus(),
+                v.getCategories().stream().filter(c -> c.getDeletedAt() == null).map(this::category).toList(),
+                v.getVariants().stream().map(x -> {
+                    FranchiseInventory stock = stockByVariant.get(x.getId());
+                    return new VariantResponse(x.getId(), x.getSku(), x.getColor(), x.getSize(), x.getLensType(),
+                            x.getAdditionalPrice(), franchiseId == null ? x.getQuantity() : stock == null ? 0 : stock.getQuantity(),
+                            franchiseId == null ? x.getAvailableQuantity() : stock == null ? 0 : stock.getAvailableQuantity(),
+                            x.getStatus());
+                }).toList(),
+                v.getImages().stream().map(x -> new ImageResponse(x.getId(), x.getImageUrl(),
+                        x.getStorageKey(), x.getAltText(), x.getSortOrder(), x.isPrimaryImage())).toList(),
+                ratingSummary == null ? reviews.ratingSummary(List.of(v.getId())) : ratingSummary);
+    }
 }

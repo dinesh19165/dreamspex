@@ -25,6 +25,9 @@ public class AuthController {
     @PostMapping("/admin/login")
     TokenResponse adminLogin(@Valid @RequestBody LoginRequest request) { return authService.adminLogin(request); }
 
+    @PostMapping("/franchise/login")
+    TokenResponse franchiseLogin(@Valid @RequestBody LoginRequest request) { return authService.franchiseLogin(request); }
+
     @PostMapping("/verify-otp")
     SimpleResponse verifyOtp(@Valid @RequestBody VerifyOtpRequest request) { return authService.verifyOtp(request); }
 
@@ -37,6 +40,11 @@ public class AuthController {
     @PostMapping("/reset-password")
     ResetPasswordResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return authService.resetPassword(request);
+    }
+
+    @PostMapping("/franchise/setup")
+    ResetPasswordResponse setupFranchisePassword(@Valid @RequestBody FranchiseSetupRequest request) {
+        return authService.setupFranchisePassword(request);
     }
 
     @PostMapping("/refresh")

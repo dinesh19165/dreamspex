@@ -13,6 +13,9 @@ import MembershipCheckoutPage from './pages/MembershipCheckoutPage';
 import OffersPage from './pages/OffersPage';
 import ReferralPage from './pages/ReferralPage';
 import FranchisePage from './pages/FranchisePage';
+import FranchiseApplicationPage from './pages/FranchiseApplicationPage';
+import AdminFranchiseApplicationsPage from './pages/AdminFranchiseApplicationsPage';
+import FranchiseSetupPage from './pages/FranchiseSetupPage';
 import ServicesPage from './pages/ServicesPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
@@ -32,7 +35,6 @@ import { AccountPage, DashboardPage, OrdersPage, WalletPage, WishlistPage } from
 import { AdminLoginPage, CustomerLoginPage, FranchiseLoginPage } from './pages/RoleLoginPages';
 import {
   AddFranchisePage,
-  AddFranchiseProductPage,
   FranchiseDashboardPage,
   FranchiseDetailPage,
   FranchiseManagementPage,
@@ -47,7 +49,6 @@ import {
   SuperAdminProfilePage,
   SuperAdminUsersPage,
   ReportsPage,
-  StoresPage,
   SuperAdminProductsPage,
   SuperAdminSettingsPage,
   SuperAdminGstSettingsPage,
@@ -61,6 +62,9 @@ import { AdminReturnsPage, CustomerReturnsPage, ReturnRequestPage } from './page
 import DeliveryBatchPage from './pages/DeliveryBatchPage';
 import LoyaltyPage from './pages/LoyaltyPage';
 import { AdminLoyaltyReportsPage, AdminLoyaltySettingsPage } from './pages/AdminLoyaltyPage';
+import AdminProductReviewsPage from './pages/AdminProductReviewsPage';
+import AdminCustomerSmsPage from './pages/AdminCustomerSmsPage';
+import StoreLocatorPage from './pages/StoreLocatorPage';
 
 function RootEntry() {
   return <HomePage />;
@@ -144,6 +148,7 @@ function App() {
             <Route path="/offers" element={<OffersPage />} />
             <Route path="/referral" element={<CustomerRoute><ReferralPage /></CustomerRoute>} />
             <Route path="/franchise" element={<FranchisePage />} />
+            <Route path="/franchise/apply" element={<FranchiseApplicationPage />} />
             <Route path="/services" element={<ServicesPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
@@ -177,14 +182,18 @@ function App() {
             <Route path="/account" element={<CustomerRoute><AccountPage /></CustomerRoute>} />
             <Route path="/profile" element={<CustomerRoute><AccountPage /></CustomerRoute>} />
             <Route path="/franchise/login" element={<FranchiseLoginPage />} />
+            <Route path="/franchise/setup" element={<FranchiseSetupPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route path="/admin/dashboard" element={<SuperAdminRoute><AdminDashboardPage /></SuperAdminRoute>} />
             <Route path="/admin/franchises" element={<SuperAdminRoute><FranchiseManagementPage /></SuperAdminRoute>} />
+            <Route path="/admin/franchise-applications" element={<SuperAdminRoute><AdminFranchiseApplicationsPage /></SuperAdminRoute>} />
             <Route path="/admin/franchises/new" element={<SuperAdminRoute><AddFranchisePage /></SuperAdminRoute>} />
             <Route path="/admin/franchises/:id" element={<SuperAdminRoute><FranchiseDetailPage /></SuperAdminRoute>} />
             <Route path="/admin/franchises/:id/users" element={<SuperAdminRoute><FranchiseUsersPage /></SuperAdminRoute>} />
             <Route path="/admin/inventory" element={<SuperAdminRoute><SuperAdminInventoryPage /></SuperAdminRoute>} />
             <Route path="/admin/orders" element={<SuperAdminRoute><AdminOrdersPage /></SuperAdminRoute>} />
+            <Route path="/admin/product-reviews" element={<SuperAdminRoute><AdminProductReviewsPage /></SuperAdminRoute>} />
+            <Route path="/admin/sms-notifications" element={<SuperAdminRoute><AdminCustomerSmsPage /></SuperAdminRoute>} />
             <Route path="/admin/returns" element={<SuperAdminRoute><AdminReturnsPage /></SuperAdminRoute>} />
             <Route path="/admin/lenses" element={<SuperAdminRoute><AdminLensManagementPage /></SuperAdminRoute>} />
             <Route path="/admin/products" element={<SuperAdminRoute><SuperAdminProductsPage /></SuperAdminRoute>} />
@@ -202,14 +211,14 @@ function App() {
             <Route path="/admin/content" element={<SuperAdminRoute><HomepageBuilderPage /></SuperAdminRoute>} />
             <Route path="/franchise/dashboard" element={<FranchiseRoute><FranchiseDashboardPage /></FranchiseRoute>} />
             <Route path="/franchise/products" element={<FranchiseRoute><FranchiseProductsPage /></FranchiseRoute>} />
-            <Route path="/franchise/products/new" element={<FranchiseRoute><AddFranchiseProductPage /></FranchiseRoute>} />
+            <Route path="/franchise/products/new" element={<FranchiseRoute><Navigate to="/franchise/products" replace /></FranchiseRoute>} />
             <Route path="/franchise/orders" element={<FranchiseRoute><FranchiseOrdersPage /></FranchiseRoute>} />
             <Route path="/franchise/orders/:id" element={<FranchiseRoute><FranchiseOrderDetailPage /></FranchiseRoute>} />
             <Route path="/franchise/customers" element={<FranchiseRoute><FranchiseCustomersPage /></FranchiseRoute>} />
             <Route path="/franchise/inventory" element={<FranchiseRoute><FranchiseInventoryPage /></FranchiseRoute>} />
             <Route path="/franchise/reports" element={<FranchiseRoute><ReportsPage scope="franchise-admin" /></FranchiseRoute>} />
             <Route path="/franchise/profile" element={<FranchiseRoute><FranchiseProfilePage /></FranchiseRoute>} />
-            <Route path="/stores" element={<StoresPage />} />
+            <Route path="/stores" element={<StoreLocatorPage />} />
             <Route path="*" element={<OtherPages />} />
           </Routes>
         </div>

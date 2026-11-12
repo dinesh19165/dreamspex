@@ -3,6 +3,7 @@ import com.dreamspex.auth.entity.User;
 import com.dreamspex.loyalty.LoyaltyService;
 import com.dreamspex.common.ApiException;
 import com.dreamspex.config.SecurityProperties;
+import com.dreamspex.notification.NotificationService;
 import com.dreamspex.order.Order;
 import com.dreamspex.order.OrderRepository;
 import com.dreamspex.order.OrderStatusHistory;
@@ -51,13 +52,14 @@ public class DeliveryBatchService {
     private final ReturnStatusHistoryRepository returnHistory;
     private final ObjectMapper mapper;
     private final SecurityProperties security;
+    private final NotificationService notifications;
     private final SecureRandom random = new SecureRandom();
 
     public DeliveryBatchService(DeliveryBatchRepository batches, DeliveryBatchOrderRepository batchOrders,
                                 DeliveryBatchLinkRepository links, DeliveryBatchOrderHistoryRepository history,
                                 OrderRepository orders, ReturnRequestRepository returnRequests,
                                 ReturnStatusHistoryRepository returnHistory, ObjectMapper mapper,
-                                SecurityProperties security) {
+                                SecurityProperties security, NotificationService notifications) {
         this.batches = batches;
         this.batchOrders = batchOrders;
         this.links = links;
@@ -67,6 +69,7 @@ public class DeliveryBatchService {
         this.returnHistory = returnHistory;
         this.mapper = mapper;
         this.security = security;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +78,7 @@ public class DeliveryBatchService {
                 .map(DeliveryBatchOrder::getActiveOrderId).collect(java.util.stream.Collectors.toSet());
         return orders.findAllByOrderByCreatedAtDesc().stream()
                 .filter(order -> "PROCESSING".equals(order.getStatus()) && "PAID".equals(order.getPaymentStatus()))
+                .filter(order -> "DELIVERY".equals(order.getFulfillmentType()))
                 .filter(order -> includeAssigned || !activeOrderIds.contains(order.getId()))
                 .map(order -> eligibleOrder(order, postalCode, city))
                 .filter(java.util.Objects::nonNull)
@@ -223,6 +227,9 @@ public class DeliveryBatchService {
             if (!"PROCESSING".equals(order.getStatus()) || !"PAID".equals(order.getPaymentStatus())) {
                 throw conflict("ORDER_NOT_ELIGIBLE", "Only paid orders in PROCESSING can be added to a batch.");
             }
+            if (!"DELIVERY".equals(order.getFulfillmentType())) {
+                throw conflict("ORDER_NOT_ELIGIBLE", "Store pickup orders cannot be added to a delivery batch.");
+            }
             AddressRoute candidate = addressRoute(order);
             if (!route.matches(candidate)) {
                 throw invalid("All orders in a batch must share the same city, state, and postal code.");
@@ -298,6 +305,10 @@ public class DeliveryBatchService {
         item.setOtpConsumedAt(null);
         item.setOtpExpiresAt(Instant.now().plus(LINK_LIFETIME));
         item.setUpdatedAt(Instant.now());
+        Order deliveryOrder = item.getOrder();
+        notifications.enqueueSms(otpEventKey(deliveryOrder.getId(), code), "DELIVERY_OTP",
+                deliveryOrder.getUser(), deliveryOrder.getId(), deliveryOrder.getOrderNumber(),
+                java.util.Map.of("VAR1", deliveryOrder.getOrderNumber(), "VAR2", code), item.getOtpExpiresAt());
         DriverOrder order = driverOrder(item);
         return new OneTimeOtp(orderId, order.orderNumber(), order.recipientName(), order.phone(), code, null);
     }
@@ -371,6 +382,10 @@ public class DeliveryBatchService {
             transitionOrder(item.getOrder(), "SHIPPED", "DELIVERED", "Delivery confirmed with order OTP.");
             item.setOtpConsumedAt(Instant.now());
             item.setActiveOrderId(null);
+        } else if ("NORMAL_DELIVERY".equals(batch.getOperationType()) && "OUT_FOR_DELIVERY".equals(next)) {
+            Order order = item.getOrder();
+            notifications.enqueueSms("order:" + order.getId() + ":OUT_FOR_DELIVERY",
+                    "OUT_FOR_DELIVERY", order, java.util.Map.of("VAR1", order.getOrderNumber()));
         } else if ("RETURN_PICKUP".equals(batch.getOperationType()) && "PICKED_UP".equals(next)) {
             ReturnRequest requestForPickup = returnRequests.findByIdForUpdate(item.getReturnRequest().getId())
                     .orElseThrow(() -> notFound("RETURN_NOT_FOUND", "Return request was not found."));
@@ -424,10 +439,22 @@ public class DeliveryBatchService {
     }
 
     private void transitionOrder(Order order, String expected, String next, String note) {
+        if (!"DELIVERY".equals(order.getFulfillmentType())) {
+            throw conflict("ORDER_NOT_ELIGIBLE", "Store pickup orders cannot use the delivery status workflow.");
+        }
         if (!expected.equals(order.getStatus())) {
             throw conflict("ORDER_STATUS_CONFLICT", "The order status no longer matches the delivery operation.");
         }
         order.setStatus(next);
+        String smsType = switch (next) {
+            case "SHIPPED" -> "ORDER_SHIPPED";
+            case "DELIVERED" -> "ORDER_DELIVERED";
+            default -> null;
+        };
+        if (smsType != null) {
+            notifications.enqueueSms("order:" + order.getId() + ":" + smsType,
+                    smsType, order, java.util.Map.of("VAR1", order.getOrderNumber()));
+        }
         if ("DELIVERED".equals(next) && loyaltyService != null) loyaltyService.processDeliveredOrder(order);
         OrderStatusHistory entry = new OrderStatusHistory();
         entry.setOrder(order);
@@ -503,6 +530,12 @@ public class DeliveryBatchService {
             item.setOtpConsumedAt(null);
             item.setOtpExpiresAt(expiry);
             DriverOrder order = driverOrder(item);
+            if (item.getOrder() != null) {
+                Order deliveryOrder = item.getOrder();
+                notifications.enqueueSms(otpEventKey(deliveryOrder.getId(), code), "DELIVERY_OTP",
+                        deliveryOrder.getUser(), deliveryOrder.getId(), deliveryOrder.getOrderNumber(),
+                        java.util.Map.of("VAR1", deliveryOrder.getOrderNumber(), "VAR2", code), expiry);
+            }
             codes.add(new OneTimeOtp(item.getOrder() == null ? item.getReturnRequest().getId() : item.getOrder().getId(),
                     item.getOrder() == null ? item.getReturnRequest().getRequestNumber() : item.getOrder().getOrderNumber(),
                     order.recipientName(), order.phone(), code,
@@ -845,6 +878,7 @@ public class DeliveryBatchService {
         if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException("DREAMSPEX_OTP_SECRET must contain at least 32 bytes.");
         }
+
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
@@ -853,6 +887,10 @@ public class DeliveryBatchService {
         } catch (Exception exception) {
             throw new IllegalStateException("Delivery OTP hash could not be generated.", exception);
         }
+    }
+
+    private String otpEventKey(String orderId, String otp) {
+        return "order:" + orderId + ":DELIVERY_OTP:" + otpHash(orderId, otp);
     }
 
     private String sha256(String value) {

@@ -1,5 +1,6 @@
 import { apiFetch as fetch } from './apiClient';
 import { apiBaseUrl } from '../config/api';
+import { franchiseService } from './franchiseService';
 
 export type LoginPayload = { identifier: string; password: string };
 export type RegisterPayload = { name: string; email: string; phone: string; password: string; referralCode?: string };
@@ -66,6 +67,14 @@ async function request<T>(path: string, init: RequestInit) {
 export const authService = {
   login: (payload: LoginPayload) =>
     request<TokenResponse>('/api/v1/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
+  franchiseLogin: async (payload: LoginPayload) => {
+    const response = await franchiseService.login(payload.identifier, payload.password);
+    if (!response.ok) {
+      const problem = await response.json().catch(() => ({})) as ProblemResponse;
+      throw new AuthApiError(problem.message || `Request failed (${response.status})`, response.status);
+    }
+    return response.json() as Promise<TokenResponse>;
+  },
   register: (payload: RegisterPayload) =>
     request<RegisterResponse>('/api/v1/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   verifyOtp: (challengeId: string, otp: string) =>
@@ -78,6 +87,11 @@ export const authService = {
     request<ResetPasswordResponse>('/api/v1/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ challengeId, otp, newPassword }),
+    }),
+  setupFranchisePassword: (token: string, newPassword: string) =>
+    request<ResetPasswordResponse>('/api/v1/auth/franchise/setup', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
     }),
   refresh: (refreshToken: string) =>
     request<TokenResponse>('/api/v1/auth/refresh', { method: 'POST', body: JSON.stringify({ refreshToken }) }),

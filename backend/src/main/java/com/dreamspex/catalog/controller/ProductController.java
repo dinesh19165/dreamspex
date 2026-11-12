@@ -22,11 +22,13 @@ public class ProductController {
             @RequestParam(required=false) String frameType, @RequestParam(required=false) String color,
             @RequestParam(required=false) String badge, @RequestParam(defaultValue="false") boolean availableOnly,
             @RequestParam(required=false) BigDecimal minPrice, @RequestParam(required=false) BigDecimal maxPrice, @RequestParam(defaultValue="0") int page,
-            @RequestParam(defaultValue="20") int pageSize, @RequestParam(defaultValue="newest") String sort) {
+            @RequestParam(defaultValue="20") int pageSize, @RequestParam(defaultValue="newest") String sort,
+            @RequestParam(required=false) String franchiseId) {
         return service.search(q, brand, category, material, gender, frameShape, frameType, color, badge,
-                availableOnly, minPrice, maxPrice, page, pageSize, sort);
+                availableOnly, minPrice, maxPrice, page, pageSize, sort, franchiseId);
     }
-    @GetMapping("/{id}") ProductResponse get(@PathVariable String id) { return service.publicProduct(id); }
+    @GetMapping("/{id}") ProductResponse get(@PathVariable String id,
+            @RequestParam(required=false) String franchiseId) { return service.publicProduct(id, franchiseId); }
     @PostMapping @PreAuthorize("hasRole('SUPER_ADMIN')") @ResponseStatus(HttpStatus.CREATED)
     ProductResponse create(@Valid @RequestBody ProductRequest request) { return service.saveProduct(null, request); }
     @PatchMapping("/{id}") @PreAuthorize("hasRole('SUPER_ADMIN')")

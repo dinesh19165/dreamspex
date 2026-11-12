@@ -5,6 +5,7 @@ import { couponService, type CouponResult } from '../services/couponService';
 import { getCartItemKey, withoutCartItem } from '../utils/cart';
 import { cartService, type CartResponse } from '../services/cartService';
 import { useAuth } from './useAuth';
+import { useFranchiseLocation } from './FranchiseLocationContext';
 
 export type CartItem = Product & {
   quantity: number;
@@ -78,6 +79,7 @@ function mapCart(response: CartResponse): CartItem[] {
 
 export function ShopProvider({ children }: { children: ReactNode }) {
   const { user, role } = useAuth();
+  const { selectedLocationId } = useFranchiseLocation();
   const [wishlist, setWishlist] = useState<Product[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('dream-spex-wishlist') ?? '[]') as Product[];
@@ -132,14 +134,14 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     setCartLoading(true);
     setCartError('');
     try {
-      applyCartResponse(await cartService.get(user.accessToken));
+      applyCartResponse(await cartService.get(user.accessToken, selectedLocationId || undefined));
     } catch (reason) {
       setCartError(reason instanceof Error ? reason.message : 'Unable to load your cart.');
     } finally {
       setCartLoadedToken(user.accessToken);
       setCartLoading(false);
     }
-  }, [applyCartResponse, role, user?.accessToken]);
+  }, [applyCartResponse, role, selectedLocationId, user?.accessToken]);
 
   useEffect(() => {
     void loadBackendCart();
@@ -193,14 +195,16 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const addToCart = useCallback(async (product: Product, quantity = 1) => {
     if (!product.variantId) throw new Error('This product is not linked to an available backend variant.');
     if (!Number.isInteger(quantity) || quantity < 1) throw new Error('Quantity must be at least 1.');
-    await mutateCart((accessToken) => cartService.add(accessToken, product.variantId!, quantity), 'Product added to cart.');
-  }, [mutateCart]);
+    await mutateCart((accessToken) => cartService.add(accessToken, product.variantId!, quantity,
+      undefined, undefined, selectedLocationId || undefined), 'Product added to cart.');
+  }, [mutateCart, selectedLocationId]);
 
   const addConfiguredToCart = useCallback(async (product: Product, lensSelection: LensSelection, prescriptionId: string) => {
     if (!product.variantId) throw new Error('This product is not linked to an available backend variant.');
     if (!lensSelection.codes?.length) throw new Error('Select one available lens type before adding this frame.');
-    await mutateCart((accessToken) => cartService.add(accessToken, product.variantId!, 1, prescriptionId, lensSelection.codes), 'Prescription lenses added to cart.');
-  }, [mutateCart]);
+    await mutateCart((accessToken) => cartService.add(accessToken, product.variantId!, 1, prescriptionId,
+      lensSelection.codes, selectedLocationId || undefined), 'Prescription lenses added to cart.');
+  }, [mutateCart, selectedLocationId]);
 
   const removeFromWishlist = useCallback((productId: number) => {
     setWishlist((current) => current.filter((item) => item.id !== productId));
@@ -226,7 +230,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       await cartService.remove(user.accessToken, item.backendItemId);
       setCartNotice('Product removed from cart.');
       try {
-        applyCartResponse(await cartService.get(user.accessToken));
+        applyCartResponse(await cartService.get(user.accessToken, selectedLocationId || undefined));
       } catch (reason) {
         setCartError(reason instanceof Error
           ? `Product removed, but the cart could not be refreshed: ${reason.message}`
@@ -244,14 +248,15 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       pendingCartRemovals.current.delete(itemKey);
       setCartLoading(false);
     }
-  }, [applyCartResponse, cart, role, user?.accessToken]);
+  }, [applyCartResponse, cart, role, selectedLocationId, user?.accessToken]);
 
   const updateQuantity = useCallback(async (itemKey: string, quantity: number) => {
     const item = cart.find((value) => getCartItemKey(value) === itemKey);
     if (!item?.backendItemId) throw new Error('Cart item is not available in the backend cart.');
     if (quantity < 1) return removeFromCart(itemKey);
-    await mutateCart((accessToken) => cartService.update(accessToken, item.backendItemId!, quantity), 'Cart quantity updated.');
-  }, [cart, mutateCart, removeFromCart]);
+    await mutateCart((accessToken) => cartService.update(accessToken, item.backendItemId!, quantity,
+      selectedLocationId || undefined), 'Cart quantity updated.');
+  }, [cart, mutateCart, removeFromCart, selectedLocationId]);
 
   const clearCart = useCallback(() => setCart([]), []);
   const applyCoupon = useCallback(async (code: string) => {

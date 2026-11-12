@@ -30,7 +30,9 @@ describe('checkout quote requests', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
     expect(init.method).toBe('POST');
-    expect(JSON.parse(String(init.body))).toEqual({ addressId: 'address-1', couponCode: null });
+    expect(JSON.parse(String(init.body))).toEqual({
+      addressId: 'address-1', couponCode: null, fulfillmentType: 'DELIVERY',
+    });
   });
 
   it('preserves the backend validation message and invalid field for HTTP 422', async () => {
@@ -78,6 +80,26 @@ describe('checkout quote requests', () => {
       addressId: 'address-1',
       couponCode: null,
       loyaltyPoints: 120,
+      fulfillmentType: 'DELIVERY',
+    });
+  });
+
+  it('sends pickup without a delivery address and pins the order to the selected store', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({
+      subtotal: 800, discount: 0, couponDiscount: 0, membershipDiscount: 0,
+      shipping: 0, total: 800, couponCode: null,
+      deliveryAvailability: {
+        available: true, status: 'AVAILABLE', distanceKm: null, radiusKm: null,
+        storeName: 'Pickup Store', message: 'Pickup is available at Pickup Store.',
+      },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await orderService.quote('access-token', null, null, 0, 'store-1', 'PICKUP');
+
+    const [, init] = fetchMock.mock.calls[0] as [RequestInfo | URL, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      couponCode: null, fulfillmentType: 'PICKUP', franchiseId: 'store-1',
     });
   });
 });

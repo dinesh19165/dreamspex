@@ -5,14 +5,17 @@ import App from './App.tsx'
 import { ShopProvider } from './context/ShopContext'
 import { ThemeProvider } from './context/ThemeProvider'
 import { AuthProvider } from './context/AuthProvider'
+import { FranchiseLocationProvider } from './context/FranchiseLocationContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <AuthProvider>
-        <ShopProvider>
-          <App />
-        </ShopProvider>
+        <FranchiseLocationProvider>
+          <ShopProvider>
+            <App />
+          </ShopProvider>
+        </FranchiseLocationProvider>
       </AuthProvider>
     </ThemeProvider>
   </StrictMode>,

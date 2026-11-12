@@ -27,6 +27,8 @@ import {
   type ReturnEligibility,
 } from '../services/returnService';
 import { loyaltyService, type LoyaltyDashboard, type Wallet } from '../services/loyaltyService';
+import OrderReviewSection from '../components/reviews/OrderReviewSection';
+import { isOrderFulfilled, orderStatusLabel } from '../utils/orderWorkflow';
 
 function AccountShell({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">{children}</main><Footer /></div>;
@@ -125,9 +127,9 @@ export function OrdersPage() {
         orderService.list(accessToken),
         returnService.list(accessToken),
       ]);
-      const deliveredOrders = nextOrders.filter((order) =>
-        order.status === 'DELIVERED' && order.paymentStatus === 'PAID');
-      const results = await Promise.all(deliveredOrders.map(async (order) => {
+      const fulfilledOrders = nextOrders.filter((order) =>
+        isOrderFulfilled(order.status, order.fulfillmentType) && order.paymentStatus === 'PAID');
+      const results = await Promise.all(fulfilledOrders.map(async (order) => {
         try {
           return { orderId: order.id, eligibility: await returnService.eligibility(accessToken, order.id) };
         } catch (reason) {
@@ -167,17 +169,19 @@ export function OrdersPage() {
 
   useEffect(() => { void loadOrders(); }, [loadOrders]);
 
-  return <AccountShell><SectionTitle eyebrow="My orders" title="Your order history" description="Review purchases, payment status, and delivery progress." /><div className="mt-5 flex justify-end"><Link to="/returns" className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:border-cyan-400/40"><RotateCcw className="h-4 w-4 text-cyan-300" />My returns</Link></div>{loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]">Loading your orders...</p> : error ? <div className="mt-8 rounded-[24px] border border-red-400/30 bg-red-400/10 p-8 text-center"><p className="text-sm text-red-200" role="alert">{error}</p><Button type="button" variant="ghost" className="mt-5" onClick={() => void loadOrders()}><RefreshCw className="mr-2 h-4 w-4" />Retry</Button></div> : orders.length === 0 ? <EmptyState icon={Package} title="No orders yet" copy="Your completed Dream Spex purchases will appear here with their product details and delivery status." to="/shop" action="Explore eyewear" /> : <div className="mt-8 grid gap-5">{orders.map((order) => {
+  return <AccountShell><SectionTitle eyebrow="My orders" title="Your order history" description="Review purchases, payment status, and order progress." /><div className="mt-5 flex justify-end"><Link to="/returns" className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:border-cyan-400/40"><RotateCcw className="h-4 w-4 text-cyan-300" />My returns</Link></div>{loading ? <p className="mt-8 text-sm text-[var(--text-secondary)]">Loading your orders...</p> : error ? <div className="mt-8 rounded-[24px] border border-red-400/30 bg-red-400/10 p-8 text-center"><p className="text-sm text-red-200" role="alert">{error}</p><Button type="button" variant="ghost" className="mt-5" onClick={() => void loadOrders()}><RefreshCw className="mr-2 h-4 w-4" />Retry</Button></div> : orders.length === 0 ? <EmptyState icon={Package} title="No orders yet" copy="Your completed Dream Spex purchases will appear here with their product details and order status." to="/shop" action="Explore eyewear" /> : <div className="mt-8 grid gap-5">{orders.map((order) => {
     const orderReturns = returns.filter((entry) => entry.orderId === order.id);
     const eligibility = returnEligibility[order.id] ?? null;
-    return <article key={order.id} className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:border-cyan-400/40"><Link to={`/orders/${encodeURIComponent(order.id)}`} className="block rounded-xl focus-visible:outline-2 focus-visible:outline-cyan-400"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[0.25em] text-cyan-300">{order.orderNumber}</p><p className="mt-2 text-sm text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</p></div><p className="text-lg font-semibold text-[var(--text-primary)]">{formatINR(order.total)}</p></div><div className="mt-5 grid gap-2 text-sm text-[var(--text-secondary)] sm:grid-cols-2"><p>{order.items.reduce((total, item) => total + item.quantity, 0)} item{order.items.reduce((total, item) => total + item.quantity, 0) === 1 ? '' : 's'} · {order.items.map((item) => item.productName).join(', ')}</p><p className="sm:text-right"><span className="text-[var(--text-primary)]">Payment:</span> {order.paymentStatus} · <span className="text-[var(--text-primary)]">Order:</span> {order.status}</p></div></Link>{orderReturns.map((entry) => <div key={entry.id} className="mt-4 rounded-xl bg-[var(--bg-primary)] p-4 text-sm"><p className="font-semibold">Return {entry.requestNumber} · {entry.status.replaceAll('_', ' ')}</p>{entry.refunds.map((refund, index) => <p key={`${refund.createdAt}-${index}`} className="mt-2 text-[var(--text-secondary)]">Refund {formatINR(refund.amount)} · {refund.status.replaceAll('_', ' ')} · Razorpay reference: {refund.providerRefundId ?? 'Pending'}</p>)}</div>)}
-      {order.status === 'DELIVERED' && order.paymentStatus === 'PAID' ? <div className="mt-5 space-y-3">{order.items.map((item) => {
+    return <article key={order.id} className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:border-cyan-400/40"><Link to={`/orders/${encodeURIComponent(order.id)}`} className="block rounded-xl focus-visible:outline-2 focus-visible:outline-cyan-400"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[0.25em] text-cyan-300">{order.orderNumber}</p><p className="mt-2 text-sm text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</p></div><p className="text-lg font-semibold text-[var(--text-primary)]">{formatINR(order.total)}</p></div><div className="mt-5 grid gap-2 text-sm text-[var(--text-secondary)] sm:grid-cols-2"><p>{order.items.reduce((total, item) => total + item.quantity, 0)} item{order.items.reduce((total, item) => total + item.quantity, 0) === 1 ? '' : 's'} · {order.items.map((item) => item.productName).join(', ')}</p><p className="sm:text-right"><span className="text-[var(--text-primary)]">Payment:</span> {order.paymentStatus} · <span className="text-[var(--text-primary)]">Order:</span> {orderStatusLabel(order.status, order.fulfillmentType)}</p></div></Link>{orderReturns.map((entry) => <div key={entry.id} className="mt-4 rounded-xl bg-[var(--bg-primary)] p-4 text-sm"><p className="font-semibold">Return {entry.requestNumber} · {entry.status.replaceAll('_', ' ')}</p>{entry.refunds.map((refund, index) => <p key={`${refund.createdAt}-${index}`} className="mt-2 text-[var(--text-secondary)]">Refund {formatINR(refund.amount)} · {refund.status.replaceAll('_', ' ')} · Razorpay reference: {refund.providerRefundId ?? 'Pending'}</p>)}</div>)}
+      {isOrderFulfilled(order.status, order.fulfillmentType) && order.paymentStatus === 'PAID' ? <div className="mt-5 space-y-3">{order.items.map((item) => {
         const action = getOrderItemReturnAction(eligibility, orderReturns, item.id);
         return <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[var(--bg-primary)] p-4 text-sm">
           <div><p className="font-medium">{item.productName} · Qty {item.quantity}</p>{action.statusLabel ? <p className="mt-1 text-xs text-[var(--text-secondary)]">{action.statusLabel}</p> : null}</div>
           {action.canRequest ? <Link to={`/returns/new?orderId=${encodeURIComponent(order.id)}`} className="inline-flex items-center gap-2 rounded-full bg-[var(--brand-green)] px-4 py-2.5 text-sm font-semibold text-[#101810]"><RotateCcw className="h-4 w-4" />Return / Replace{action.remainingQuantity < item.quantity ? ` · ${action.remainingQuantity} remaining` : ''}</Link> : null}
         </div>;
-      })}</div> : null}</article>;
+      })}</div> : null}
+      {isOrderFulfilled(order.status, order.fulfillmentType) ? <div className="mt-5"><OrderReviewSection orderId={order.id} orderStatus={order.status} /></div> : null}
+    </article>;
   })}</div>}</AccountShell>;
 }
 

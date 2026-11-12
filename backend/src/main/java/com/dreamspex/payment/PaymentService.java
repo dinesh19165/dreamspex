@@ -1,5 +1,6 @@
 package com.dreamspex.payment;
 import com.dreamspex.auth.entity.User;
+import com.dreamspex.franchise.FranchiseService;
 import com.dreamspex.common.ApiException;
 import com.dreamspex.notification.NotificationService;
 import com.dreamspex.order.Order;
@@ -15,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -27,6 +29,7 @@ import static com.dreamspex.order.OrderDtos.*;
 @Service
 public class PaymentService {
     @Autowired private LoyaltyService loyaltyService;
+    @Autowired(required = false) private FranchiseService franchiseService;
     private static final Set<String> REFUND_WEBHOOK_EVENTS =
             Set.of("refund.created", "refund.processed", "refund.failed");
     private static final Set<String> REFUND_STATUSES = Set.of("created", "pending", "processed", "failed");
@@ -65,6 +68,7 @@ public class PaymentService {
             throw new ApiException(HttpStatus.CONFLICT, "PAYMENT_NOT_ALLOWED",
                     "Payment cannot be created for this order.");
         }
+        if (franchiseService != null) franchiseService.ensureOrderReserved(order);
         Payment payment = payments.findByProviderAndOrderId(properties.provider(), order.getId()).orElseGet(() -> {
             Payment created = new Payment();
             created.setOrder(order);
@@ -136,6 +140,8 @@ public class PaymentService {
             payment.setStatus("FAILED");
             payment.getOrder().setPaymentStatus("FAILED");
             Order order = payment.getOrder();
+            if (franchiseService != null) franchiseService.releaseOrder(order, false);
+            enqueuePaymentFailure(order);
             if (loyaltyService != null && order.getLoyaltyPointsRedeemed() > 0) {
                 loyaltyService.restoreRedemption(order,
                         "ORDER:" + order.getId() + ":PAYMENT_FAILED_REDEMPTION_REVERSAL",
@@ -210,6 +216,8 @@ public class PaymentService {
                         "Payment for order " + payment.getOrder().getOrderNumber() + " was confirmed.");
             } else if ("FAILED".equals(payment.getStatus())) {
                 payment.getOrder().setPaymentStatus("FAILED");
+                if (franchiseService != null) franchiseService.releaseOrder(payment.getOrder(), false);
+                enqueuePaymentFailure(payment.getOrder());
             }
             saveWebhookEvent(eventId, payload);
             return paymentResponse(payments.save(payment));
@@ -268,6 +276,9 @@ public class PaymentService {
     private void markOrderPaid(Order order, User changedBy) {
         order.setPaymentStatus("PAID");
         order.setStatus("PAID");
+        if (franchiseService != null) franchiseService.commitOrder(order);
+        notifications.enqueueSms("order:" + order.getId() + ":PAYMENT_SUCCESSFUL", "PAYMENT_SUCCESSFUL",
+                order, Map.of("VAR1", order.getOrderNumber()));
         if (order.getHistory().stream().noneMatch(history -> "PAID".equals(history.getStatus()))) {
             OrderStatusHistory history = new OrderStatusHistory();
             history.setOrder(order);
@@ -276,6 +287,11 @@ public class PaymentService {
             history.setChangedBy(changedBy);
             order.getHistory().add(history);
         }
+    }
+
+    private void enqueuePaymentFailure(Order order) {
+        notifications.enqueueSms("order:" + order.getId() + ":PAYMENT_FAILED", "PAYMENT_FAILED",
+                order, Map.of("VAR1", order.getOrderNumber()));
     }
 
     private void requireOrderAmount(Payment payment) {

@@ -40,13 +40,39 @@ Expected statuses: `400` malformed input, `401` unauthenticated/invalid token, `
 |---|---|---|---|
 | `GET /categories` | Public | Active categories, sorted | Resp `{ "items":[{"id":"c1","name":"Frames","slug":"frames","imageUrl":"..."}] }` |
 | `GET /categories/{slug}` | Public | Slug lookup | Resp category plus product count |
-| `GET /products` | Public | `q`, category, brand, color, badge, frameShape, frameType, minPrice, maxPrice, sort, page, pageSize | Resp item includes `id`, `name`, `price`, `compareAtPrice`, `primaryImageUrl`, `rating`, `reviewCount`, `stockStatus` |
-| `GET /products/{id}` | Public | Active product detail | Resp product, variants, images, stock summary, review summary |
+| `GET /products` | Public | `q`, category, brand, color, badge, frameShape, frameType, minPrice, maxPrice, sort, page, pageSize | Resp item includes `id`, `name`, `price`, `compareAtPrice`, variants, images, and `ratingSummary` (average, verified count, 1–5 distribution) |
+| `GET /products/{id}` | Public | Published product detail | Resp product, variants, images, stock summary, and verified `ratingSummary` |
 | `GET /products/{id}/variants` | Public | Variant/color/size/lens options | Resp `{ "items":[{"id":"v1","sku":"...","additionalPrice":"0.00"}] }` |
-| `GET /products/{id}/reviews` | Public | Approved reviews, pagination | Resp `{ "items":[{"rating":5,"title":"...","content":"...","verifiedPurchase":true}] }` |
-| `POST /products/{id}/reviews` | Customer | Purchased item, rating 1–5, title/content limits | Req `{ "orderItemId":"oi1","rating":5,"title":"...","content":"..." }`; Resp pending review |
+| `GET /products/{id}/reviews` | Public | Rating summary plus approved 4- and 5-star reviews for still-delivered, non-returned purchases | Resp `{ "summary":{"averageRating":4.5,"totalReviews":2,"distribution":{"1":0,"2":0,"3":1,"4":1,"5":0}},"reviews":[{"rating":4,"title":"...","content":"...","customerName":"...","submittedAt":"..."}] }` |
 | `GET /offers` | Public | Active coupons/banners safe for public display | Resp `{ "items":[{"code":"LUXE20","discountLabel":"20% OFF"}] }` |
 | `GET /banners?placement=HOME_HERO` | Public | Active time-windowed content | Resp banner list |
+
+## Verified-purchase product reviews (6 endpoints)
+
+The backend derives the customer from the authenticated principal and verifies the requested product against the order's product variants. Submission and edits are allowed only while the owned order is `DELIVERED` and the product has not been returned. The database enforces one review per customer, order, and product. Edits return the review to `PENDING`.
+
+| Method and endpoint | Role | Purpose and key validation |
+|---|---|---|
+| `GET /me/orders/{orderId}/reviews` | `CUSTOMER` | Return purchased product details, eligibility, and any existing review for the caller's order. |
+| `POST /me/orders/{orderId}/products/{productId}/reviews` | `CUSTOMER` | Submit a 1–5 rating, title, written feedback, and up to five HTTP(S) image URLs. Customer ID is never accepted from the request. |
+| `PUT /me/product-reviews/{reviewId}` | `CUSTOMER` | Edit the caller's eligible review; editing resets moderation to `PENDING`. |
+| `GET /products/{productId}/reviews` | Public | Return the aggregate plus only approved 4- and 5-star public comments. |
+| `GET /admin/product-reviews` | `SUPER_ADMIN` | View every submission, including pending and lower-rated private feedback, with customer/order details and statistics. |
+| `PATCH /admin/product-reviews/{reviewId}/moderation` | `SUPER_ADMIN` | Set status to `APPROVED`, `HIDDEN`, or `REJECTED`. Only approved 4- and 5-star reviews can be public. |
+
+Product rating averages and the 1–5 distribution include every eligible, non-rejected verified-purchase review, including pending/hidden and 1–3-star feedback. Rejected reviews, non-delivered orders, and returned products are excluded from public aggregates. Lower ratings remain persisted and visible to Super Admins.
+
+## Customer transactional SMS
+
+Order/payment, delivery, delivery-OTP, and return/refund handlers enqueue customer SMS in the same transaction as the event. A background worker sends queued items and retries transient provider failures (up to eight attempts with backoff). The unique event key prevents duplicate outbox records when an existing event handler is retried. Delivery OTP SMS uses the existing generated OTP and expires from the queue when that OTP expires. Messages are sent only to a registered Indian mobile number with `phone_verified_at` set.
+
+| Method and endpoint | Role | Purpose |
+|---|---|---|
+| `GET /admin/sms-notifications` | `SUPER_ADMIN` | Latest 500 SMS results with order number, masked mobile, event type, status, provider message ID, and timestamp. Message content and OTP values are never returned. |
+
+Set `DREAMSPEX_SMS_PROVIDER=mock` for local development (the default); mock mode never contacts an SMS provider. To enable MSG91 in a deployment, set `DREAMSPEX_SMS_PROVIDER=msg91` and `DREAMSPEX_SMS_MSG91_AUTH_KEY` in the backend environment. Configure each `DREAMSPEX_SMS_TEMPLATES_<EVENT>` variable to that event's approved MSG91 Flow/DLT template ID. MSG91 templates must be registered and approved by the operator's Indian DLT operator; the request uses the registered template ID and positional `VAR1`/`VAR2`/`VAR3` values. Event variable order is: order events/payment (order number); delivery OTP (order number, OTP); return events (return number, order number); refunds (order number, amount, provider reference). The Flow endpoint can be overridden with `DREAMSPEX_SMS_MSG91_FLOW_URL`. Credentials are environment-only and must not be put in frontend or local committed configuration. Queued template values (including OTPs) are AES-GCM encrypted with the configured OTP secret, delivery-link secret, or JWT secret fallback; keep the selected secret stable while queued notifications exist.
+
+Supported event template keys are `ORDER_PLACED`, `ORDER_CONFIRMED`, `PAYMENT_SUCCESSFUL`, `PAYMENT_FAILED`, `ORDER_SHIPPED`, `OUT_FOR_DELIVERY`, `DELIVERY_OTP`, `ORDER_DELIVERED`, `ORDER_CANCELLED`, `REFUND_INITIATED`, `REFUND_COMPLETED`, `RETURN_APPROVED`, and `RETURN_PICKUP_SCHEDULED`. Each `DREAMSPEX_SMS_TEMPLATES_<EVENT>` must point at the matching approved template; use the same variable positions when registering the templates with MSG91.
 
 ## Cart and wishlist (11 endpoints)
 
@@ -134,15 +160,23 @@ COD still creates an order with `paymentStatus=PENDING` and must not be marked p
 | `GET /me/notifications`, `PATCH /me/notifications/{id}/read` | Customer | Notification list/read |
 | `GET /me/wallet` | Customer | Read balance only until wallet scope is approved |
 
-## Stores, content, franchise, and Super Admin (27 endpoints)
+## Stores, content, franchise, and Super Admin (31 endpoints)
 
 ### Public stores and services
 
 `GET /stores`, `GET /stores/{id}`, `GET /stores?postalCode=...`, `GET /services` — public active stores/services; validate bounded page/filter values.
 
+The customer Store Locator uses the implemented `GET /api/v1/franchises` storefront endpoint. It returns active franchise-managed stores with public address, coordinates, store contact name/phone, opening hours, and available services; owner email and franchise-user data are excluded. Search and distance sorting are performed client-side.
+
+`POST /api/v1/franchise-applications` — public validated franchise enquiry submission. Creates a pending application and returns its reference; it does not create an account or store. Active duplicate enquiries for the same contact and city return `409`.
+
 ### Super Admin
 
 `GET/POST /admin/franchises`, `GET/PATCH /admin/franchises/{id}`, `POST /admin/franchises/{id}/activate`, `GET/POST/PATCH /admin/franchises/{id}/users`, `GET /admin/dashboard`, `GET /admin/reports`, `GET /admin/customers`, `GET /admin/users`, `PATCH /admin/users/{id}/status`, `GET/POST/PATCH /admin/products`, `GET/PATCH /admin/inventory`, `GET/PATCH /admin/settings`, `GET/POST/PATCH /admin/banners`.
+
+The implemented franchise edit and status operation is `PATCH /api/v1/admin/franchises/{id}`; it is protected by the Super Admin role, updates the existing store record, and accepts `ACTIVE`, `INACTIVE`, or `SUSPENDED` status without deleting associated orders or inventory.
+
+`GET /api/v1/admin/franchise-applications`, `GET /api/v1/admin/franchise-applications/{id}`, `PATCH /api/v1/admin/franchise-applications/{id}` — Super Admin-only enquiry review, status updates, and append-only internal notes. Status values are `PENDING`, `CONTACTED`, `UNDER_REVIEW`, `APPROVED`, and `REJECTED`; approval does not automatically create a franchise account or store.
 
 All mutations validate unique codes/SKUs, status transitions, referenced records, and audit the actor. Product and inventory APIs must not permit destructive changes that invalidate historical orders.
 
@@ -154,4 +188,4 @@ Every repository query includes the resolved authorized `franchiseId`; request b
 
 ## Endpoint count
 
-The mapping contains **102 proposed endpoint operations** when grouped multi-method rows are expanded: authentication 10, catalog/content 9, cart/wishlist 11, delivery/checkout/orders/payments/after-sales 15, customer/prescription/membership 19, stores/services 4, Super Admin 21, and Franchise Admin 13. Counts will be finalized with product decisions for optional wallet, referral, contact/newsletter, service booking, and after-sales persistence.
+The mapping contains **106 proposed endpoint operations** when grouped multi-method rows are expanded: authentication 10, catalog/content 9, cart/wishlist 11, delivery/checkout/orders/payments/after-sales 15, customer/prescription/membership 19, stores/services 5, Super Admin 24, and Franchise Admin 13. Counts will be finalized with product decisions for optional wallet, referral, contact/newsletter, service booking, and after-sales persistence.

@@ -111,7 +111,7 @@ public class AdminOrderController {
     OrderResponse status(Authentication authentication, @PathVariable String id,
                          @Valid @RequestBody StatusRequest request) {
         OrderResponse result = service.adminStatus(authentication, id, request);
-        if ("DELIVERED".equals(request.status())) {
+        if ("DELIVERED".equals(request.status()) || "PICKED_UP".equals(request.status())) {
             orderRepository.findByIdForUpdate(id).ifPresent(loyaltyService::processDeliveredOrder);
         } else if ("CANCELLED".equals(request.status())) {
             orderRepository.findByIdForUpdate(id).ifPresent(order -> loyaltyService.restoreRedemption(order,

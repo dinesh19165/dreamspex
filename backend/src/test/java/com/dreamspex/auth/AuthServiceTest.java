@@ -11,6 +11,9 @@ import com.dreamspex.auth.repository.OtpChallengeRepository;
 import com.dreamspex.auth.repository.RefreshTokenRepository;
 import com.dreamspex.auth.repository.RoleRepository;
 import com.dreamspex.auth.repository.UserRepository;
+import com.dreamspex.franchise.FranchiseUser;
+import com.dreamspex.franchise.FranchiseUserRepository;
+import com.dreamspex.admin.Store;
 import com.dreamspex.auth.service.AuthService;
 import com.dreamspex.auth.service.OtpDeliveryService;
 import static com.dreamspex.auth.dto.AuthDtos.LoginRequest;
@@ -24,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 import java.time.Instant;
@@ -47,6 +51,7 @@ class AuthServiceTest {
     @Mock CustomerProfileRepository profiles;
     @Mock OtpDeliveryService otpDelivery;
     @Mock AuditLogService auditLogs;
+    @Mock FranchiseUserRepository franchiseUsers;
     private AuthService service;
 
     @BeforeEach
@@ -55,6 +60,39 @@ class AuthServiceTest {
                 new SecurityProperties("issuer", "12345678901234567890123456789012",
                         "otp-secret-123456789012345678901234", 15, 30,
                         "link-secret-123456789012345678901234"), profiles, otpDelivery, auditLogs);
+        ReflectionTestUtils.setField(service, "franchiseUsers", franchiseUsers);
+    }
+
+    @Test
+    void franchiseInvitationIsHashedConsumedOnceAndRevokesExistingSessions() throws Exception {
+        String token = "A".repeat(43);
+        String tokenHash = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(token.getBytes(StandardCharsets.UTF_8)));
+        User user = userWithRole("FRANCHISE_ADMIN");
+        Store store = new Store();
+        store.setFranchiseManaged(true);
+        store.setStatus("ACTIVE");
+        FranchiseUser link = new FranchiseUser();
+        link.setStore(store);
+        link.setUser(user);
+        link.setInvitationTokenHash(tokenHash);
+        link.setInvitationExpiresAt(Instant.now().plusSeconds(600));
+        when(franchiseUsers.findByInvitationTokenHashForUpdate(tokenHash)).thenReturn(Optional.of(link));
+        when(passwordEncoder.encode("an intentionally secure passphrase")).thenReturn("encoded-password");
+
+        assertTrue(service.setupFranchisePassword(new AuthDtos.FranchiseSetupRequest(
+                token, "an intentionally secure passphrase")).reset());
+
+        assertEquals("encoded-password", user.getPasswordHash());
+        assertEquals(null, link.getInvitationTokenHash());
+        assertEquals(null, link.getInvitationExpiresAt());
+        verify(refreshTokens).revokeUserTokens(org.mockito.ArgumentMatchers.eq(user.getId()),
+                org.mockito.ArgumentMatchers.any(Instant.class));
+
+        when(franchiseUsers.findByInvitationTokenHashForUpdate(tokenHash)).thenReturn(Optional.empty());
+        ApiException error = assertThrows(ApiException.class, () -> service.setupFranchisePassword(
+                new AuthDtos.FranchiseSetupRequest(token, "an intentionally secure passphrase")));
+        assertEquals("INVALID_INVITATION", error.code());
     }
 
     @Test

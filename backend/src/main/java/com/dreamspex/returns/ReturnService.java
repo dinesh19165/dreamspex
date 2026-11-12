@@ -13,6 +13,7 @@ import com.dreamspex.payment.RazorpayGateway;
 import com.dreamspex.prescription.PrescriptionStorage;
 import com.dreamspex.returns.ReturnDtos.*;
 import com.dreamspex.security.CurrentUser;
+import com.dreamspex.franchise.FranchiseService;
 import jakarta.persistence.EntityManager;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,11 +32,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ReturnService {
+    @Autowired(required = false) private FranchiseService franchiseService;
     private static final ZoneId REPORT_ZONE = ZoneId.of("Asia/Kolkata");
     private static final BigDecimal ZERO = new BigDecimal("0.00");
     private static final Set<String> TERMINAL_REQUESTS = Set.of("REJECTED", "CANCELLED");
@@ -345,6 +348,11 @@ public class ReturnService {
         }
         request.setAdminRemarks(trimToNull(input.adminRemarks()));
         changeStatus(request, input.status(), request.getAdminRemarks(), admin);
+        if ("REPLACEMENT_PROCESSING".equals(input.status()) && franchiseService != null) {
+            franchiseService.restockReturnItems(request, admin);
+        }
+        if ("APPROVED".equals(input.status())) returnNotifications.approved(request);
+        if ("PICKUP_SCHEDULED".equals(input.status())) returnNotifications.pickupScheduled(request);
         return adminResponse(request);
     }
 
@@ -395,8 +403,11 @@ public class ReturnService {
         if (!policy.isEnabled() || policy.getReturnWindowDays() == null) {
             return "Return policy has not been configured by Dream Spex.";
         }
-        if (!"DELIVERED".equals(order.getStatus()) || !"PAID".equals(order.getPaymentStatus())) {
-            return "Only delivered orders with confirmed payment can be returned.";
+        boolean fulfilled = "DELIVERED".equals(order.getStatus())
+                || ("PICKED_UP".equals(order.getStatus())
+                && ("PICKUP".equals(order.getFulfillmentType()) || "STORE_PICKUP".equals(order.getFulfillmentType())));
+        if (!fulfilled || !"PAID".equals(order.getPaymentStatus())) {
+            return "Only completed orders with confirmed payment can be returned.";
         }
         if (deliveredAt == null) return "Delivery date could not be verified for this order.";
         if (now.isAfter(deliveredAt.plusSeconds(policy.getReturnWindowDays() * 86400L))) {
@@ -406,7 +417,9 @@ public class ReturnService {
     }
 
     private Instant deliveredAt(Order order) {
-        return order.getHistory().stream().filter(entry -> "DELIVERED".equals(entry.getStatus()))
+        String completionStatus = "PICKUP".equals(order.getFulfillmentType())
+                || "STORE_PICKUP".equals(order.getFulfillmentType()) ? "PICKED_UP" : "DELIVERED";
+        return order.getHistory().stream().filter(entry -> completionStatus.equals(entry.getStatus()))
                 .map(OrderStatusHistory::getCreatedAt).max(Comparator.naturalOrder()).orElse(null);
     }
 

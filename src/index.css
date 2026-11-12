@@ -83,6 +83,15 @@ body {
   color: var(--text-primary);
 }
 
+.navbar-location-selector select {
+  color-scheme: dark;
+}
+
+.navbar-location-selector select option {
+  background-color: #102d4d;
+  color: #fff;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -369,7 +378,7 @@ img {
   border-bottom-color: transparent;
 }
 
-.navbar-home-overlay__header nav[aria-label='Shop categories'] {
+.navbar-home-overlay__header nav[aria-label='Store information'] {
   border-top-color: transparent;
 }
 
@@ -386,7 +395,7 @@ img {
   background: var(--bg-secondary);
 }
 
-.navbar-home-overlay__search button > span:last-child {
+.navbar-home-overlay__search button > span:last-child:not(:only-child) {
   border-color: transparent;
   background: transparent;
 }
@@ -399,26 +408,12 @@ img {
   -webkit-backdrop-filter: blur(6px);
 }
 
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] > div,
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Shop categories'] > div {
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] > div {
   color: rgba(255, 255, 255, 0.94);
 }
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] a:hover,
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] a:focus-visible {
-  color: #fff;
-}
-
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Shop categories'] {
-  border-top-color: transparent;
-}
-
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Shop categories'] a {
-  color: rgba(255, 255, 255, 0.94);
-}
-
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Shop categories'] a:hover,
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Shop categories'] a:focus-visible {
   color: #fff;
 }
 
@@ -441,33 +436,30 @@ img {
   color: rgba(255, 255, 255, 0.72);
 }
 
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > div:last-child > button,
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > div:last-child > a,
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > div:last-child > div > button,
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > div:last-child > div > a {
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-header-actions > button,
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-header-actions > a,
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-header-actions > div > button {
   border-color: rgba(255, 255, 255, 0.48);
   background-color: rgba(8, 15, 11, 0.2);
   color: #fff;
 }
 
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > div:last-child > button:hover,
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > div:last-child > a:hover {
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-header-actions > button:hover,
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-header-actions > a:hover {
   background-color: rgba(255, 255, 255, 0.16);
 }
 
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > nav + div > button {
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search .navbar-location-selector {
   border-color: rgba(255, 255, 255, 0.48);
   background: rgba(8, 15, 11, 0.2);
   color: rgba(255, 255, 255, 0.94);
 }
 
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > nav + div > button svg {
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search .navbar-location-selector svg {
   color: #fff;
 }
 
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header > div > nav + div > button > span:last-child {
-  border-color: rgba(255, 255, 255, 0.36);
-  background: transparent;
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search .navbar-location-selector span {
   color: #fff;
 }
 

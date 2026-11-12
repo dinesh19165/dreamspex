@@ -166,13 +166,21 @@ V33 adds nullable latitude and longitude to saved addresses with pair/range cons
 
 `id`, `user_id CHAR(36) NOT NULL`, `plan_id CHAR(36) NOT NULL`, `provider VARCHAR(60) NULL`, `provider_subscription_id VARCHAR(160) NULL UNIQUE`, `status VARCHAR(24) NOT NULL` (`PENDING`, `ACTIVE`, `PAUSED`, `CANCELLED`, `EXPIRED`), `starts_at DATETIME(6) NULL`, `renews_at DATETIME(6) NULL`, `ends_at DATETIME(6) NULL`. FKs; indexes `(user_id, status)`, `(status, renews_at)`.
 
-#### `reviews`
+#### `product_reviews` (Flyway V45)
 
-`id`, `user_id CHAR(36) NULL`, `product_id CHAR(36) NOT NULL`, `order_item_id CHAR(36) NULL`, `rating TINYINT UNSIGNED NOT NULL`, `title VARCHAR(160) NULL`, `content TEXT NOT NULL`, `status VARCHAR(24) NOT NULL DEFAULT 'PENDING'` (`PENDING`, `APPROVED`, `REJECTED`), `verified_purchase BOOLEAN NOT NULL DEFAULT FALSE`, `published_at DATETIME(6) NULL`. FKs; check rating 1–5; unique `(user_id, order_item_id)` when present; index `(product_id, status)`.
+`id VARCHAR(255)`, `customer_id VARCHAR(255) NOT NULL`, `order_id VARCHAR(255) NOT NULL`, `product_id VARCHAR(255) NOT NULL`, `rating INT NOT NULL` (1–5), `title VARCHAR(120) NOT NULL`, `content TEXT NOT NULL`, `image_urls_json TEXT NULL`, `moderation_status VARCHAR(16) NOT NULL DEFAULT 'PENDING'` (`PENDING`, `APPROVED`, `HIDDEN`, `REJECTED`), `moderated_by VARCHAR(255) NULL`, `moderated_at DATETIME(6) NULL`, `created_at`, `updated_at`. FKs to the existing customer, order, product, and optional moderator records; unique `(customer_id, order_id, product_id)` prevents duplicate reviews; indexes `(product_id, moderation_status, rating)`, `(customer_id, created_at)`, `(order_id)`, and `(moderation_status, created_at)`. Customer/product/order references are restricted from deletion so feedback history remains intact.
+
+Review eligibility is derived from the owned order's `DELIVERED` status and actual order-item variants. Returned order items cannot be reviewed. Rating aggregates count eligible, non-rejected reviews of every rating and moderation state; the public comment feed is separately limited to approved 4- and 5-star reviews. Lower ratings remain stored for private admin review and support.
 
 #### `stores`
 
 `id`, `franchise_id CHAR(36) NULL`, `name VARCHAR(160) NOT NULL`, `address_line1 VARCHAR(255) NOT NULL`, `city VARCHAR(100) NOT NULL`, `state VARCHAR(100) NOT NULL`, `postal_code VARCHAR(16) NOT NULL`, `country_code CHAR(2) NOT NULL`, `latitude DECIMAL(10,7) NULL`, `longitude DECIMAL(10,7) NULL`, `opening_hours JSON NULL`, `services JSON NULL`, `status VARCHAR(24) NOT NULL DEFAULT 'ACTIVE'`. FK franchise; indexes `(city, state, status)`, `(postal_code, status)`.
+
+The current application stores franchise locations in `stores` (Flyway V47–V50). V50 adds nullable `opening_hours VARCHAR(255)` and `available_services VARCHAR(1000)` fields. The public locator reads active, franchise-managed stores and does not expose owner email or franchise-user records.
+
+#### `franchise_applications`
+
+Created by Flyway V51 for prospective franchise enquiries; it is separate from `stores` and `franchise_users`, so submitting or approving an enquiry does not itself create or activate a franchise account or location. Columns include `id`, unique `reference_id`, `full_name`, `mobile_number`, `email`, `preferred_city`, `state`, `full_address`, `investment_budget DECIMAL(14,2)`, `preferred_store_format`, optional `additional_message`, `status` (`PENDING`, `CONTACTED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`), append-only `internal_notes`, `created_at`, and `updated_at`. Indexes support status/date listing and duplicate checks by email or mobile plus city/status. Application records are retained for review history.
 
 #### `banners`
 
@@ -181,6 +189,10 @@ V33 adds nullable latitude and longitude to saved addresses with pair/range cons
 #### `notifications`
 
 `id`, `user_id CHAR(36) NOT NULL`, `type VARCHAR(40) NOT NULL`, `title VARCHAR(180) NOT NULL`, `message TEXT NOT NULL`, `channel VARCHAR(24) NOT NULL`, `status VARCHAR(24) NOT NULL DEFAULT 'UNREAD'`, `data JSON NULL`, `read_at DATETIME(6) NULL`. FK; index `(user_id, status, created_at)`.
+
+#### `customer_sms_notifications` (Flyway V46)
+
+Durable SMS outbox rows are committed with their order, payment, delivery, return, or refund event. Fields include unique `event_key`, `user_id`, `order_id`, `order_number`, verified `phone_number`, `notification_type`, provider `template_id`, AES-GCM encrypted `template_variables_encrypted`, `status` (`PENDING`, `PROCESSING`, `SENT`, `FAILED`), `provider_message_id`, `attempts`, `next_attempt_at`, optional `expires_at` for delivery OTP messages, `last_error`, `sent_at`, and timestamps. FKs reference the existing user and order with delete restriction. Indexes support due retry scans and admin history; the event key prevents duplicate outbox records on handler retries. Template variables are internal-only and are not returned by the admin history API; encryption uses the configured OTP secret, delivery-link secret, or JWT secret fallback.
 
 #### `audit_logs`
 
@@ -196,6 +208,7 @@ Not part of the baseline proposed schema until requirements are approved: `walle
 - Users own carts, wishlists, addresses, prescriptions, memberships, reviews, and notifications.
 - Carts contain variants and optional prescriptions; orders snapshot cart prices and addresses.
 - Orders 1–N items/payments/status history; coupons are redeemed against orders.
+- Customers submit product reviews only for delivered, non-returned order products; the review record references the existing customer, order, and product.
 
 ## Mermaid ER diagram
 

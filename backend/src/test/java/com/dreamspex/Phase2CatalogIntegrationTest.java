@@ -1,11 +1,18 @@
 package com.dreamspex;
 import com.dreamspex.auth.repository.RoleRepository;
+import com.dreamspex.admin.Store;
+import com.dreamspex.admin.StoreRepository;
 import com.dreamspex.catalog.entity.Category;
 import com.dreamspex.catalog.entity.Product;
 import com.dreamspex.catalog.entity.ProductVariant;
 import com.dreamspex.catalog.repository.CategoryRepository;
 import com.dreamspex.catalog.repository.ProductRepository;
 import com.dreamspex.catalog.repository.ProductVariantRepository;
+import com.dreamspex.franchise.FranchiseInventory;
+import com.dreamspex.franchise.FranchiseInventoryRepository;
+import com.dreamspex.franchise.FranchiseProductAssignment;
+import com.dreamspex.franchise.FranchiseProductAssignmentRepository;
+import com.dreamspex.franchise.FranchiseService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -20,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.List;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -30,6 +38,10 @@ class Phase2CatalogIntegrationTest {
     @Autowired ProductRepository products;
     @Autowired CategoryRepository categories;
     @Autowired ProductVariantRepository variants;
+    @Autowired StoreRepository stores;
+    @Autowired FranchiseInventoryRepository franchiseInventory;
+    @Autowired FranchiseProductAssignmentRepository assignments;
+    @Autowired FranchiseService franchises;
 
     @Test
     void publicCatalogBrowsingIsAllowed() throws Exception {
@@ -124,6 +136,44 @@ class Phase2CatalogIntegrationTest {
                 .andExpect(jsonPath("$.id").value(published.getId()));
         mockMvc.perform(get("/api/v1/products/" + draft.getId())).andExpect(status().isNotFound());
         mockMvc.perform(get("/api/v1/products/" + inactive.getId())).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Transactional
+    void storefrontCatalogIncludesAllPublishedProductsWithoutAssignmentsOrStock() throws Exception {
+        Product previouslyAssigned = product("franchise-assigned");
+        Product neverAssigned = product("franchise-unassigned");
+        Store store = new Store();
+        store.setName("Test franchise");
+        store.setAddress("1 Test Road");
+        store.setCity("Test City");
+        store.setState("Test State");
+        store.setPostalCode("000001");
+        store.setFranchiseManaged(true);
+        store = stores.save(store);
+
+        FranchiseProductAssignment assignment = new FranchiseProductAssignment();
+        assignment.setStore(store);
+        assignment.setProduct(previouslyAssigned);
+        assignments.save(assignment);
+        ProductVariant variant = variants.findBySku("TEST-VARIANT-franchise-assigned").orElseThrow();
+        FranchiseInventory stock = new FranchiseInventory();
+        stock.setStore(store);
+        stock.setVariant(variant);
+        stock.setQuantity(2);
+        stock.setReservedQuantity(1);
+        stock.setAvailabilityStatus("ACTIVE");
+        franchiseInventory.save(stock);
+
+        assertEquals(2, franchises.storefrontProductIds(store.getId()).size());
+        int unassignedStock = franchises.storefrontAvailableQuantity(store.getId(),
+                variants.findBySku("TEST-VARIANT-franchise-unassigned").orElseThrow().getId());
+        assertEquals(0, unassignedStock);
+        mockMvc.perform(get("/api/v1/products").param("franchiseId", store.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2));
+        assertEquals(1, franchises.storefrontAvailableQuantity(store.getId(), variant.getId()));
+        assertEquals(neverAssigned.getStatus(), "PUBLISHED");
     }
 
     private Product product(String suffix) {

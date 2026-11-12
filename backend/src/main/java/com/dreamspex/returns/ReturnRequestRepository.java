@@ -12,6 +12,9 @@ public interface ReturnRequestRepository extends JpaRepository<ReturnRequest, St
     Optional<ReturnRequest> findByIdAndUserId(String id, String userId);
     List<ReturnRequest> findByUserIdOrderByCreatedAtDesc(String userId);
     List<ReturnRequest> findByOrderId(String orderId);
+    List<ReturnRequest> findByOrderFulfillmentStoreIdOrderByCreatedAtDesc(String storeId);
+    List<ReturnRequest> findByOrderFulfillmentStoreIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+            String storeId, java.time.Instant from, java.time.Instant to);
     List<ReturnRequest> findAllByOrderByCreatedAtDesc();
     List<ReturnRequest> findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
             java.time.Instant from, java.time.Instant to);

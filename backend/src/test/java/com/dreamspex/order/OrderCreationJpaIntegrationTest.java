@@ -367,6 +367,9 @@ class OrderCreationJpaIntegrationTest {
                 .andExpect(status().isOk()).andReturn();
         AdminOrderResponse details = objectMapper.readValue(detailsResult.getResponse().getContentAsByteArray(),
                 AdminOrderResponse.class);
+        assertEquals("DELIVERY", details.fulfillmentType());
+        assertEquals(order.getFulfillmentStore().getId(), details.fulfillmentStoreId());
+        assertEquals(order.getFulfillmentStore().getName(), details.fulfillmentStore().name());
         AdminOrderItemResponse detailsItem = details.items().stream().filter(item -> item.prescription() != null)
                 .findFirst().orElseThrow();
         assertEquals("MANUAL", detailsItem.prescription().source());
@@ -398,6 +401,13 @@ class OrderCreationJpaIntegrationTest {
         order.getHistory().add(paidHistory);
         orders.save(order);
         int historyCountBeforeProcessing = order.getHistory().size();
+        for (String invalidDeliveryStatus : List.of("READY_FOR_PICKUP", "PICKED_UP")) {
+            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/status", order.getId()).with(admin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"" + invalidDeliveryStatus + "\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("INVALID_ORDER_TRANSITION"));
+        }
         mockMvc.perform(patch("/api/v1/admin/orders/{orderId}", order.getId()).with(admin)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -495,6 +505,7 @@ class OrderCreationJpaIntegrationTest {
             assertTrue(!customerJson.contains("updatedBy"));
             assertTrue(!customerJson.contains("\"prescription\""));
         }
+
         OrderItem updatedItem = orderItems.findById(savedPrescriptionItem.getId()).orElseThrow();
         assertEquals("READY_FOR_DISPATCH", updatedItem.getLensPreparationStatus());
         assertEquals("Private preparation note", updatedItem.getLensPreparationNotes());
@@ -508,6 +519,85 @@ class OrderCreationJpaIntegrationTest {
                 List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
         mockMvc.perform(get("/api/v1/orders/{id}", order.getId()).with(otherCustomer))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void adminPickupOrderDetailsReturnStoreAndOmitDeliveryAddress() throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        User user = createUser(suffix);
+        Store store = new Store();
+        store.setName("Pickup Test Store");
+        store.setPhone("+911234567890");
+        store.setAddress("1 Pickup Road");
+        store.setCity("Hyderabad");
+        store.setState("Telangana");
+        store.setPostalCode("500001");
+        store.setFranchiseManaged(true);
+        stores.saveAndFlush(store);
+
+        Order order = new Order();
+        order.setUser(user);
+        order.setOrderNumber("DS-PICKUP-" + suffix.substring(0, 8));
+        order.setIdempotencyKey("pickup-" + suffix);
+        order.setFulfillmentType("PICKUP");
+        order.setStatus("PAID");
+        order.setPaymentStatus("PAID");
+        order.setFulfillmentStore(store);
+        order.setAddressId(null);
+        order.setAddressSnapshot(null);
+        order.setSubtotal(new BigDecimal("1000.00"));
+        order.setDiscountAmount(BigDecimal.ZERO);
+        order.setShippingAmount(BigDecimal.ZERO);
+        order.setTotalAmount(new BigDecimal("1000.00"));
+        orders.saveAndFlush(order);
+
+        var admin = authentication(new UsernamePasswordAuthenticationToken(user.getId(), null,
+                List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))));
+        mockMvc.perform(get("/api/v1/admin/orders/{id}", order.getId()).with(admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fulfillmentType").value("PICKUP"))
+                .andExpect(jsonPath("$.fulfillmentStoreId").value(store.getId()))
+                .andExpect(jsonPath("$.fulfillmentStore.name").value("Pickup Test Store"))
+                .andExpect(jsonPath("$.fulfillmentStore.phone").value("+911234567890"))
+                .andExpect(jsonPath("$.fulfillmentStore.address").value("1 Pickup Road"))
+                .andExpect(jsonPath("$.fulfillmentStore.city").value("Hyderabad"))
+                .andExpect(jsonPath("$.shippingAddress").value(nullValue()));
+        var customer = authentication(new UsernamePasswordAuthenticationToken(user.getId(), null,
+                List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+        mockMvc.perform(get("/api/v1/orders/{id}", order.getId()).with(customer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fulfillmentType").value("PICKUP"))
+                .andExpect(jsonPath("$.fulfillmentStore.name").value("Pickup Test Store"))
+                .andExpect(jsonPath("$.fulfillmentStore.phone").value("+911234567890"));
+        mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/status", order.getId()).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PICKED_UP\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INVALID_ORDER_TRANSITION"));
+        for (String invalidPickupStatus : List.of("SHIPPED", "DELIVERED")) {
+            mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/status", order.getId()).with(admin)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"" + invalidPickupStatus + "\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("INVALID_ORDER_TRANSITION"));
+        }
+        mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/status", order.getId()).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PROCESSING\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/status", order.getId()).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"READY_FOR_PICKUP\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("READY_FOR_PICKUP"));
+        mockMvc.perform(patch("/api/v1/admin/orders/{orderId}/status", order.getId()).with(admin)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PICKED_UP\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PICKED_UP"));
+        assertEquals(List.of("PROCESSING", "READY_FOR_PICKUP", "PICKED_UP"),
+                orders.findById(order.getId()).orElseThrow().getHistory().stream()
+                        .map(OrderStatusHistory::getStatus).toList());
     }
 
     @Test

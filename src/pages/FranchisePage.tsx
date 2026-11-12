@@ -19,7 +19,7 @@ export default function FranchisePage() {
               <li>• Full merchandising and training support</li>
               <li>• Strong margins and recurring membership revenue</li>
             </ul>
-            <Link to="/contact" className="mt-8 inline-flex"><Button>Apply now</Button></Link>
+            <Link to="/franchise/apply" className="mt-8 inline-flex"><Button>Apply now</Button></Link>
           </div>
           <div className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-8 text-[var(--text-primary)] shadow-sm">
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Investment</p>

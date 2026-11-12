@@ -79,6 +79,33 @@ class DeliveryAvailabilityServiceTest {
         verifyNoInteractions(stores);
     }
 
+    @Test
+    void honorsTheCustomerSelectedActiveFranchiseInsteadOfChoosingTheNearestStore() {
+        Store selected = store("25.00");
+        selected.setFranchiseManaged(true);
+        when(stores.findById("selected-franchise")).thenReturn(java.util.Optional.of(selected));
+
+        DeliveryAvailabilityService.Evaluation result = service.evaluate(address(0, 0), "selected-franchise");
+
+        assertTrue(result.available());
+        assertSame(selected, result.store());
+        verify(stores, never()).findByStatusOrderByNameAsc("ACTIVE");
+    }
+
+    @Test
+    void rejectsDeliveryFromASelectedFranchiseOutsideItsServiceRadius() {
+        Store selected = store("10.00");
+        selected.setFranchiseManaged(true);
+        when(stores.findById("selected-franchise")).thenReturn(java.util.Optional.of(selected));
+
+        DeliveryAvailabilityService.Evaluation result = service.evaluate(
+                address(0, Math.toDegrees(20 / 6371.0088)), "selected-franchise");
+
+        assertFalse(result.available());
+        assertEquals("OUTSIDE_DELIVERY_AREA", result.status());
+        assertSame(selected, result.store());
+    }
+
     private static Store store(String radiusKm) {
         Store store = new Store();
         store.setName("Test store");

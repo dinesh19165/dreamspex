@@ -2,6 +2,7 @@ import { apiFetch as fetch } from './apiClient';
 import { apiBaseUrl } from '../config/api';
 
 import type { Product } from '../types';
+import type { RatingSummary } from './reviewService';
 
 export type CatalogCategory = {
   id: string;
@@ -58,6 +59,7 @@ export type CatalogProduct = {
   variants: CatalogVariant[];
   imageUrl?: string | null;
   images?: CatalogImage[] | null;
+  ratingSummary: RatingSummary;
 };
 
 export type CatalogPage = {
@@ -88,7 +90,8 @@ export const catalogService = {
     request<CatalogPage>(`/api/v1/products?${params.toString()}`, signal),
   filterOptions: (signal?: AbortSignal) =>
     request<CatalogFilterOptions>('/api/v1/products/filters', signal),
-  get: (id: string) => request<CatalogProduct>(`/api/v1/products/${encodeURIComponent(id)}`),
+  get: (id: string, franchiseId?: string) =>
+    request<CatalogProduct>(`/api/v1/products/${encodeURIComponent(id)}${franchiseId ? `?franchiseId=${encodeURIComponent(franchiseId)}` : ''}`),
   categories: (type: 'CATALOG' | 'OFFER' = 'CATALOG', signal?: AbortSignal) =>
     request<CatalogCategory[]>(`/api/v1/categories?type=${encodeURIComponent(type)}`, signal),
 };
@@ -116,8 +119,8 @@ export function toProduct(product: CatalogProduct): Product {
     image: primaryImage?.imageUrl ?? product.imageUrl ?? '',
     tryOnImageUrl: product.tryOnImageUrl ?? undefined,
     badge: product.badge ?? undefined,
-    rating: 0,
-    reviews: 0,
+    rating: product.ratingSummary?.averageRating ?? 0,
+    reviews: product.ratingSummary?.totalReviews ?? 0,
     stock: available > 0 ? 'In Stock' : 'Out of Stock',
     description: product.description,
     colors: activeVariants.map((variant) => variant.color).filter((value): value is string => Boolean(value)),

@@ -9,11 +9,13 @@ import { catalogService, toProduct, type CatalogCategory } from '../services/cat
 import { useShop } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
 import { formatINR } from '../utils/currency';
+import { useFranchiseLocation } from '../context/FranchiseLocationContext';
 
 const PAGE_SIZE = 6;
 const normalize = (value: string) => value.trim().toLowerCase().replaceAll('-', ' ').replaceAll('_', ' ');
 
 export default function ShopPage() {
+  const { selectedLocationId } = useFranchiseLocation();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const prescriptionNotice = (location.state as { prescriptionNotice?: boolean } | null)?.prescriptionNotice;
@@ -117,6 +119,7 @@ export default function ShopPage() {
     if (availableOnly) params.set('availableOnly', 'true');
     if (minimumPrice) params.set('minPrice', minimumPrice);
     if (maximumPrice) params.set('maxPrice', maximumPrice);
+    if (selectedLocationId) params.set('franchiseId', selectedLocationId);
     const controller = new AbortController();
     setCatalogLoading(true);
     setCatalogError('');
@@ -130,7 +133,7 @@ export default function ShopPage() {
       })
       .finally(() => { if (!controller.signal.aborted) setCatalogLoading(false); });
     return () => controller.abort();
-  }, [page, query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy]);
+  }, [page, query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy, selectedLocationId]);
 
   useEffect(() => {
     const params = new URLSearchParams();

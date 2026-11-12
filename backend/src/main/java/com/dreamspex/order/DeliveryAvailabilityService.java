@@ -23,11 +23,38 @@ public class DeliveryAvailabilityService {
     }
 
     public Evaluation evaluate(Address address) {
+        return evaluate(address, null);
+    }
+
+    public Evaluation evaluate(Address address, String franchiseId) {
         if (address.getLatitude() == null || address.getLongitude() == null
                 || address.getLatitude().doubleValue() < -90 || address.getLatitude().doubleValue() > 90
                 || address.getLongitude().doubleValue() < -180 || address.getLongitude().doubleValue() > 180) {
             return unavailable("LOCATION_REQUIRED", null, null, null,
                     "Select a valid delivery location on the map to check availability.");
+        }
+
+        if (franchiseId != null && !franchiseId.isBlank()) {
+            Store selected = stores.findById(franchiseId)
+                    .filter(Store::isFranchiseManaged)
+                    .filter(store -> "ACTIVE".equals(store.getStatus()))
+                    .filter(DeliveryAvailabilityService::hasValidConfiguration)
+                    .orElse(null);
+            if (selected == null) {
+                return unavailable("FRANCHISE_UNAVAILABLE", null, null, null,
+                        "The selected franchise is unavailable. Choose another location.");
+            }
+            BigDecimal distance = BigDecimal.valueOf(distanceKm(
+                    address.getLatitude().doubleValue(), address.getLongitude().doubleValue(),
+                    selected.getLatitude().doubleValue(), selected.getLongitude().doubleValue()))
+                    .setScale(2, RoundingMode.HALF_UP);
+            BigDecimal radius = selected.getDeliveryRadiusKm();
+            if (distance.doubleValue() <= radius.doubleValue() + BOUNDARY_TOLERANCE_KM) {
+                return new Evaluation(true, "AVAILABLE", selected, distance, radius,
+                        "Delivery is available from " + selected.getName() + ".");
+            }
+            return unavailable("OUTSIDE_DELIVERY_AREA", selected, distance, radius,
+                    "The selected franchise does not serve this delivery address.");
         }
 
         List<StoreDistance> configured = stores.findByStatusOrderByNameAsc("ACTIVE").stream()

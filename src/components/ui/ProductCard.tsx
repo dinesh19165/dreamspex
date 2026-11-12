@@ -55,7 +55,7 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
             {product.name}
           </Link>
           <p className="mt-1 text-[11px] text-[var(--text-secondary)]">{product.brand}</p>
-          <p className="mt-2 flex items-center gap-1 text-xs text-[var(--text-secondary)]" aria-label={`Sample catalogue rating ${product.rating} out of 5`}><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> <span className="font-semibold text-[var(--text-primary)]">{product.rating.toFixed(1)}</span><span>· {product.reviews} ratings</span></p>
+          <p className="mt-2 flex items-center gap-1 text-xs text-[var(--text-secondary)]" aria-label={`${product.rating.toFixed(1)} out of 5 from ${product.reviews} verified reviews`}><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> <span className="font-semibold text-[var(--text-primary)]">{product.rating.toFixed(1)}</span><span>· {product.reviews} verified reviews</span></p>
           <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{product.description}</p>
           {supportsPrescription ? <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold"><span className="inline-flex items-center gap-1 text-[var(--brand-green-dark)]"><FileText className="h-3 w-3" /> Prescription Available</span><Link to={`/virtual-try-on?productId=${product.id}`} className="inline-flex items-center gap-1 text-cyan-300 hover:text-cyan-200"><Glasses className="h-3 w-3" /> Virtual Try-On</Link></div> : null}
           <div className="mt-auto flex items-end justify-between gap-3 pt-4">

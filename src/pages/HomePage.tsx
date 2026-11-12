@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Camera, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -33,7 +33,7 @@ const colorSwatches: Record<string, string> = {
 };
 
 const homeServiceLinks = [
-  { icon: House, title: 'Home Eye Test', copy: 'Explore at-home eye care', path: '/services#appointments' },
+  { icon: House, title: 'Home Eye Test', copy: 'Check with a nearby store', path: '/stores' },
   { icon: ScanFace, title: 'Virtual Try-On', copy: 'See it before you buy', path: '/virtual-try-on' },
   { icon: MapPin, title: 'Store Locator', copy: 'Find a store near you', path: '/stores' },
   { icon: Gift, title: 'Exclusive Offers', copy: 'Explore member offers', path: '/offers' },
@@ -68,6 +68,9 @@ function CompactHomeProductCard({ product }: { product: HomeProduct }) {
         <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{product.description}</p>
 
         <div className="mt-auto pt-3">
+          <p className="mb-2 flex items-center gap-1 text-xs text-[var(--text-secondary)]" aria-label={`${product.rating.toFixed(1)} out of 5 from ${product.reviews} verified reviews`}>
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />{product.rating.toFixed(1)} · {product.reviews} verified reviews
+          </p>
           <p className="text-base font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p>
           <Link to={`/product/${product.id}`} className="mt-3 inline-flex items-center justify-center rounded-full bg-[var(--brand-green)] px-3.5 py-2 text-xs font-semibold text-[#172015] transition hover:bg-[var(--brand-green-light)]">
             View Product
@@ -632,7 +635,7 @@ export default function HomePage() {
             </div>
           </section>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.stores, sections)} className="bg-[#dfe9d8] py-16"><div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]"><MapPin className="h-4 w-4" /> Visit Dream Spex</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">Your vision deserves expert care.</h2></div><div className="flex flex-wrap gap-3"><Link to="/services#appointments"><Button>Explore appointments</Button></Link><Link to="/stores" className="inline-flex items-center gap-2 rounded-full border border-[#a9bba2] px-5 py-3 text-sm font-semibold text-[#182116]">Find a store <ArrowRight className="h-4 w-4" /></Link></div></div></section>
+          <section hidden={cmsHidden(homepageSectionSlugs.stores, sections)} className="bg-[#dfe9d8] py-16"><div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]"><MapPin className="h-4 w-4" /> Visit Dream Spex</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">Your vision deserves expert care.</h2></div><div><Link to="/stores" className="inline-flex items-center gap-2 rounded-full border border-[#a9bba2] px-5 py-3 text-sm font-semibold text-[#182116]">Find a store <ArrowRight className="h-4 w-4" /></Link></div></div></section>
 
           <section hidden={cmsHidden(homepageSectionSlugs.promos, sections)} aria-label="Brand promotions" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <div className="mb-5 flex items-end justify-between gap-4">

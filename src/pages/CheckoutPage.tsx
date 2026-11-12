@@ -25,6 +25,8 @@ import { addressChanged } from '../utils/checkoutAddress';
 import { mergeReverseGeocodedAddress, reverseGeocodeCoordinates } from '../services/reverseGeocodeService';
 import GstBreakdown from '../components/ui/GstBreakdown';
 import { toGstBreakdown } from '../utils/gst';
+import { useFranchiseLocation } from '../context/FranchiseLocationContext';
+import { franchiseStoreService, type StorefrontAvailability } from '../services/franchiseStoreService';
 
 const NEW_ADDRESS_VALUE = '__new_address__';
 
@@ -75,6 +77,7 @@ function loadRazorpay() {
 export default function CheckoutPage() {
   const { cart, cartLoading, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount } = useShop();
   const { user, refreshSession } = useAuth();
+  const { locations, selectedLocationId, selectLocation } = useFranchiseLocation();
   const navigate = useNavigate();
   const [couponCode, setCouponCode] = useState('');
   const [couponError, setCouponError] = useState('');
@@ -88,6 +91,9 @@ export default function CheckoutPage() {
   const [locationError, setLocationError] = useState('');
   const [locationNotice, setLocationNotice] = useState('');
   const [shippingOption, setShippingOption] = useState('standard');
+  const [fulfillmentType, setFulfillmentType] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
+  const [storeAvailability, setStoreAvailability] = useState<StorefrontAvailability[]>([]);
+  const [storeAvailabilityError, setStoreAvailabilityError] = useState('');
   const [checkoutQuote, setCheckoutQuote] = useState<CheckoutQuoteResponse | null>(null);
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
   const [loyaltyAvailablePoints, setLoyaltyAvailablePoints] = useState<number | null>(null);
@@ -166,6 +172,27 @@ export default function CheckoutPage() {
   }, [refreshSession, user?.accessToken]);
   const selectedLocationIsSaved = selectedAddress !== null
     && !addressChanged(selectedAddress, addressDraft, locationDraft ?? savedAddressCoordinates);
+  const fulfillmentCoordinates = locationDraft ?? savedAddressCoordinates;
+
+  useEffect(() => {
+    if (!user?.accessToken || cartLoading || cart.length === 0) {
+      setStoreAvailability([]);
+      setStoreAvailabilityError('');
+      return;
+    }
+    let active = true;
+    const items = cart.map((item) => ({
+      variantId: item.backendVariantId ?? String(item.variantId),
+      quantity: item.quantity,
+    }));
+    franchiseStoreService.availability(user.accessToken, items, fulfillmentCoordinates)
+      .then((availability) => { if (active) setStoreAvailability(availability); })
+      .catch((reason: unknown) => {
+        if (active) setStoreAvailabilityError(reason instanceof Error
+          ? reason.message : 'Store stock availability could not be loaded.');
+      });
+    return () => { active = false; };
+  }, [cart, cartLoading, fulfillmentCoordinates, user?.accessToken]);
 
   useEffect(() => {
     setAddressDraft(selectedAddress ? addressDraftFrom(selectedAddress) : emptyAddressDraft());
@@ -281,7 +308,9 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
-    if (!user?.accessToken || !addressId || !selectedLocationIsSaved || cartLoading || cart.length === 0) {
+    const delivery = fulfillmentType === 'DELIVERY';
+    if (!user?.accessToken || (delivery && (!addressId || !selectedLocationIsSaved))
+      || (!delivery && !selectedLocationId) || cartLoading || cart.length === 0) {
       setCheckoutQuote(null);
       setQuoteLoading(false);
       setQuoteError('');
@@ -297,13 +326,15 @@ export default function CheckoutPage() {
       try {
         let accessToken = user.accessToken!;
         try {
-          const quote = await orderService.quote(accessToken, addressId, appliedCoupon?.code ?? null);
+          const quote = await orderService.quote(accessToken, delivery ? addressId : null,
+            appliedCoupon?.code ?? null, 0, delivery ? undefined : selectedLocationId, fulfillmentType);
           if (active) setCheckoutQuote(quote);
         } catch (reason) {
           if (!(reason instanceof OrderApiError) || reason.status !== 401 || !(await refreshSession())) throw reason;
           const stored = JSON.parse(localStorage.getItem('dream-spex-auth-session') ?? '{}') as { accessToken?: string };
           accessToken = stored.accessToken ?? accessToken;
-          const quote = await orderService.quote(accessToken, addressId, appliedCoupon?.code ?? null);
+          const quote = await orderService.quote(accessToken, delivery ? addressId : null,
+            appliedCoupon?.code ?? null, 0, delivery ? undefined : selectedLocationId, fulfillmentType);
           if (active) setCheckoutQuote(quote);
         }
       } catch (reason) {
@@ -315,7 +346,7 @@ export default function CheckoutPage() {
 
     void loadQuote();
     return () => { active = false; };
-  }, [addressDraft, addressId, appliedCoupon?.code, cart, cart.length, cartLoading, locationDraft, refreshSession, savedAddressCoordinates, selectedAddress, selectedLocationIsSaved, shippingOption, user?.accessToken]);
+  }, [addressDraft, addressId, appliedCoupon?.code, cart, cart.length, cartLoading, fulfillmentType, locationDraft, refreshSession, savedAddressCoordinates, selectedAddress, selectedLocationIsSaved, shippingOption, selectedLocationId, user?.accessToken]);
 
   const parsedLoyaltyPoints = parseLoyaltyPointsInput(loyaltyPointsInput);
   const availableLoyaltyPoints = loyaltyAvailablePoints ?? checkoutQuote?.loyaltyPointsAvailable ?? 0;
@@ -334,8 +365,10 @@ export default function CheckoutPage() {
     : null;
   const loyaltyDiscount = currentRedemptionPreview?.discount ?? loyaltyValidation.discount;
   const payableTotal = Math.max(0, baseOrderTotal - loyaltyDiscount);
-  const paymentDisabled = !checkoutQuote?.deliveryAvailability.available || !addressId || paymentLoading
-    || quoteLoading || !selectedLocationIsSaved || Boolean(loyaltyValidation.error)
+  const paymentDisabled = !checkoutQuote?.deliveryAvailability.available
+    || (fulfillmentType === 'DELIVERY' && (!addressId || !selectedLocationIsSaved))
+    || (fulfillmentType === 'PICKUP' && !selectedLocationId) || paymentLoading
+    || quoteLoading || Boolean(loyaltyValidation.error)
     || redemptionPreviewLoading || Boolean(redemptionPreviewError)
     || (loyaltyValidation.points > 0 && !currentRedemptionPreview);
 
@@ -411,7 +444,8 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!user?.accessToken || !addressId || paymentLoading) return;
+    if (!user?.accessToken || (fulfillmentType === 'DELIVERY' && !addressId)
+      || (fulfillmentType === 'PICKUP' && !selectedLocationId) || paymentLoading) return;
     setPaymentLoading(true);
     setPaymentError('');
     setPaymentState('');
@@ -420,10 +454,12 @@ export default function CheckoutPage() {
       const idempotencyKey = crypto.randomUUID();
       const createOrder = async () => orderService.create(
         accessToken,
-        addressId,
+        fulfillmentType === 'DELIVERY' ? addressId : null,
         appliedCoupon?.code ?? null,
         idempotencyKey,
         loyaltyValidation.points,
+        fulfillmentType === 'PICKUP' ? selectedLocationId : undefined,
+        fulfillmentType,
       );
       let order;
       try { order = await createOrder(); } catch (reason) {
@@ -493,6 +529,17 @@ export default function CheckoutPage() {
                 <Link to="/cart" className="text-sm font-semibold text-cyan-300">Back to cart</Link>
               </div>
               <form id="checkout-form" onSubmit={handleSubmit} className="mt-8 space-y-6">
+                <fieldset className="grid gap-3 sm:grid-cols-2">
+                  <legend className="mb-2 text-sm font-medium text-[var(--text-secondary)]">How would you like to receive your order?</legend>
+                  {(['DELIVERY', 'PICKUP'] as const).map((type) => (
+                    <label key={type} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-sm ${fulfillmentType === type ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/10' : 'border-[var(--border-subtle)]'}`}>
+                      <input type="radio" name="fulfillmentType" value={type} checked={fulfillmentType === type}
+                        onChange={() => { setFulfillmentType(type); setCheckoutQuote(null); setPaymentError(''); }} />
+                      <span>{type === 'DELIVERY' ? 'Home delivery' : 'Store pickup'}</span>
+                    </label>
+                  ))}
+                </fieldset>
+                {fulfillmentType === 'DELIVERY' ? <>
                 <label className="space-y-2 text-sm text-[var(--text-secondary)]">
                   <span>Delivery address</span>
                   <select value={addressId || NEW_ADDRESS_VALUE} onChange={(event) => {
@@ -567,7 +614,49 @@ export default function CheckoutPage() {
                           ? <p className="mt-2 text-sm text-[var(--text-secondary)]">Delivery availability is not available yet. Try again shortly.</p>
                           : <p className="mt-2 text-sm text-[var(--text-secondary)]">Save your address and select a valid map location to check delivery availability. PIN codes are not used to estimate distance.</p>}
                 </div>
-
+                </> : <section className="space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+                  <div>
+                    <h3 className="font-semibold text-[var(--text-primary)]">Choose a pickup store</h3>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">Each store is checked against every item and quantity in your cart.</p>
+                  </div>
+                  <label className="block text-sm text-[var(--text-secondary)]">Store
+                    <select value={selectedLocationId} onChange={(event) => {
+                      selectLocation(event.target.value);
+                      setCheckoutQuote(null);
+                    }} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-[var(--text-primary)]">
+                      <option value="" disabled>Select a store</option>
+                      {locations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.city}</option>)}
+                    </select>
+                  </label>
+                  {storeAvailabilityError ? <p className="text-sm text-rose-300" role="alert">{storeAvailabilityError}</p> : null}
+                  {storeAvailability.map((store) => <label key={store.id}
+                    className={`block cursor-pointer rounded-xl border p-4 ${selectedLocationId === store.id ? 'border-[var(--brand-green)]' : 'border-[var(--border-subtle)]'}`}>
+                    <span className="flex items-start gap-3">
+                      <input type="radio" name="pickupStore" value={store.id} checked={selectedLocationId === store.id}
+                        onChange={() => { selectLocation(store.id); setCheckoutQuote(null); }} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center justify-between gap-2 font-semibold text-[var(--text-primary)]">
+                          <span>{store.name}</span>
+                          {store.distanceKm !== null ? <span className="text-xs font-normal text-[var(--text-secondary)]">{store.distanceKm} km away</span> : null}
+                        </span>
+                        <span className="mt-1 block text-sm text-[var(--text-secondary)]">{store.address}, {store.city}, {store.state} {store.postalCode}</span>
+                        <span className={`mt-2 block text-sm ${store.availableForOrder ? 'text-emerald-500' : 'text-amber-600'}`}>
+                          {store.availableForOrder ? 'All cart items available' : 'Cannot fulfill the complete cart'}
+                        </span>
+                        <span className="mt-2 grid gap-1 text-xs text-[var(--text-secondary)]">
+                          {store.items.map((item) => {
+                            const cartItem = cart.find((entry) => (entry.backendVariantId ?? String(entry.variantId)) === item.variantId);
+                            return <span key={item.variantId}>{cartItem?.name ?? item.variantId}: {item.available} available (need {item.requested})</span>;
+                          })}
+                        </span>
+                      </span>
+                    </span>
+                  </label>)}
+                  {quoteLoading ? <p className="text-sm text-[var(--text-secondary)]" role="status">Reserving stock availability for this store…</p>
+                    : checkoutQuote ? <p className={`text-sm ${checkoutQuote.deliveryAvailability.available ? 'text-emerald-500' : 'text-amber-600'}`} role="status">
+                      {checkoutQuote.deliveryAvailability.message}
+                    </p> : null}
+                </section>}
               </form>
             </div>
             <div className="h-fit rounded-[32px] border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-6 text-[var(--text-secondary)] sm:p-8">
@@ -648,9 +737,11 @@ export default function CheckoutPage() {
                 <label className="text-sm text-[var(--text-secondary)]">
                   <span className="block text-xs uppercase tracking-[0.3em] text-[var(--text-secondary)]">Shipping option</span>
                   <select value={shippingOption} onChange={(event) => setShippingOption(event.target.value)} className="mt-3 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none">
-                    <option value="standard">Standard delivery</option>
-                    <option value="express">Express delivery</option>
-                    <option value="priority">Priority member dispatch</option>
+                    {fulfillmentType === 'PICKUP' ? <option value="pickup">Store pickup</option> : <>
+                      <option value="standard">Standard delivery</option>
+                      <option value="express">Express delivery</option>
+                      <option value="priority">Priority member dispatch</option>
+                    </>}
                   </select>
                 </label>
               </div>

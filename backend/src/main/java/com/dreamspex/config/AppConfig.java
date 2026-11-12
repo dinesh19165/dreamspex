@@ -6,6 +6,6 @@ import com.dreamspex.payment.PaymentProperties;
 
 @Configuration
 @EnableConfigurationProperties({SecurityProperties.class, CorsProperties.class, PaymentProperties.class,
-        ShippingProperties.class})
+        ShippingProperties.class, com.dreamspex.notification.SmsProperties.class})
 public class AppConfig {
 }

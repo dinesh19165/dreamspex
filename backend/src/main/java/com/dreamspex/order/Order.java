@@ -7,7 +7,9 @@ public class Order {
  @Id private String id=UUID.randomUUID().toString(); @Column(name="order_number",nullable=false,unique=true) private String orderNumber;
  @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="user_id",nullable=false) private User user;
  @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="fulfillment_store_id") private Store fulfillmentStore;
- @Column(name="address_id",nullable=false) private String addressId; @Column(name="address_snapshot",nullable=false,columnDefinition="json") private String addressSnapshot;
+ @Column(name="address_id") private String addressId; @Column(name="address_snapshot",columnDefinition="json") private String addressSnapshot;
+ @Column(name="fulfillment_type",nullable=false) private String fulfillmentType="DELIVERY";
+ @Column(name="reservation_expires_at") private Instant reservationExpiresAt;
  @Column(nullable=false) private String status="PENDING_PAYMENT"; @Column(name="payment_status",nullable=false) private String paymentStatus="PENDING";
  @Column(nullable=false,precision=12,scale=2) private BigDecimal subtotal; @Column(name="discount_amount",nullable=false,precision=12,scale=2) private BigDecimal discountAmount;
  @Column(name="membership_discount_amount",nullable=false,precision=12,scale=2) private BigDecimal membershipDiscountAmount=BigDecimal.ZERO;
@@ -22,6 +24,8 @@ public class Order {
  public String getId(){return id;} public String getOrderNumber(){return orderNumber;} public void setOrderNumber(String v){orderNumber=v;} public User getUser(){return user;} public void setUser(User v){user=v;}
  public Store getFulfillmentStore(){return fulfillmentStore;} public void setFulfillmentStore(Store value){fulfillmentStore=value;}
  public String getAddressId(){return addressId;} public void setAddressId(String v){addressId=v;} public String getAddressSnapshot(){return addressSnapshot;} public void setAddressSnapshot(String v){addressSnapshot=v;}
+ public String getFulfillmentType(){return fulfillmentType;} public void setFulfillmentType(String value){fulfillmentType=value;}
+ public Instant getReservationExpiresAt(){return reservationExpiresAt;} public void setReservationExpiresAt(Instant value){reservationExpiresAt=value;}
  public String getStatus(){return status;} public void setStatus(String v){status=v;} public String getPaymentStatus(){return paymentStatus;} public void setPaymentStatus(String v){paymentStatus=v;}
  public BigDecimal getSubtotal(){return subtotal;} public void setSubtotal(BigDecimal v){subtotal=v;} public BigDecimal getDiscountAmount(){return discountAmount;} public void setDiscountAmount(BigDecimal v){discountAmount=v;}
  public BigDecimal getMembershipDiscountAmount(){return membershipDiscountAmount;} public void setMembershipDiscountAmount(BigDecimal v){membershipDiscountAmount=v;}

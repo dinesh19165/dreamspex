@@ -14,10 +14,12 @@ import { addressService } from '../services/addressService';
 import { orderService, type CheckoutQuoteResponse } from '../services/orderService';
 import { toGstBreakdown } from '../utils/gst';
 import ToastNotification from '../components/ui/ToastNotification';
+import { useFranchiseLocation } from '../context/FranchiseLocationContext';
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, total, cartLoading, cartError, cartNotice } = useShop();
   const { user } = useAuth();
+  const { selectedLocationId } = useFranchiseLocation();
   const [couponCode, setCouponCode] = useState('');
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
@@ -48,7 +50,8 @@ export default function CartPage() {
       .then((addresses) => {
         const address = addresses.find((item) => item.defaultAddress) ?? addresses[0];
         if (!address) throw new Error('Add a delivery address to calculate the backend GST quote.');
-        return orderService.quote(user.accessToken!, address.id, appliedCoupon?.code ?? null);
+        return orderService.quote(user.accessToken!, address.id, appliedCoupon?.code ?? null,
+          0, selectedLocationId || undefined);
       })
       .then((quote) => { if (active) setCartQuote(quote); })
       .catch((reason: unknown) => {
@@ -56,7 +59,7 @@ export default function CartPage() {
       })
       .finally(() => { if (active) setCartQuoteLoading(false); });
     return () => { active = false; };
-  }, [appliedCoupon?.code, cart.length, discount, subtotal, user?.accessToken]);
+  }, [appliedCoupon?.code, cart.length, discount, selectedLocationId, subtotal, user?.accessToken]);
   useEffect(() => {
     let active = true;
     setMembershipError('');

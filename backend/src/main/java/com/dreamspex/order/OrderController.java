@@ -89,6 +89,7 @@ public class OrderController {
                 response.subtotal(), response.discount(), response.couponDiscount(), response.membershipDiscount(),
                 response.shipping(), order.getTotalAmount(), response.couponCode(), response.createdAt(),
                 response.items(), response.history(), response.gstSnapshot(), order.getLoyaltyPointsRedeemed(),
-                order.getLoyaltyDiscountAmount());
+                order.getLoyaltyDiscountAmount(), response.fulfillmentType(), response.fulfillmentStoreId(),
+                response.fulfillmentStore());
     }
 }

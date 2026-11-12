@@ -28,16 +28,27 @@ export type AdminOrder = {
   couponCode: string | null;
   createdAt: string;
   customer: { id: string; displayName: string | null; email: string | null; phone: string | null } | null;
-  shippingAddress: {
-    recipientName: string;
-    phone: string;
-    line1: string;
-    line2: string | null;
+  fulfillmentType?: string | null;
+  fulfillmentStoreId?: string | null;
+  fulfillmentStore?: {
+    id: string;
+    name: string;
+    phone: string | null;
+    address: string;
     city: string;
     state: string;
     postalCode: string;
-    countryCode: string;
-  };
+  } | null;
+  shippingAddress: {
+    recipientName: string | null;
+    phone: string | null;
+    line1: string | null;
+    line2: string | null;
+    city: string | null;
+    state: string | null;
+    postalCode: string | null;
+    countryCode: string | null;
+  } | null;
   items: AdminOrderItem[];
   history: OrderHistoryResponse[];
 };

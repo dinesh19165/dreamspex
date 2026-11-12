@@ -13,6 +13,8 @@ import { useAuth } from '../context/useAuth';
 import { orderService, type OrderResponse, OrderApiError } from '../services/orderService';
 import GstBreakdown from '../components/ui/GstBreakdown';
 import { toGstBreakdown } from '../utils/gst';
+import OrderReviewSection from '../components/reviews/OrderReviewSection';
+import { isOrderFulfilled, isPickupOrder, orderProgressStatuses, orderStatusLabel } from '../utils/orderWorkflow';
 
 function FlowShell({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">{children}</main><Footer /></div>;
@@ -100,7 +102,9 @@ function OrderDataPage({ orderId, success = false }: { orderId: string | null; s
   if (error || !order) return <FlowShell><div className="mx-auto max-w-3xl rounded-[28px] border border-red-400/30 bg-red-400/10 p-10 text-center"><p className="text-sm text-red-200" role="alert">{error || 'Order was not found.'}</p><button type="button" onClick={() => void loadOrder()} className="mt-6 rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Retry</button></div></FlowShell>;
 
   const paymentConfirmed = order.paymentStatus.toUpperCase() === 'PAID';
+  const validStatuses = orderProgressStatuses(order.fulfillmentType);
   const statuses = (order.history.length ? order.history : [{ status: order.status, note: null, createdAt: order.createdAt }])
+    .filter((history) => validStatuses.has(history.status))
     .slice()
     .sort((first, second) => Date.parse(first.createdAt) - Date.parse(second.createdAt));
   const lensItems = order.items.filter((item) => item.lensPreparation);
@@ -112,11 +116,23 @@ function OrderDataPage({ orderId, success = false }: { orderId: string | null; s
       <section className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div><p className="text-sm text-[var(--text-secondary)]">Order number</p><p className="mt-1 text-xl font-semibold text-[var(--text-primary)]">{order.orderNumber}</p><p className="mt-2 text-sm text-[var(--text-secondary)]">{new Date(order.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p></div>
-          <div className="text-right text-sm"><p className="text-[var(--text-secondary)]">Payment: <span className="font-semibold text-[var(--text-primary)]">{order.paymentStatus}</span></p><p className="mt-2 text-[var(--text-secondary)]">Order: <span className="font-semibold text-[var(--text-primary)]">{order.status}</span></p><p className="mt-3 text-lg font-semibold text-[var(--text-primary)]">{formatINR(order.total)}</p></div>
+          <div className="text-right text-sm"><p className="text-[var(--text-secondary)]">Payment: <span className="font-semibold text-[var(--text-primary)]">{order.paymentStatus}</span></p><p className="mt-2 text-[var(--text-secondary)]">Order: <span className="font-semibold text-[var(--text-primary)]">{orderStatusLabel(order.status, order.fulfillmentType)}</span></p><p className="mt-3 text-lg font-semibold text-[var(--text-primary)]">{formatINR(order.total)}</p></div>
         </div>
         <div className="mt-6 space-y-3 border-t border-[var(--border-subtle)] pt-6">{order.items.map((item) => <div key={item.id} className="flex items-center justify-between gap-4 text-sm"><div><p className="font-semibold text-[var(--text-primary)]">{item.productName}</p><p className="mt-1 text-[var(--text-secondary)]">Qty {item.quantity} · {item.sku}</p></div><p className="font-semibold text-[var(--text-primary)]">{formatINR(item.lineTotal)}</p></div>)}</div>
         <div className="mt-5 border-t border-[var(--border-subtle)] pt-5"><GstBreakdown breakdown={invoiceGst} /></div>
       </section>
+      {isPickupOrder(order.fulfillmentType) ? <section className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8">
+        <h2 className="text-xl font-semibold text-[var(--text-primary)]">Pickup store</h2>
+        <p className="mt-3 font-semibold">{order.fulfillmentStore?.name ?? 'Pickup store information unavailable'}</p>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">{order.fulfillmentStore
+          ? [order.fulfillmentStore.address, order.fulfillmentStore.city, order.fulfillmentStore.state, order.fulfillmentStore.postalCode].filter(Boolean).join(', ')
+          : 'Pickup address unavailable'}</p>
+        {order.fulfillmentStore?.phone ? <p className="mt-2 text-sm">Contact: <a className="underline" href={`tel:${order.fulfillmentStore.phone}`}>{order.fulfillmentStore.phone}</a></p> : null}
+        <div className="mt-4 rounded-2xl bg-[var(--bg-primary)] p-4 text-sm text-[var(--text-secondary)]">
+          Bring your order confirmation and a valid photo ID to the store. Store staff will confirm the handover.
+        </div>
+      </section> : null}
+      {isOrderFulfilled(order.status, order.fulfillmentType) ? <OrderReviewSection orderId={order.id} orderStatus={order.status} /> : null}
       <section className="gst-invoice-print rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8">
         <div className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Dream Spex</p><h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Invoice preview</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">{order.orderNumber} · {new Date(order.createdAt).toLocaleDateString('en-IN')}</p></div><button type="button" onClick={() => window.print()} className="no-print inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)]"><Printer className="h-4 w-4" />Print invoice</button></div>
         <div className="mt-6 space-y-3 border-t border-[var(--border-subtle)] pt-5">{order.items.map((item) => <div key={item.id} className="flex justify-between gap-4 text-sm"><span>{item.productName} · Qty {item.quantity}</span><span>{formatINR(item.lineTotal)}</span></div>)}</div>
@@ -133,7 +149,7 @@ function OrderDataPage({ orderId, success = false }: { orderId: string | null; s
         <p className="mt-4 text-xs leading-5 text-[var(--text-secondary)]">{invoiceGst ? 'GST values are from the saved backend order snapshot.' : 'This historical order has no GST snapshot.'} The invoice preview does not change the backend order or payment.</p>
       </section>
       {lensItems.length ? <section className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8"><div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-xl font-semibold text-[var(--text-primary)]">Lens Preparation</h2><Button type="button" variant="ghost" className="h-12 w-[160px] flex-none px-3 py-2" onClick={() => void loadOrder()}><RefreshCw className="mr-2 h-4 w-4" />Refresh status</Button></div><div className="mt-6 space-y-6">{lensItems.map((item) => <div key={item.id} className="border-t border-[var(--border-subtle)] pt-5 first:border-0 first:pt-0"><p className="font-semibold text-[var(--text-primary)]">{item.productName}</p><LensPreparationProgress status={item.lensPreparation!.status} updatedAt={item.lensPreparation!.updatedAt} /></div>)}</div></section> : null}
-      <section className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8"><h2 className="text-xl font-semibold text-[var(--text-primary)]">Order progress</h2><div className="mt-6 space-y-4">{statuses.map((history) => <div key={`${history.status}-${history.createdAt}`} className="flex items-start gap-4"><span className="mt-1 h-3 w-3 rounded-full bg-cyan-300" /><div><p className="font-semibold text-[var(--text-primary)]">{history.status}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{new Date(history.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}{history.note ? ` · ${history.note}` : ''}</p></div></div>)}</div></section>
+      <section className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8"><h2 className="text-xl font-semibold text-[var(--text-primary)]">{isPickupOrder(order.fulfillmentType) ? 'Pickup progress' : 'Delivery progress'}</h2><div className="mt-6 space-y-4">{statuses.map((history) => <div key={`${history.status}-${history.createdAt}`} className="flex items-start gap-4"><span className="mt-1 h-3 w-3 rounded-full bg-cyan-300" /><div><p className="font-semibold text-[var(--text-primary)]">{orderStatusLabel(history.status, order.fulfillmentType)}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{new Date(history.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}{history.note ? ` · ${history.note}` : ''}</p></div></div>)}{statuses.length === 0 ? <p className="text-sm text-[var(--text-secondary)]">No progress updates are available yet.</p> : null}</div></section>
       <div className="flex flex-wrap gap-3"><Link to="/orders" className="rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Back to orders</Link><WhatsAppSupport message={`Hello, I need help with order ${order.orderNumber}.`} />{!success ? <Link to="/after-sales" className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold text-[var(--text-secondary)]"><Wrench className="h-4 w-4" /> After-sales support</Link> : null}</div>
     </div>
   </FlowShell>;

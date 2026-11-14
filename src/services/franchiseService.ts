@@ -42,6 +42,7 @@ export type FranchiseUser = {
   email: string;
   phone: string;
   status: string;
+  role: 'Franchise Admin' | 'Franchise Manager' | 'Franchise Staff' | null;
   createdAt: string;
 };
 export type FranchiseInventory = {

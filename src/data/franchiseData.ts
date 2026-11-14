@@ -4,7 +4,6 @@ import type {
   FranchiseOrder,
   FranchiseProduct,
   FranchiseStats,
-  FranchiseUser,
 } from '../types';
 
 export const franchiseLocations: FranchiseLocation[] = [
@@ -73,8 +72,6 @@ export const franchises: Franchise[] = [
     businessType: 'Retail Optical Studio',
     status: 'Active',
     createdAt: '2024-01-15',
-    adminEmail: 'hyderabad.admin@dreamspex.in',
-    adminName: 'Rohit Reddy',
     openingHours: '10:00 AM - 9:00 PM',
     services: ['Eye test', 'Virtual try-on', 'Lens fitting', 'Membership'],
     products: 184,
@@ -97,8 +94,6 @@ export const franchises: Franchise[] = [
     businessType: 'Premium Optical Retail',
     status: 'Active',
     createdAt: '2024-03-08',
-    adminEmail: 'vijayawada.admin@dreamspex.in',
-    adminName: 'Neha Rani',
     openingHours: '9:30 AM - 8:30 PM',
     services: ['Eye test', 'Brand consultation', 'Home trial'],
     products: 143,
@@ -121,8 +116,6 @@ export const franchises: Franchise[] = [
     businessType: 'Luxury Retail Studio',
     status: 'Active',
     createdAt: '2023-12-19',
-    adminEmail: 'bangalore.admin@dreamspex.in',
-    adminName: 'Priya Nair',
     openingHours: '10:00 AM - 9:00 PM',
     services: ['Eye test', 'Premium fitting', 'Virtual try-on'],
     products: 210,
@@ -145,8 +138,6 @@ export const franchises: Franchise[] = [
     businessType: 'Optical Retail Hub',
     status: 'Inactive',
     createdAt: '2024-05-11',
-    adminEmail: 'chennai.admin@dreamspex.in',
-    adminName: 'Leena Shah',
     openingHours: '11:00 AM - 8:00 PM',
     services: ['Eye test', 'Lens consultation', 'Repair'],
     products: 176,
@@ -300,49 +291,6 @@ export const franchiseOrders: FranchiseOrder[] = [
     franchiseId: 'DSF-1002',
     franchise: 'Vijayawada',
     location: 'MG Road',
-  },
-];
-
-export const franchiseUsers: FranchiseUser[] = [
-  {
-    id: 'FU-01',
-    name: 'Rohit Reddy',
-    email: 'rohit@dreamspex.in',
-    phone: '+91 98888 12345',
-    role: 'Franchise Admin',
-    status: 'Active',
-    lastLogin: '2026-09-21',
-    franchise: 'Hyderabad',
-  },
-  {
-    id: 'FU-02',
-    name: 'Ananya Sen',
-    email: 'ananya@dreamspex.in',
-    phone: '+91 97777 22334',
-    role: 'Franchise Manager',
-    status: 'Active',
-    lastLogin: '2026-09-20',
-    franchise: 'Hyderabad',
-  },
-  {
-    id: 'FU-03',
-    name: 'Vikas Kumar',
-    email: 'vikas@dreamspex.in',
-    phone: '+91 96666 44556',
-    role: 'Staff',
-    status: 'Inactive',
-    lastLogin: '2026-09-12',
-    franchise: 'Bangalore',
-  },
-  {
-    id: 'FU-04',
-    name: 'Neha Rani',
-    email: 'neha@dreamspex.in',
-    phone: '+91 95555 77880',
-    role: 'Franchise Admin',
-    status: 'Active',
-    lastLogin: '2026-09-22',
-    franchise: 'Vijayawada',
   },
 ];
 

@@ -166,17 +166,40 @@ class AuthServiceTest {
     }
 
     @Test
-    void resendCooldownIsEnforced() {
+    void resendCooldownReturnsGenericAcceptedResponseWithoutSendingOtp() {
         OtpChallenge challenge = challenge(Instant.now().plusSeconds(600), 0);
         challenge.setLastSentAt(Instant.now().minusSeconds(5));
         when(challenges.findById("challenge")).thenReturn(Optional.of(challenge));
 
-        ApiException exception = assertThrows(ApiException.class,
-                () -> service.resendOtp(new AuthDtos.ResendOtpRequest("challenge")));
+        AuthDtos.SimpleResponse response = service.resendOtp(new AuthDtos.ResendOtpRequest("challenge"));
 
-        assertEquals("OTP_RESEND_UNAVAILABLE", exception.code());
-        assertTrue(exception.status().value() == 429);
+        assertTrue(response.accepted());
         verify(otpDelivery, never()).send(anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void resendUnknownChallengeReturnsGenericAcceptedResponse() {
+        when(challenges.findById("unknown")).thenReturn(Optional.empty());
+
+        AuthDtos.SimpleResponse response = service.resendOtp(new AuthDtos.ResendOtpRequest("unknown"));
+
+        assertTrue(response.accepted());
+        verify(otpDelivery, never()).send(anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void eligibleResendStillDeliversReplacementOtp() {
+        OtpChallenge challenge = challenge(Instant.now().plusSeconds(600), 0);
+        challenge.setDeliveryChannel("EMAIL");
+        challenge.setLastSentAt(Instant.now().minusSeconds(60));
+        when(challenges.findById("challenge")).thenReturn(Optional.of(challenge));
+        when(challenges.save(challenge)).thenReturn(challenge);
+
+        AuthDtos.SimpleResponse response = service.resendOtp(new AuthDtos.ResendOtpRequest("challenge"));
+
+        assertTrue(response.accepted());
+        verify(otpDelivery).send(eq("customer@example.com"), eq("EMAIL"), eq("REGISTRATION"),
+                eq(challenge.getId()), anyString());
     }
 
     @Test
@@ -238,7 +261,7 @@ class AuthServiceTest {
         ApiException exception = assertThrows(ApiException.class, () -> service.resetPassword(
                 new AuthDtos.ResetPasswordRequest(challenge.getId(), "654321", "NewSecurePassword123!")));
 
-        assertEquals("INVALID_OTP", exception.code());
+        assertEquals("INVALID_CHALLENGE", exception.code());
         verify(refreshTokens, never()).revokeUserTokens(anyString(), any());
     }
 

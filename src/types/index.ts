@@ -108,25 +108,12 @@ export interface Franchise {
   businessType: string;
   status: 'Active' | 'Inactive';
   createdAt: string;
-  adminEmail: string;
-  adminName: string;
   openingHours: string;
   services: string[];
   products?: number;
   orders?: number;
   sales?: number;
   locationLabel?: string;
-}
-
-export interface FranchiseUser {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: 'Franchise Admin' | 'Franchise Manager' | 'Staff';
-  status: 'Active' | 'Inactive';
-  lastLogin: string;
-  franchise: string;
 }
 
 export interface FranchiseLocation {

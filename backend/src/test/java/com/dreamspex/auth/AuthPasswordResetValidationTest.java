@@ -79,6 +79,29 @@ class AuthPasswordResetValidationTest {
     }
 
     @Test
+    void resendOtpReturnsTheSameGenericResponseForUnknownAndUnavailableChallenges() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/resend-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"challengeId":"unknown-challenge"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accepted").value(true));
+
+        User user = createUser();
+        OtpChallenge challenge = createChallenge(user, Instant.now().plus(10, ChronoUnit.MINUTES), "123456");
+        challenge.setLastSentAt(Instant.now());
+
+        mockMvc.perform(post("/api/v1/auth/resend-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"challengeId":"%s"}
+                                """.formatted(challenge.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accepted").value(true));
+    }
+
+    @Test
     void resetPasswordChangesPasswordAndRevokesRefreshTokens() throws Exception {
         User user = createUser();
         OtpChallenge challenge = createChallenge(user, Instant.now().plus(10, ChronoUnit.MINUTES), "123456");
@@ -120,7 +143,7 @@ class AuthPasswordResetValidationTest {
                                  "newPassword":"NewSecurePassword123!"}
                                 """.formatted(challenge.getId())))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_OTP"));
+                .andExpect(jsonPath("$.code").value("INVALID_CHALLENGE"));
 
         entityManager.clear();
         assertTrue(users.findById(user.getId()).orElseThrow().getPasswordHash().equals(oldPasswordHash));

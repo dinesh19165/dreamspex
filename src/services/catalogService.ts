@@ -1,5 +1,5 @@
 import { apiFetch as fetch } from './apiClient';
-import { apiBaseUrl } from '../config/api';
+import { apiBaseUrl, resolveCmsMediaUrl } from '../config/api';
 
 import type { Product } from '../types';
 import type { RatingSummary } from './reviewService';
@@ -87,14 +87,29 @@ async function request<T>(path: string, signal?: AbortSignal) {
 
 export const catalogService = {
   search: (params: URLSearchParams, signal?: AbortSignal) =>
-    request<CatalogPage>(`/api/v1/products?${params.toString()}`, signal),
+    request<CatalogPage>(`/api/v1/products?${params.toString()}`, signal).then((page) => ({
+      ...page,
+      items: page.items.map(resolveProductImageUrls),
+    })),
   filterOptions: (signal?: AbortSignal) =>
     request<CatalogFilterOptions>('/api/v1/products/filters', signal),
   get: (id: string, franchiseId?: string) =>
-    request<CatalogProduct>(`/api/v1/products/${encodeURIComponent(id)}${franchiseId ? `?franchiseId=${encodeURIComponent(franchiseId)}` : ''}`),
+    request<CatalogProduct>(`/api/v1/products/${encodeURIComponent(id)}${franchiseId ? `?franchiseId=${encodeURIComponent(franchiseId)}` : ''}`)
+      .then(resolveProductImageUrls),
   categories: (type: 'CATALOG' | 'OFFER' = 'CATALOG', signal?: AbortSignal) =>
     request<CatalogCategory[]>(`/api/v1/categories?type=${encodeURIComponent(type)}`, signal),
 };
+
+function resolveProductImageUrls(product: CatalogProduct): CatalogProduct {
+  return {
+    ...product,
+    imageUrl: resolveCmsMediaUrl(product.imageUrl) ?? product.imageUrl,
+    images: product.images?.map((image) => ({
+      ...image,
+      imageUrl: resolveCmsMediaUrl(image.imageUrl) ?? image.imageUrl,
+    })),
+  };
+}
 
 export function toProduct(product: CatalogProduct): Product {
   const images = product.images ?? [];

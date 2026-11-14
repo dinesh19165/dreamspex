@@ -51,7 +51,8 @@ public final class FranchiseDtos {
                                                  String state, String postalCode, BigDecimal distanceKm,
                                                  boolean deliveryServiceable, boolean availableForOrder,
                                                  List<StorefrontItemAvailability> items) {}
-    public record FranchiseUserResponse(String userId, String name, String email, String phone, String status, Instant createdAt) {}
+    public record FranchiseUserResponse(String userId, String name, String email, String phone, String status,
+                                        String role, Instant createdAt) {}
 
     public record AssignmentRequest(
             @NotBlank String productId,

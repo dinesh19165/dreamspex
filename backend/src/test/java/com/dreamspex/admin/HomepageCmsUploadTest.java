@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -33,6 +34,9 @@ import static org.mockito.Mockito.verify;
 
 class HomepageCmsUploadTest {
     private static final byte[] IMAGE_BYTES = {1, 2, 3, 4};
+    private static final byte[] JPEG_BYTES = {(byte) 0xff, (byte) 0xd8, (byte) 0xff, 0x01};
+    private static final byte[] PNG_BYTES = {(byte) 0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
+    private static final byte[] WEBP_BYTES = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P'};
     private static final byte[] WEBM_BYTES = {0x1a, 0x45, (byte) 0xdf, (byte) 0xa3, 0x01, 0x02, 0x03, 0x04};
     private static final byte[] MP4_BYTES = {0, 0, 0, 12, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm'};
 
@@ -52,19 +56,36 @@ class HomepageCmsUploadTest {
 
     @Test
     void uploadsImageAndServesItFromReturnedUrl() throws Exception {
-        HomepageImageStorage storage = storageAt(tempDirectory.resolve("uploads"));
+        Path imageDirectory = tempDirectory.resolve("uploads");
+        HomepageImageStorage storage = storageAt(imageDirectory);
         HomepageCmsService service = service(storage);
 
         UploadResponse upload = service.upload(authentication, imageFile());
-        HomepageImageController controller = new HomepageImageController(Optional.of(storage));
+        HomepageImageController controller = new HomepageImageController(Optional.of(storageAt(imageDirectory)));
         var response = controller.image(upload.storageKey());
         InputStreamResource resource = response.getBody();
 
         assertEquals("/api/v1/cms/images/" + upload.storageKey(), upload.url());
         assertEquals("image/webp", response.getHeaders().getContentType().toString());
         assertTrue(upload.storageKey().endsWith(".webp"));
-        assertArrayEquals(IMAGE_BYTES, resource.getInputStream().readAllBytes());
+        assertArrayEquals(WEBP_BYTES, resource.getInputStream().readAllBytes());
         verify(audit).record(actor, "CMS_IMAGE_UPLOADED", "CMS_IMAGE", upload.storageKey());
+    }
+
+    @Test
+    void acceptsJpegPngAndWebpImages() {
+        List<MockMultipartFile> files = List.of(
+                new MockMultipartFile("file", "product.jpg", "image/jpeg", JPEG_BYTES),
+                new MockMultipartFile("file", "product.jpeg", "image/jpeg", JPEG_BYTES),
+                new MockMultipartFile("file", "product.png", "image/png", PNG_BYTES),
+                new MockMultipartFile("file", "product.webp", "image/webp", WEBP_BYTES));
+        HomepageCmsService service = service(storageAt(tempDirectory.resolve("uploads")));
+
+        for (MockMultipartFile file : files) {
+            assertTrue(service.upload(authentication, file).storageKey().endsWith(
+                    file.getContentType().equals("image/jpeg") ? ".jpg"
+                            : file.getContentType().equals("image/png") ? ".png" : ".webp"));
+        }
     }
 
     @Test
@@ -212,6 +233,17 @@ class HomepageCmsUploadTest {
     }
 
     @Test
+    void rejectsImageWhenContentDoesNotMatchItsMimeType() {
+        MockMultipartFile file = new MockMultipartFile("file", "product.webp", "image/webp", IMAGE_BYTES);
+
+        ApiException error = assertThrows(ApiException.class, () -> service(mock(HomepageImageStorage.class))
+                .upload(authentication, file));
+
+        assertEquals("INVALID_IMAGE_DATA", error.code());
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, error.status());
+    }
+
+    @Test
     void rejectsEmptyImage() {
         MockMultipartFile file = new MockMultipartFile("file", "banner.jpg", "image/jpeg", new byte[0]);
 
@@ -291,7 +323,7 @@ class HomepageCmsUploadTest {
     }
 
     private MockMultipartFile imageFile() {
-        return new MockMultipartFile("file", "banner.webp", "image/webp", IMAGE_BYTES);
+        return new MockMultipartFile("file", "banner.webp", "image/webp", WEBP_BYTES);
     }
 
     private MockMultipartFile videoFile() {

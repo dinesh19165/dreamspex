@@ -159,15 +159,17 @@ public class AuthService {
 
     @Transactional
     public SimpleResponse resendOtp(ResendOtpRequest request) {
-        OtpChallenge challenge = challenges.findById(request.challengeId())
-                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CHALLENGE", "Invalid or expired challenge."));
+        var storedChallenge = challenges.findById(request.challengeId());
+        if (storedChallenge.isEmpty()) {
+            return new SimpleResponse(true);
+        }
+        OtpChallenge challenge = storedChallenge.get();
         Instant now = Instant.now();
         if (challenge.getVerifiedAt() != null || challenge.getExpiresAt().isBefore(now)
                 || challenge.getResendCount() >= 5
                 || (challenge.getLastSentAt() != null
                 && challenge.getLastSentAt().plusSeconds(30).isAfter(now))) {
-            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "OTP_RESEND_UNAVAILABLE",
-                    "OTP resend is temporarily unavailable.");
+            return new SimpleResponse(true);
         }
         int code = 100000 + random.nextInt(900000);
         challenge.setCodeHash(hashOtp(Integer.toString(code)));
@@ -185,7 +187,7 @@ public class AuthService {
     public SimpleResponse verifyOtp(VerifyOtpRequest request) {
         OtpChallenge challenge = challenges.findByIdAndPurpose(request.challengeId(), "REGISTRATION")
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CHALLENGE", "Invalid or expired challenge."));
-        verifyChallenge(challenge, request.otp());
+        verifyChallenge(challenge, request.otp(), false);
         User user = users.findById(challenge.getUserId()).orElseThrow();
         user.setStatus("ACTIVE");
         if (user.getEmail() != null && user.getEmail().equalsIgnoreCase(challenge.getIdentifier())) user.setEmailVerifiedAt(Instant.now());
@@ -210,7 +212,7 @@ public class AuthService {
     public ResetPasswordResponse resetPassword(ResetPasswordRequest request) {
         OtpChallenge challenge = challenges.findByIdAndPurpose(request.challengeId(), "PASSWORD_RESET")
                 .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CHALLENGE", "Invalid or expired challenge."));
-        verifyChallenge(challenge, request.otp());
+        verifyChallenge(challenge, request.otp(), true);
         User user = users.findById(challenge.getUserId()).orElseThrow();
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         user.incrementTokenVersion();
@@ -303,7 +305,7 @@ public class AuthService {
         return saved;
     }
 
-    private void verifyChallenge(OtpChallenge challenge, String otp) {
+    private void verifyChallenge(OtpChallenge challenge, String otp, boolean maskOtpMismatch) {
         Instant now = Instant.now();
         if (challenge.getVerifiedAt() != null || challenge.getExpiresAt().isBefore(now) || challenge.getAttempts() >= 5) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CHALLENGE", "Invalid or expired challenge.");
@@ -311,7 +313,8 @@ public class AuthService {
         if (!MessageDigest.isEqual(hashOtp(otp).getBytes(StandardCharsets.UTF_8),
                 challenge.getCodeHash().getBytes(StandardCharsets.UTF_8))) {
             challenges.incrementAttempts(challenge.getId(), now);
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_OTP", "Invalid or expired challenge.");
+            throw new ApiException(HttpStatus.BAD_REQUEST, maskOtpMismatch ? "INVALID_CHALLENGE" : "INVALID_OTP",
+                    "Invalid or expired challenge.");
         }
         if (challenges.consumeIfValid(challenge.getId(), challenge.getCodeHash(), now) != 1) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_CHALLENGE", "Invalid or expired challenge.");

@@ -324,10 +324,27 @@ public class FranchiseService {
     public List<FranchiseUserResponse> adminUsers(String storeId) {
         requireStore(storeId);
         return franchiseUsers.findByStoreId(storeId).stream()
-                .map(link -> new FranchiseUserResponse(link.getUser().getId(), link.getUser().getDisplayName(),
-                        link.getUser().getEmail(), link.getUser().getPhone(), link.getUser().getStatus(),
-                        link.getUser().getCreatedAt()))
+                .filter(link -> link.getUser().getDeletedAt() == null)
+                .map(link -> {
+                    User user = link.getUser();
+                    return new FranchiseUserResponse(user.getId(), user.getDisplayName(),
+                            user.getEmail(), user.getPhone(), user.getStatus(), franchiseRole(user),
+                            user.getCreatedAt());
+                })
+                .filter(user -> user.role() != null)
                 .toList();
+    }
+
+    private String franchiseRole(User user) {
+        Set<String> roleCodes = user.getRoles().stream().map(role -> role.getCode())
+                .collect(java.util.stream.Collectors.toSet());
+        if (roleCodes.isEmpty() || roleCodes.stream().anyMatch(role -> !Set.of(
+                "FRANCHISE_ADMIN", "FRANCHISE_MANAGER", "FRANCHISE_STAFF").contains(role))) {
+            return null;
+        }
+        if (roleCodes.contains("FRANCHISE_ADMIN")) return "Franchise Admin";
+        if (roleCodes.contains("FRANCHISE_MANAGER")) return "Franchise Manager";
+        return "Franchise Staff";
     }
 
     @Transactional

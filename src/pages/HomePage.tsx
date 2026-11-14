@@ -33,7 +33,7 @@ const colorSwatches: Record<string, string> = {
 };
 
 const homeServiceLinks = [
-  { icon: House, title: 'Home Eye Test', copy: 'Check with a nearby store', path: '/stores' },
+   { icon: House, title: 'Franchise', copy: 'Regestration', path: '/franchise' },
   { icon: ScanFace, title: 'Virtual Try-On', copy: 'See it before you buy', path: '/virtual-try-on' },
   { icon: MapPin, title: 'Store Locator', copy: 'Find a store near you', path: '/stores' },
   { icon: Gift, title: 'Exclusive Offers', copy: 'Explore member offers', path: '/offers' },

@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Glasses, LayoutGrid, LogOut, MapPin, MessageSquareText, PackageOpen, PanelLeftClose, PanelLeftOpen, Printer, RefreshCw, Search, Settings, ShoppingCart, Store, Star, TrendingUp, UserRound, Users, Warehouse, PanelsTopLeft, Tags, RotateCcw, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import Button from '../components/ui/Button';
-import { adminSalesOverview, franchiseOrders, franchiseProducts, franchiseRegistrations, franchises, franchiseUsers, topProducts } from '../data/franchiseData';
+import { adminSalesOverview, franchiseOrders, franchiseProducts, franchiseRegistrations, franchises, topProducts } from '../data/franchiseData';
 import { adminProductService, type AdminCategory, type AdminProduct, type AdminProductGstRequest, type AdminProductRequest } from '../services/adminProductService';
 import { AdminApiError, adminService, type AdminGstHistoryEntry, type AdminGstSettings, type AdminReport, type AdminSettings, type AdminStore, type AdminStoreRequest } from '../services/adminService';
 import { resolveCmsMediaUrl } from '../config/api';
@@ -13,7 +13,7 @@ import { isValidCoordinates, type Coordinates } from '../utils/deliveryNavigatio
 import { isValidGstRate } from '../utils/gst';
 import AdminDateRangeFilter from '../components/ui/AdminDateRangeFilter';
 import { downloadReportExcel, downloadReportPdf, printReport, type AdminReportDocument } from '../utils/adminReportExport';
-import { franchiseService, type Franchise, type FranchiseAssignment, type FranchiseDashboard, type FranchiseInventory, type FranchiseOrder, type FranchiseReport, type FranchiseRequest, type FranchiseReturn } from '../services/franchiseService';
+import { franchiseService, type Franchise, type FranchiseAssignment, type FranchiseDashboard, type FranchiseInventory, type FranchiseOrder, type FranchiseReport, type FranchiseRequest, type FranchiseReturn, type FranchiseUser } from '../services/franchiseService';
 import { isPickupOrder, nextFranchiseOrderStatuses, orderStatusLabel } from '../utils/orderWorkflow';
 
 const formatCurrency = (value: number) =>
@@ -24,6 +24,11 @@ const formatCurrency = (value: number) =>
   }).format(value);
 
 const formatDate = (value: string) => new Date(value).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+type FranchiseNetworkRole = Exclude<FranchiseUser['role'], null>;
+
+const isFranchiseNetworkRole = (role: FranchiseUser['role']): role is FranchiseNetworkRole =>
+  role === 'Franchise Admin' || role === 'Franchise Manager' || role === 'Franchise Staff';
 
 const franchiseRequestFrom = (franchise: Franchise): FranchiseRequest => ({
   franchiseCode: franchise.franchiseCode,
@@ -358,30 +363,83 @@ export function SuperAdminInventoryPage() {
 }
 
 export function SuperAdminUsersPage() {
+  const { user } = useAuth();
+  const [users, setUsers] = useState<Array<{
+    userId: string;
+    name: string;
+    email: string;
+    role: 'Franchise Admin' | 'Franchise Manager' | 'Franchise Staff';
+    franchiseName: string;
+    location: string;
+    status: 'Active' | 'Inactive';
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const load = useCallback(async () => {
+    const accessToken = user?.accessToken;
+    if (!accessToken) {
+      setError('Your administrator session has expired. Please sign in again.');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const franchises = await franchiseService.adminList(accessToken);
+      const usersByFranchise = await Promise.all(
+        franchises.map((franchise) => franchiseService.users(accessToken, franchise.id)),
+      );
+      setUsers(franchises.flatMap((franchise, index) => {
+        const location = [franchise.address, franchise.city, franchise.state, franchise.postalCode]
+          .filter(Boolean)
+          .join(', ');
+        return (usersByFranchise[index] ?? [])
+          .filter((franchiseUser): franchiseUser is FranchiseUser & { role: FranchiseNetworkRole } =>
+            isFranchiseNetworkRole(franchiseUser.role))
+          .map((franchiseUser) => ({
+            userId: franchiseUser.userId,
+            name: franchiseUser.name,
+            email: franchiseUser.email,
+            role: franchiseUser.role,
+            franchiseName: franchise.name,
+            location,
+            status: franchiseUser.status.toUpperCase() === 'ACTIVE' ? 'Active' as const : 'Inactive' as const,
+          }));
+      }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load franchise users.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.accessToken]);
+  useEffect(() => { void load(); }, [load]);
+
   return (
     <DashboardShell>
-      <SectionTitle eyebrow="Users" title="Network user access" description="Review global admins, franchise managers, and staff permissions for the Dream Spex organization." />
+      <SectionTitle eyebrow="Users" title="Network user access" description="Review franchise administrators, managers, and staff across the Dream Spex network." />
+      {error ? <div role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}<Button type="button" variant="ghost" className="ml-2" onClick={() => void load()}>Retry</Button></div> : null}
       <TableCard>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[var(--bg-primary)] text-[var(--text-secondary)]">
               <tr>
-                {['Name', 'Email', 'Role', 'Location', 'Status'].map((header) => (
+                {['Name', 'Email', 'Role', 'Franchise', 'Location', 'Status'].map((header) => (
                   <th key={header} className="px-4 py-4 font-medium whitespace-nowrap">{header}</th>
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {franchiseUsers.map((user) => (
-                <tr key={user.id} className="border-t border-[var(--border-subtle)]">
-                  <td className="px-4 py-4 font-medium text-[var(--text-primary)]">{user.name}</td>
-                  <td className="px-4 py-4 text-[var(--text-secondary)]">{user.email}</td>
-                  <td className="px-4 py-4 text-[var(--text-primary)]">{user.role}</td>
-                  <td className="px-4 py-4 text-[var,--text-primary)]">{user.franchise ?? 'Network-wide'}</td>
-                  <td className="px-4 py-4"><StatusBadge status={user.status} /></td>
-                </tr>
-              ))}
-            </tbody>
+            {loading ? <tbody><tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[var(--text-secondary)]">Loading franchise users...</td></tr></tbody>
+              : !error && !users.length ? <tbody><tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-[var(--text-secondary)]">No franchise network users found.</td></tr></tbody>
+                : <tbody>{users.map((franchiseUser) => (
+                  <tr key={franchiseUser.userId} className="border-t border-[var(--border-subtle)]">
+                    <td className="px-4 py-4 font-medium text-[var(--text-primary)]">{franchiseUser.name}</td>
+                    <td className="px-4 py-4 text-[var(--text-secondary)]">{franchiseUser.email || '—'}</td>
+                    <td className="px-4 py-4 text-[var(--text-primary)]">{franchiseUser.role}</td>
+                    <td className="px-4 py-4 text-[var(--text-primary)]">{franchiseUser.franchiseName}</td>
+                    <td className="px-4 py-4 text-[var(--text-secondary)]">{franchiseUser.location}</td>
+                    <td className="px-4 py-4"><StatusBadge status={franchiseUser.status} /></td>
+                  </tr>
+                ))}</tbody>}
           </table>
         </div>
       </TableCard>
@@ -1800,7 +1858,7 @@ export function SuperAdminProductsPage() {
     url: new URL(upload.url).pathname,
   });
 
-  const uploadTryOnImage = async (file: File) => {
+  const uploadProductImage = async (file: File) => {
     if (!user?.accessToken) throw new Error('Your admin session has expired. Please sign in again.');
     try {
       return storedMediaPath(await adminService.uploadCmsImage(user.accessToken, file));
@@ -1896,7 +1954,7 @@ export function SuperAdminProductsPage() {
           returnable={selected ? returnabilityByProductId[selected.id] ?? false : false}
           categories={categories}
           saving={saving}
-          onUploadTryOnImage={uploadTryOnImage}
+          onUploadImage={uploadProductImage}
           onCancel={closeProductEditor}
           onSave={save}
         />
@@ -1934,7 +1992,7 @@ export function SuperAdminProductsPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {pagedProducts.map((product) => (
             <div key={product.id} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-              {product.images[0]?.imageUrl ? <img src={product.images[0].imageUrl} alt={product.images[0].altText ?? product.name} className="mb-4 h-40 w-full rounded-2xl object-cover" /> : null}
+              {resolveCmsMediaUrl(product.images[0]?.imageUrl) ? <img src={resolveCmsMediaUrl(product.images[0]?.imageUrl) ?? undefined} alt={product.images[0]?.altText ?? product.name} className="mb-4 h-40 w-full rounded-2xl object-cover" /> : null}
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-xl font-semibold text-[var(--text-primary)]"><button type="button" onClick={() => openProductEditor(product)} className="text-left underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{product.name}</button></h3>
@@ -1974,13 +2032,22 @@ type ProductEditorProps = {
   returnable: boolean;
   categories: AdminCategory[];
   saving: boolean;
-  onUploadTryOnImage: (file: File) => Promise<{ url: string; storageKey: string }>;
+  onUploadImage: (file: File) => Promise<{ url: string; storageKey: string }>;
   onCancel: () => void;
   onSave: (request: AdminProductRequest, gst: AdminProductGstRequest, returnable: boolean) => Promise<void>;
 };
 
-function ProductEditor({ product, returnable: initialReturnable, categories, saving, onUploadTryOnImage, onCancel, onSave }: ProductEditorProps) {
+type ProductImageDraft = AdminProductRequest['images'][number] & {
+  file: File | null;
+  previewUrl: string | null;
+};
+
+const productImageMaxBytes = 10_000_000;
+
+function ProductEditor({ product, returnable: initialReturnable, categories, saving, onUploadImage, onCancel, onSave }: ProductEditorProps) {
   const [form, setForm] = useState<AdminProductRequest>(() => productRequest(product));
+  const [productImages, setProductImages] = useState<ProductImageDraft[]>(() => imageDrafts(product));
+  const previewUrls = useRef(new Set<string>());
   const [returnable, setReturnable] = useState(initialReturnable);
   const [hsnCode, setHsnCode] = useState(product?.hsnCode ?? '');
   const [useGlobalRate, setUseGlobalRate] = useState(product?.gstRate == null);
@@ -1990,9 +2057,13 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
   const [tryOnFile, setTryOnFile] = useState<File | null>(null);
   const [tryOnPreviewUrl, setTryOnPreviewUrl] = useState<string | null>(null);
   const [uploadingTryOnImage, setUploadingTryOnImage] = useState(false);
+  const [uploadingProductImages, setUploadingProductImages] = useState(false);
 
   useEffect(() => {
     setForm(productRequest(product));
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current.clear();
+    setProductImages(imageDrafts(product));
     setReturnable(initialReturnable);
     setHsnCode(product?.hsnCode ?? '');
     setUseGlobalRate(product?.gstRate == null);
@@ -2001,6 +2072,11 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
     setTryOnFile(null);
     setValidationError('');
   }, [initialReturnable, product]);
+
+  useEffect(() => () => {
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current.clear();
+  }, []);
 
   useEffect(() => {
     if (!tryOnFile) {
@@ -2016,6 +2092,73 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const selectProductImages = (files: File[]) => {
+    const validFiles: File[] = [];
+    let hasInvalidFiles = false;
+    files.forEach((file) => {
+      const extension = file.name.toLowerCase().split('.').pop();
+      const validType = (['jpg', 'jpeg'].includes(extension ?? '') && file.type === 'image/jpeg')
+        || (extension === 'png' && file.type === 'image/png')
+        || (extension === 'webp' && file.type === 'image/webp');
+      if (!validType || file.size > productImageMaxBytes) hasInvalidFiles = true;
+      else validFiles.push(file);
+    });
+
+    if (hasInvalidFiles) setValidationError('Choose JPG, JPEG, PNG, or WebP images no larger than 10 MB each.');
+    else setValidationError('');
+    if (!validFiles.length) return;
+
+    const additions = validFiles.map((file) => {
+      const previewUrl = URL.createObjectURL(file);
+      previewUrls.current.add(previewUrl);
+      return {
+        imageUrl: '',
+        storageKey: null,
+        altText: '',
+        sortOrder: 0,
+        primaryImage: false,
+        file,
+        previewUrl,
+      };
+    });
+    setProductImages((current) => {
+      const next = [...current, ...additions];
+      const needsPrimary = !next.some((image) => image.primaryImage);
+      return next.map((image, index) => ({
+        ...image,
+        sortOrder: index,
+        primaryImage: image.primaryImage || (needsPrimary && index === 0),
+      }));
+    });
+  };
+
+  const removeProductImage = (index: number) => {
+    const removed = productImages[index];
+    if (removed?.previewUrl) {
+      URL.revokeObjectURL(removed.previewUrl);
+      previewUrls.current.delete(removed.previewUrl);
+    }
+    setProductImages((current) => {
+      const next = current.filter((_, itemIndex) => itemIndex !== index);
+      const needsPrimary = removed?.primaryImage && next.length > 0;
+      return next.map((image, itemIndex) => ({
+        ...image,
+        sortOrder: itemIndex,
+        primaryImage: image.primaryImage || (needsPrimary && itemIndex === 0),
+      }));
+    });
+  };
+
+  const moveProductImage = (index: number, direction: -1 | 1) => {
+    setProductImages((current) => {
+      const destination = index + direction;
+      if (destination < 0 || destination >= current.length) return current;
+      const next = [...current];
+      [next[index], next[destination]] = [next[destination], next[index]];
+      return next.map((image, itemIndex) => ({ ...image, sortOrder: itemIndex }));
+    });
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.sku.trim() || !form.name.trim() || !form.slug.trim() || !form.brand.trim() || !form.description.trim()) {
@@ -2026,8 +2169,8 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
       setValidationError('Prices and inventory must be non-negative, every variant needs a SKU, and reserved inventory cannot exceed quantity.');
       return;
     }
-    if (form.images.some((image) => !image.imageUrl.trim())) {
-      setValidationError('Every image needs an image URL.');
+    if ((!product && !productImages.length) || productImages.some((image) => !image.file && !image.imageUrl.trim())) {
+      setValidationError('Upload a product image before saving.');
       return;
     }
     if (hsnCode.trim() && !/^(?:\d{4}|\d{6}|\d{8})$/.test(hsnCode.trim())) {
@@ -2044,7 +2187,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
     if (tryOnFile) {
       setUploadingTryOnImage(true);
       try {
-        const uploaded = await onUploadTryOnImage(tryOnFile);
+        const uploaded = await onUploadImage(tryOnFile);
         tryOnImageUrl = uploaded.url;
       } catch (reason) {
         setValidationError(reason instanceof Error ? reason.message : 'Unable to upload the Virtual Try-On image.');
@@ -2052,6 +2195,23 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
       } finally {
         setUploadingTryOnImage(false);
       }
+    }
+    const images: AdminProductRequest['images'] = [];
+    if (productImages.some((image) => image.file)) setUploadingProductImages(true);
+    try {
+      for (const { file, previewUrl: _previewUrl, ...image } of productImages) {
+        if (!file) {
+          images.push(image);
+          continue;
+        }
+        const uploaded = await onUploadImage(file);
+        images.push({ ...image, imageUrl: uploaded.url, storageKey: uploaded.storageKey });
+      }
+    } catch (reason) {
+      setValidationError(reason instanceof Error ? reason.message : 'Unable to upload product images.');
+      return;
+    } finally {
+      setUploadingProductImages(false);
     }
     await onSave({
       ...form,
@@ -2061,6 +2221,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
       brand: form.brand.trim(),
       description: form.description.trim(),
       tryOnImageUrl,
+      images,
     }, {
       hsnCode: hsnCode.trim() || null,
       useGlobalRate,
@@ -2195,22 +2356,64 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
         </div>
       </div>
       <div className="mt-6">
-        <EditorHeading title="Images" action={<Button type="button" variant="ghost" onClick={() => update('images', [...form.images, emptyImage(form.images.length)])}>Add image</Button>} />
+        <EditorHeading title="Images" action={
+          <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:border-[var(--brand-green)]">
+            Upload images
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+              multiple
+              className="sr-only"
+              onChange={(event) => {
+                selectProductImages(Array.from(event.target.files ?? []));
+                event.target.value = '';
+              }}
+            />
+          </label>
+        } />
+        <p className="mb-3 text-xs text-[var(--text-secondary)]">JPG, JPEG, PNG, or WebP · Up to 10 MB per image</p>
         <div className="space-y-3">
-          {form.images.map((image, index) => (
-            <div key={index} className="grid gap-2 rounded-2xl border border-[var(--border-subtle)] p-3 md:grid-cols-5">
-              <ProductInput label="Image URL" value={image.imageUrl} onChange={(value) => update('images', form.images.map((item, itemIndex) => itemIndex === index ? { ...item, imageUrl: value } : item))} />
-              <ProductInput label="Storage key" value={image.storageKey ?? ''} onChange={(value) => update('images', form.images.map((item, itemIndex) => itemIndex === index ? { ...item, storageKey: value || null } : item))} />
-              <ProductInput label="Alt text" value={image.altText ?? ''} onChange={(value) => update('images', form.images.map((item, itemIndex) => itemIndex === index ? { ...item, altText: value || null } : item))} />
-              <ProductInput label="Sort order" type="number" min="0" value={String(image.sortOrder)} onChange={(value) => update('images', form.images.map((item, itemIndex) => itemIndex === index ? { ...item, sortOrder: Number(value) } : item))} />
-              <div className="flex items-end gap-2"><label className="flex items-center gap-2 pb-3 text-xs text-[var(--text-secondary)]"><input type="checkbox" checked={image.primaryImage} onChange={(event) => update('images', form.images.map((item, itemIndex) => ({ ...item, primaryImage: itemIndex === index ? event.target.checked : event.target.checked ? false : item.primaryImage })))} /> Primary</label><Button type="button" variant="ghost" onClick={() => update('images', form.images.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button></div>
+          {productImages.map((image, index) => (
+            <div key={`${image.storageKey ?? image.imageUrl}-${image.previewUrl ?? index}`} className="grid gap-3 rounded-2xl border border-[var(--border-subtle)] p-3 sm:grid-cols-[7rem_1fr]">
+              <img
+                src={image.previewUrl ?? resolveCmsMediaUrl(image.imageUrl) ?? image.imageUrl}
+                alt={image.altText ?? ''}
+                className="h-28 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] object-contain"
+              />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Image {index + 1}{image.file ? ` · ${image.file.name}` : ''}</p>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Button type="button" variant="ghost" disabled={index === 0} onClick={() => moveProductImage(index, -1)} aria-label={`Move image ${index + 1} earlier`}>Move up</Button>
+                    <Button type="button" variant="ghost" disabled={index === productImages.length - 1} onClick={() => moveProductImage(index, 1)} aria-label={`Move image ${index + 1} later`}>Move down</Button>
+                    <Button type="button" variant="ghost" onClick={() => removeProductImage(index)}>Remove</Button>
+                  </div>
+                </div>
+                <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                  <ProductInput
+                    label="Alt text"
+                    value={image.altText ?? ''}
+                    onChange={(value) => setProductImages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, altText: value || null } : item))}
+                  />
+                  <label className="flex items-center gap-2 pb-3 text-xs text-[var(--text-secondary)]">
+                    <input
+                      type="radio"
+                      name="primary-product-image"
+                      checked={image.primaryImage}
+                      onChange={() => setProductImages((current) => current.map((item, itemIndex) => ({ ...item, primaryImage: itemIndex === index })))}
+                    />
+                    Primary image
+                  </label>
+                </div>
+              </div>
             </div>
           ))}
+          {uploadingProductImages ? <p role="status" className="text-sm text-[var(--text-secondary)]">Uploading product images...</p> : null}
         </div>
       </div>
       <div className="mt-6 flex justify-end gap-3">
         <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={saving || uploadingTryOnImage}>{uploadingTryOnImage ? 'Uploading image...' : saving ? 'Saving...' : product ? 'Save changes' : 'Create product'}</Button>
+        <Button type="submit" disabled={saving || uploadingTryOnImage || uploadingProductImages}>{uploadingTryOnImage || uploadingProductImages ? 'Uploading image...' : saving ? 'Saving...' : product ? 'Save changes' : 'Create product'}</Button>
       </div>
     </form>
   );
@@ -2230,13 +2433,9 @@ function emptyVariant() {
   return { sku: '', color: null, size: null, lensType: null, additionalPrice: 0, quantity: 0, reservedQuantity: 0, status: 'ACTIVE' };
 }
 
-function emptyImage(sortOrder: number) {
-  return { imageUrl: '', storageKey: null, altText: null, sortOrder, primaryImage: sortOrder === 0 };
-}
-
 function productRequest(product: AdminProduct | null): AdminProductRequest {
   if (!product) {
-    return { sku: '', name: '', slug: '', brand: '', description: '', material: null, gender: null, frameShape: null, frameType: null, basePrice: 0, compareAtPrice: null, badge: null, tryOnImageUrl: null, status: 'DRAFT', categoryIds: [], variants: [emptyVariant()], images: [emptyImage(0)] };
+    return { sku: '', name: '', slug: '', brand: '', description: '', material: null, gender: null, frameShape: null, frameType: null, basePrice: 0, compareAtPrice: null, badge: null, tryOnImageUrl: null, status: 'DRAFT', categoryIds: [], variants: [emptyVariant()], images: [] };
   }
   return {
     sku: product.sku,
@@ -2255,8 +2454,15 @@ function productRequest(product: AdminProduct | null): AdminProductRequest {
     status: product.status,
     categoryIds: product.categories.map((category) => category.id),
     variants: product.variants.map(({ id, sku, color, size, lensType, additionalPrice, quantity, reservedQuantity, status }) => ({ id, sku, color, size, lensType, additionalPrice, quantity, reservedQuantity: reservedQuantity ?? 0, status })),
-    images: product.images.map(({ imageUrl, storageKey, altText, sortOrder, primaryImage }) => ({ imageUrl, storageKey, altText, sortOrder, primaryImage })),
+    images: product.images.map(({ imageUrl, storageKey, altText, sortOrder, primaryImage }) => ({ imageUrl, storageKey, altText, sortOrder, primaryImage }))
+      .sort((first, second) => first.sortOrder - second.sortOrder),
   };
+}
+
+function imageDrafts(product: AdminProduct | null): ProductImageDraft[] {
+  const images = productRequest(product).images.map((image) => ({ ...image, file: null, previewUrl: null }));
+  if (images.length && !images.some((image) => image.primaryImage)) images[0].primaryImage = true;
+  return images;
 }
 
 export function StoresPage() {

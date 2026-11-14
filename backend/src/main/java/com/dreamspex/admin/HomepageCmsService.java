@@ -40,6 +40,12 @@ public class HomepageCmsService {
    throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE,"IMAGE_TOO_LARGE","Images must be 10 MB or smaller.");
   if(!List.of("image/jpeg","image/png","image/webp").contains(file.getContentType()))
    throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"INVALID_IMAGE_TYPE","Use a JPEG, PNG, or WebP image.");
+  try(InputStream input=file.getInputStream()){
+   if(!hasValidImageSignature(file.getContentType(),input.readNBytes(12)))
+    throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"INVALID_IMAGE_DATA","The image contents do not match the selected JPEG, PNG, or WebP type.");
+  }catch(IOException e){
+   throw new ApiException(HttpStatus.BAD_GATEWAY,"IMAGE_UPLOAD_FAILED","Image could not be read.",e);
+  }
   try{
    PrescriptionStorage.StoredFile f=storage.orElseThrow(()->new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"STORAGE_UNAVAILABLE","Image storage is not configured.")).store(file);
    audit.record(current.require(a),"CMS_IMAGE_UPLOADED","CMS_IMAGE",f.storageKey());
@@ -47,6 +53,16 @@ public class HomepageCmsService {
   }catch(IOException|SecurityException e){
    throw new ApiException(HttpStatus.BAD_GATEWAY,"IMAGE_UPLOAD_FAILED","Image could not be stored. Check the configured storage directory and its write permissions.",e);
   }
+ }
+ private boolean hasValidImageSignature(String contentType,byte[] bytes){
+  return switch(contentType){
+   case "image/jpeg"->bytes.length>=3&&(bytes[0]&0xff)==0xff&&(bytes[1]&0xff)==0xd8&&(bytes[2]&0xff)==0xff;
+   case "image/png"->bytes.length>=8&&(bytes[0]&0xff)==0x89&&bytes[1]=='P'&&bytes[2]=='N'&&bytes[3]=='G'
+     &&bytes[4]==0x0d&&bytes[5]==0x0a&&(bytes[6]&0xff)==0x1a&&bytes[7]==0x0a;
+   case "image/webp"->bytes.length>=12&&bytes[0]=='R'&&bytes[1]=='I'&&bytes[2]=='F'&&bytes[3]=='F'
+     &&bytes[8]=='W'&&bytes[9]=='E'&&bytes[10]=='B'&&bytes[11]=='P';
+   default->false;
+  };
  }
   @Transactional public UploadResponse uploadVideo(Authentication a,MultipartFile file){
    if(file==null||file.isEmpty()||file.getOriginalFilename()==null||file.getOriginalFilename().isBlank())

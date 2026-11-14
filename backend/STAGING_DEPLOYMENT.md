@@ -35,12 +35,14 @@ Configure these only in the staging backend service. Do not copy production valu
 | `MAIL_FROM` | Yes | Verified sender address for OTP emails. |
 | `MAIL_FROM_NAME` | No | Optional sender display name; defaults to `Dream Spex`. |
 | `DREAMSPEX_STORAGE_DIRECTORY` | Yes | Absolute path for prescription uploads inside the service container. |
-| `DREAMSPEX_HOMEPAGE_IMAGES_DIRECTORY` | Yes | Absolute path for homepage media inside the service container. |
+| `DREAMSPEX_HOMEPAGE_IMAGES_DIRECTORY` | Yes | Absolute path for homepage and product images inside the service container; mount a persistent volume at this path. |
 | `RAZORPAY_KEY_ID` | Payment testing only | Optional; if set, must be a Razorpay test key ID beginning `rzp_test_`. |
 | `RAZORPAY_KEY_SECRET` | Payment testing only | Optional; set together with the test key ID. |
 | `RAZORPAY_WEBHOOK_SECRET` | Payment testing only | Test-mode webhook secret only. Never use a live webhook secret. |
 
 The staging profile fixes the provider to `RAZORPAY_TEST`, rejects non-test key IDs, and rejects configuring only one of the key ID/secret pair. Leave both credentials empty to keep gateway operations unavailable during staging.
+
+The Docker image declares `/var/lib/dream-spex/homepage-images` as a volume and uses it by default. If `DREAMSPEX_HOMEPAGE_IMAGES_DIRECTORY` is overridden, mount a persistent volume at the configured path so uploaded images survive container replacement.
 
 ## Frontend environment variable
 

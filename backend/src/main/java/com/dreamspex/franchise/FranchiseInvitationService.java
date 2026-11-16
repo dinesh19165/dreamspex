@@ -35,7 +35,7 @@ public class FranchiseInvitationService {
         franchiseUsers.save(link);
 
         String baseUrl = environment.getProperty("dreamspex.frontend-base-url",
-                environment.getProperty("FRONTEND_BASE_URL", "http://localhost:5173")).replaceAll("/+$", "");
+                environment.getProperty("FRONTEND_BASE_URL", "https://www.dreamspex.in")).replaceAll("/+$", "");
         String setupUrl = baseUrl + "/franchise/setup?token=" + token;
         String subject = "Set up your Dream Spex franchise account";
         String text = "Your Dream Spex franchise account is ready. Set your password using this secure link "

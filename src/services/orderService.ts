@@ -93,7 +93,16 @@ export type CheckoutQuoteResponse = {
     storeName: string | null;
     message: string;
   };
-
+  deliveryFee?: {
+    distanceKm: number | null;
+    appliedFee: number;
+    policyId: string | null;
+    policyName: string | null;
+    policyScope: string | null;
+    slabId: string | null;
+    slabLabel: string | null;
+    freeDelivery: boolean;
+  } | null;
 };
 
 export type OrderItemResponse = {

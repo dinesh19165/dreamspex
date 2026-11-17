@@ -296,7 +296,6 @@ export default function HomePage() {
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
   const [cmsError, setCmsError] = useState('');
-  const [collectionTab, setCollectionTab] = useState<'trending' | 'bestseller' | 'new'>('trending');
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches);
   const [cmsHeroError, setCmsHeroError] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -447,10 +446,8 @@ export default function HomePage() {
     const product = homepageProduct({ ...card.product, imageUrl: card.imageUrl ?? card.product.imageUrl });
     return product.image ? [product] : [];
   });
-  const collectionProducts = collectionTab === 'trending'
-    ? (trendingCards.length ? curatedTrendingProducts : cmsCollectionProducts.slice(0, 4))
-    : cmsCollectionProducts.filter((product) => product.badge?.toLowerCase() === (collectionTab === 'bestseller' ? 'bestseller' : 'new'));
-  const collectionPath = collectionTab === 'trending' ? '/shop?sort=popularity' : `/shop?badge=${collectionTab === 'bestseller' ? 'Bestseller' : 'New'}`;
+  const collectionProducts = trendingCards.length ? curatedTrendingProducts : cmsCollectionProducts.slice(0, 4);
+  const collectionPath = '/shop?sort=popularity';
   const heroPoster = isMobile ? HERO_MOBILE_IMAGE_URL : HERO_IMAGE_URL;
   const availableBrands = [...new Set((catalog?.products ?? []).map((product) => product.brand).filter(Boolean))];
   const brandCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'EXPLORE_BY_BRAND');
@@ -612,17 +609,14 @@ export default function HomePage() {
 
           <section hidden={cmsHidden(homepageSectionSlugs.collections, sections)} className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">The current edit</p><h2 className="mt-3 font-serif text-4xl text-[var(--text-primary)]">{collectionTab === 'trending' ? 'Trending eyewear' : collectionTab === 'bestseller' ? 'Bestsellers' : 'New arrivals'}</h2></div>
+              <div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">The current edit</p><h2 className="mt-3 font-serif text-4xl text-[var(--text-primary)]">Trending eyewear</h2></div>
               <Link to={collectionPath} className="inline-flex items-center gap-1 text-sm font-semibold text-[#689f24]">Explore collection <ChevronRight className="h-4 w-4" /></Link>
-            </div>
-            <div role="group" aria-label="Product collections" className="mt-6 flex flex-wrap gap-2">
-              {([['trending', 'Trending'], ['bestseller', 'Bestsellers'], ['new', 'New arrivals']] as const).map(([tab, label]) => <button key={tab} type="button" onClick={() => setCollectionTab(tab)} aria-pressed={collectionTab === tab} className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${collectionTab === tab ? 'border-[#689f24] bg-[#689f24] text-white' : 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[#689f24]'}`}>{label}</button>)}
             </div>
             <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {collectionProducts.map((product) => <CompactHomeProductCard key={product.id} product={product} />)}
               {!collectionProducts.length ? <p className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)]">No products currently carry this collection label.</p> : null}
             </div>
-            {collectionTab === 'trending' ? <p className="mt-4 text-xs text-[var(--text-secondary)]">Trending styles from the live product catalogue.</p> : null}
+            <p className="mt-4 text-xs text-[var(--text-secondary)]">Trending styles from the live product catalogue.</p>
           </section>
 
           <section hidden={cmsHidden(homepageSectionSlugs.tryOn, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"><div className="grid overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[#e9eee4] lg:grid-cols-[1fr_1.1fr]"><div className="p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]">Try before you choose</p><h2 className="mt-4 font-serif text-4xl leading-tight text-[#182116]">Your next pair is closer than you think.</h2><p className="mt-5 max-w-md leading-7 text-[#5f6c5b]">Upload a photo or use your camera to preview selected frames. Switch styles until the right one feels obvious.</p><Link to="/virtual-try-on" className="mt-8 inline-flex"><Button><Camera className="mr-2 h-4 w-4" /> Start virtual try-on</Button></Link></div><div className="relative min-h-[300px]"><img src="https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=1200&q=90" alt="Person wearing stylish spectacles" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /></div></div></section>

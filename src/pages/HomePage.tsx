@@ -22,15 +22,54 @@ import {
 } from '../utils/membershipPlanDisplay';
 
 const colorSwatches: Record<string, string> = {
-  Midnight: '#1f2937',
-  Titanium: '#9ca3af',
-  Black: '#111827',
-  Golden: '#c59b45',
-  Slate: '#64748b',
-  Blue: '#2563eb',
-  Ivory: '#f4efe3',
-  Onyx: '#292524',
+  'dark teak/black': 'linear-gradient(135deg, #5b3524 0 48%, #111111 52% 100%)',
+  'gunmetal': 'linear-gradient(135deg, #62686d 0%, #c0c4c7 48%, #767d83 100%)',
+  'havana': 'repeating-linear-gradient(45deg, #552a13 0 2px, #a85b23 2px 4px, #2d160e 4px 6px)',
+  black: '#111111',
+  red: '#dc2626',
+  midnight: '#1f2937',
+  titanium: 'linear-gradient(135deg, #777d82 0%, #d2d5d7 48%, #878d92 100%)',
+  golden: '#c59b45',
+  slate: '#64748b',
+  blue: '#2563eb',
+  ivory: '#f4efe3',
+  onyx: '#292524',
+  silver: 'linear-gradient(135deg, #777d82 0%, #d2d5d7 48%, #878d92 100%)',
+  grey: '#808080',
+  gray: '#808080',
+  brown: '#704214',
+  green: '#2f6d3a',
+  white: '#ffffff',
+  'rose gold': '#b76e79',
 };
+
+function colorSwatch(color: string) {
+  const normalized = color.trim().toLowerCase().replace(/\s+/g, ' ');
+  const mapped = colorSwatches[normalized];
+  if (mapped) return mapped;
+  if (typeof CSS !== 'undefined' && CSS.supports('color', color)) return color;
+  if (/(havana|tortoise)/.test(normalized)) return colorSwatches.havana;
+  if (/gun\s*metal/.test(normalized)) return colorSwatches.gunmetal;
+  if (/teak/.test(normalized) && /black/.test(normalized)) return colorSwatches['dark teak/black'];
+  if (/metal|titanium|steel|silver|grey|gray/.test(normalized)) return colorSwatches.gunmetal;
+  if (/black|onyx|midnight/.test(normalized)) return colorSwatches.black;
+  if (/red|burgundy|wine/.test(normalized)) return colorSwatches.red;
+  if (/gold|champagne/.test(normalized)) return colorSwatches.golden;
+  if (/brown|teak|coffee/.test(normalized)) return colorSwatches.brown;
+  if (/blue|navy/.test(normalized)) return colorSwatches.blue;
+  if (/green/.test(normalized)) return colorSwatches.green;
+  if (/white|ivory/.test(normalized)) return colorSwatches.white;
+  return 'transparent';
+}
+
+function normalizedCategory(value: string) {
+  return value.toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function categoryMatchesEyewearType(category: CatalogCategory, type: 'eyeglasses' | 'sunglasses') {
+  const token = type === 'eyeglasses' ? 'eyeglass' : 'sunglass';
+  return `${normalizedCategory(category.name)} ${normalizedCategory(category.slug)}`.includes(token);
+}
 
 const homeServiceLinks = [
    { icon: House, title: 'Franchise', copy: 'Regestration', path: '/franchise' },
@@ -399,10 +438,28 @@ export default function HomePage() {
   const supportedMaterials = [...new Set((catalog?.products ?? [])
     .map((product) => product.material)
     .filter((material): material is string => Boolean(material)))];
-  const supportedColors = [...new Set((catalog?.products ?? []).flatMap((product) => product.variants
-    .filter((variant) => variant.status.toUpperCase() === 'ACTIVE')
-    .map((variant) => variant.color)
-    .filter((color): color is string => Boolean(color))))];
+  const supportedColorGroups = (['eyeglasses', 'sunglasses'] as const).map((type) => {
+    const products = catalog?.products ?? [];
+    const matchingCategories = [...(catalog?.categories ?? []), ...products.flatMap((product) => product.categories)]
+      .filter((category) => category.status.toUpperCase() === 'ACTIVE'
+        && category.categoryType !== 'OFFER'
+        && categoryMatchesEyewearType(category, type));
+    const canonicalName = type === 'eyeglasses' ? 'eyeglasses' : 'sunglasses';
+    const category = matchingCategories.find((item) => normalizedCategory(item.slug) === canonicalName
+      || normalizedCategory(item.name) === canonicalName) ?? matchingCategories[0];
+    const colors = [...new Set(products
+      .filter((product) => product.categories.some((item) => categoryMatchesEyewearType(item, type)))
+      .flatMap((product) => product.variants
+        .filter((variant) => variant.status.toUpperCase() === 'ACTIVE')
+        .map((variant) => variant.color)
+        .filter((color): color is string => Boolean(color))))];
+    return {
+      type,
+      label: type === 'eyeglasses' ? 'Eyeglasses' : 'Sunglasses',
+      categorySlug: category?.slug,
+      colors,
+    };
+  }).filter((group) => group.categorySlug && group.colors.length > 0);
   const activeHomepageOffers = offers.filter((offer) => offer.active
     && offer.publicationStatus === 'PUBLISHED'
     && Date.parse(offer.startsAt) <= bannerClock
@@ -555,7 +612,30 @@ export default function HomePage() {
             </div>
           </section></CmsSectionGate>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.materials, sections)} className="border-y border-black/10 bg-[#f0f4ed] py-12"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Shop by material</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">{cmsText(sections, homepageSectionSlugs.materials, 'title', 'Made from considered materials')}</h2><p className="mt-3 max-w-xl text-sm leading-6 text-[#5f6c5b]">Browse materials and colours represented in the current product catalogue.</p><div className="mt-6 flex flex-wrap gap-3">{supportedMaterials.map((material) => <Link key={material} to={`/shop?material=${encodeURIComponent(material)}`} className="rounded-full border border-[#cbd7c5] bg-white px-5 py-3 text-sm font-semibold text-[#263322] transition hover:border-[#689f24] hover:text-[#4b781a]">{material}</Link>)}</div><h3 className="mt-10 text-sm font-semibold uppercase tracking-[0.18em] text-[#5d6c55]">Shop by colour</h3><div className="mt-4 flex flex-wrap gap-3">{supportedColors.map((color) => <Link key={color} to={`/shop?color=${encodeURIComponent(color)}`} className="inline-flex items-center gap-2 rounded-full border border-[#cbd7c5] bg-white px-4 py-2.5 text-sm text-[#263322] transition hover:border-[#689f24] hover:text-[#4b781a]"><span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ backgroundColor: colorSwatches[color] ?? '#94a3b8' }} />{color}</Link>)}</div></div></section>
+          <section hidden={cmsHidden(homepageSectionSlugs.materials, sections)} className="border-y border-black/10 bg-[#f0f4ed] py-12">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Shop by material</p>
+              <h2 className="mt-3 font-serif text-4xl text-[#182116]">{cmsText(sections, homepageSectionSlugs.materials, 'title', 'Made from considered materials')}</h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-[#5f6c5b]">Browse materials and colours represented in the current product catalogue.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {supportedMaterials.map((material) => <Link key={material} to={`/shop?material=${encodeURIComponent(material)}`} className="rounded-full border border-[#cbd7c5] bg-white px-5 py-3 text-sm font-semibold text-[#263322] transition hover:border-[#689f24] hover:text-[#4b781a]">{material}</Link>)}
+              </div>
+              <h3 className="mt-10 text-sm font-semibold uppercase tracking-[0.18em] text-[#5d6c55]">Shop by colour</h3>
+              <div className="mt-4 space-y-4">
+                {supportedColorGroups.map(({ label, categorySlug, colors }) => (
+                  <div key={label}>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#5d6c55]">{label}</p>
+                    <div className="flex flex-wrap gap-3">
+                      {colors.map((color) => <Link key={color} to={`/shop?category=${encodeURIComponent(categorySlug)}&color=${encodeURIComponent(color)}`} className="inline-flex items-center gap-2 rounded-full border border-[#cbd7c5] bg-white px-4 py-2.5 text-sm text-[#263322] transition hover:border-[#689f24] hover:text-[#4b781a]">
+                        <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ background: colorSwatch(color) }} />
+                        {color}
+                      </Link>)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {newArrivalCount > 0 || bestsellerCount > 0 || featuredCollection ? <section hidden={cmsHidden(homepageSectionSlugs.edit, sections)} className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Discover the edit</p><h2 className="mt-3 font-serif text-4xl">Fresh arrivals &amp; featured frames</h2></div></div>

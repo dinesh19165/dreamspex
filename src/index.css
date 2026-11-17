@@ -464,10 +464,13 @@ img {
 }
 
 .customer-mega-menu-popover {
+  position: absolute;
   left: 0;
   right: 0;
-  z-index: 80;
+  top: 100%;
+  z-index: 90;
   padding-top: 0;
+  isolation: isolate;
 }
 
 .customer-mega-menu {
@@ -479,7 +482,7 @@ img {
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0 0 1.1rem 1.1rem;
-  background: rgba(8, 15, 25, 0.82);
+  background: #080f19;
   color: #fff;
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(24px);
@@ -665,6 +668,8 @@ img {
   background: rgba(255, 255, 255, 0.045);
   color: rgba(255, 255, 255, 0.88);
   font-size: 0.85rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
   text-decoration: none;
   transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease;
 }

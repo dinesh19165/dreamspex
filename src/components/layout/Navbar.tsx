@@ -11,6 +11,7 @@ import { catalogService, type CatalogCategory, type CatalogProduct } from '../..
 import { fetchOffers, type Offer } from '../../services/offerService';
 import { fetchMembershipPlans, type MembershipPlan } from '../../services/membershipService';
 import type { StorefrontFranchise } from '../../services/franchiseStoreService';
+import { getColorSwatch } from '../../utils/colorSwatches';
 import {
   membershipDiscountLabel,
   membershipPlanDescription,
@@ -76,18 +77,6 @@ function getProductImage(product: CatalogProduct) {
 function getProductCardColor(product: CatalogProduct) {
   const color = product.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE' && variant.color?.trim())?.color?.trim();
   return color && !product.name.toLowerCase().includes(color.toLowerCase()) ? color : undefined;
-}
-
-function swatchColor(value: string) {
-  const key = value.trim().toLowerCase();
-  const namedColors: Record<string, string> = {
-    black: '#151515', brown: '#795548', blue: '#2878c8', red: '#d83b3b',
-    green: '#438a50', grey: '#858b91', gray: '#858b91', gold: '#c4a347',
-    silver: '#b8bec5', tortoise: 'linear-gradient(135deg, #342016 0 25%, #987043 25% 50%, #372116 50% 75%, #a17842 75%)',
-    clear: 'linear-gradient(135deg, #f8fafc, #94a3b8)',
-  };
-  if (/^#[\da-f]{3,8}$/i.test(key)) return key;
-  return namedColors[key] ?? '#82909a';
 }
 
 export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: boolean }) {
@@ -349,7 +338,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
 
   return (
     <>
-      <div ref={megaMenuRef} className={`relative z-[70] ${homepageOverlayClass}`} onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
+      <div ref={megaMenuRef} className={`relative z-[80] ${homepageOverlayClass}`} onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
       {!homepageOverlay ? <div className="top-promo px-4 py-2 text-xs font-medium tracking-wide sm:text-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-4 sm:justify-between">
           <div className="top-promo__perks hidden items-center gap-6 md:flex">
@@ -468,7 +457,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
                     {selectedMegaGroup && ['shapes', 'brands', 'materials', 'colors', 'offer-categories', 'links'].includes(selectedMegaGroup.kind)
                       ? <div className={`customer-mega-menu__options${selectedMegaGroup.kind === 'colors' ? ' customer-mega-menu__options--colors' : ''}`}>
                         {selectedMegaGroup.items.map((item) => <Link key={item.label} to={item.path} onClick={() => setMegaMenuOpen(null)}>
-                          {selectedMegaGroup.kind === 'colors' ? <span className="customer-mega-menu__swatch" style={{ background: swatchColor(item.label) }} /> : null}
+                          {selectedMegaGroup.kind === 'colors' ? <span className="customer-mega-menu__swatch" style={{ background: getColorSwatch(item.label) }} /> : null}
                           {item.label}
                         </Link>)}
                       </div> : null}

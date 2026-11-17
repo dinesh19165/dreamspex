@@ -27,9 +27,7 @@ public class DeliveryAvailabilityService {
     }
 
     public Evaluation evaluate(Address address, String franchiseId) {
-        if (address.getLatitude() == null || address.getLongitude() == null
-                || address.getLatitude().doubleValue() < -90 || address.getLatitude().doubleValue() > 90
-                || address.getLongitude().doubleValue() < -180 || address.getLongitude().doubleValue() > 180) {
+        if (address == null || !hasValidCoordinates(address.getLatitude(), address.getLongitude())) {
             return unavailable("LOCATION_REQUIRED", null, null, null,
                     "Select a valid delivery location on the map to check availability.");
         }
@@ -97,10 +95,16 @@ public class DeliveryAvailabilityService {
     }
 
     private static boolean hasValidConfiguration(Store store) {
-        return store.getLatitude() != null && store.getLongitude() != null && store.getDeliveryRadiusKm() != null
-                && store.getLatitude().doubleValue() >= -90 && store.getLatitude().doubleValue() <= 90
-                && store.getLongitude().doubleValue() >= -180 && store.getLongitude().doubleValue() <= 180
+        return hasValidCoordinates(store.getLatitude(), store.getLongitude()) && store.getDeliveryRadiusKm() != null
                 && store.getDeliveryRadiusKm().signum() > 0;
+    }
+
+    private static boolean hasValidCoordinates(BigDecimal latitude, BigDecimal longitude) {
+        return latitude != null && longitude != null
+                && latitude.compareTo(BigDecimal.valueOf(-90)) >= 0
+                && latitude.compareTo(BigDecimal.valueOf(90)) <= 0
+                && longitude.compareTo(BigDecimal.valueOf(-180)) >= 0
+                && longitude.compareTo(BigDecimal.valueOf(180)) <= 0;
     }
 
     private static Evaluation unavailable(String status, Store store, BigDecimal distance, BigDecimal radius,

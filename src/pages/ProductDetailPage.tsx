@@ -57,6 +57,8 @@ export default function ProductDetailPage() {
         : undefined;
       setSelectedVariantId(pendingVariant?.id
         ?? value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)?.id
+        ?? value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE')?.id
+        ?? value.variants[0]?.id
         ?? '');
     }).catch((reason) => setCatalogError(reason instanceof Error ? reason.message : 'Unable to load this product.'));
   }, [id, selectedLocationId]);
@@ -145,9 +147,28 @@ export default function ProductDetailPage() {
   };
   const isWishlisted = isInWishlist(product.id);
   const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
+  const colorOptions = [...new Set(catalogProduct.variants.map((variant) => variant.color).filter((color): color is string => Boolean(color)))];
+  const sizeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.size).filter((size): size is string => Boolean(size)))];
+  const isAvailableVariant = (variant: typeof selectedVariant) => Boolean(
+    variant && variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0,
+  );
+  const selectVariantOption = (key: 'color' | 'size', value: string) => {
+    const currentVariant = selectedVariant;
+    const otherKey = key === 'color' ? 'size' : 'color';
+    const candidates = catalogProduct.variants.filter((variant) => variant[key] === value && isAvailableVariant(variant));
+    const nextVariant = candidates.find((variant) => variant[otherKey] === currentVariant?.[otherKey]
+      && variant.lensType === currentVariant?.lensType)
+      ?? candidates.find((variant) => variant[otherKey] === currentVariant?.[otherKey])
+      ?? candidates[0];
+    if (nextVariant) setSelectedVariantId(nextVariant.id);
+  };
   const unavailable = !selectedVariant
     || selectedVariant.status.toUpperCase() !== 'ACTIVE'
     || selectedVariant.availableQuantity < 1;
+  const selectedVariantPrice = product.price + (selectedVariant?.additionalPrice ?? 0);
+  const selectedVariantOldPrice = product.oldPrice == null
+    ? undefined
+    : product.oldPrice + (selectedVariant?.additionalPrice ?? 0);
 
   const productForCart = { ...product, variantId: selectedVariant?.id };
   const requireCustomer = (action: 'ADD_TO_CART' | 'BUY_NOW') => {
@@ -203,16 +224,16 @@ export default function ProductDetailPage() {
     cartTimerRef.current = window.setTimeout(() => setAddedToCart(false), 1400);
   };
 
-  const discountPercentage = getDiscountPercentage(product.price, product.oldPrice);
-  const actionButtonBase = 'h-[48px] min-h-[48px] rounded-full px-3 text-sm font-semibold whitespace-nowrap transition-all duration-200 sm:h-[52px] sm:min-h-[52px] sm:px-4';
+  const discountPercentage = getDiscountPercentage(selectedVariantPrice, selectedVariantOldPrice);
+  const actionButtonBase = 'h-auto min-h-10 rounded-full px-2 py-2 text-xs font-semibold leading-tight transition-all duration-200 sm:min-h-11 sm:px-3 sm:text-sm';
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid items-start gap-10 grid-cols-1 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-6">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 backdrop-blur-xl sm:p-5">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+          <div className="space-y-4">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 backdrop-blur-xl sm:rounded-[28px] sm:p-4">
             <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[24px] bg-[var(--bg-secondary)] p-3 sm:p-5 lg:aspect-[4/3]"
               onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
               {selectedImage ? <img src={selectedImage.imageUrl} alt={selectedImage.altText || product.name} fetchPriority="high" className="h-full w-full object-contain" /> : null}
@@ -236,9 +257,9 @@ export default function ProductDetailPage() {
               </button>)}
             </div> : null}
           </motion.div>
-          <section className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 backdrop-blur-xl sm:p-8" aria-labelledby="product-specifications">
-            <p id="product-specifications" className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Specifications</p>
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <section className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 backdrop-blur-xl sm:rounded-[28px] sm:p-5" aria-labelledby="product-specifications">
+            <p id="product-specifications" className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">Specifications</p>
+            <div className="mt-3 grid auto-rows-fr grid-cols-1 gap-2 min-[360px]:grid-cols-2 sm:gap-3">
               {([
                 ['Category', product.category],
                 ...(product.gender ? [['Audience', product.gender]] : []),
@@ -246,77 +267,89 @@ export default function ProductDetailPage() {
                 ...(product.frameType ? [['Frame type', product.frameType]] : []),
                 ['Material', product.material],
                 ['Brand', product.brand],
-                ['Available colours', product.colors.join(', ')],
-                ['Available sizes', product.sizes.join(', ')],
-                ['Availability', product.stock],
               ] as Array<[string, string]>).map(([label, value]) => (
-                <div key={String(label)} className="rounded-[18px] border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
-                  <p className="text-sm text-[var(--text-secondary)]">{String(label)}</p>
-                  <p className="mt-2 font-semibold text-[var(--text-primary)]">{String(value)}</p>
+                <div key={String(label)} className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-3">
+                  <p className="text-xs text-[var(--text-secondary)]">{String(label)}</p>
+                  <p className="mt-1 break-words text-sm font-semibold leading-5 text-[var(--text-primary)]">{String(value)}</p>
                 </div>
               ))}
             </div>
           </section>
           </div>
 
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="min-w-0 space-y-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--text-secondary)]">{product.brand}</p>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{product.category}</p>
-              <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">{product.name}</h1>
-              <p className="mt-3 flex items-center gap-2 text-sm text-[var(--text-secondary)]" aria-label={`${ratingSummary.averageRating.toFixed(1)} out of 5 from ${ratingSummary.totalReviews} verified reviews`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{ratingSummary.averageRating.toFixed(1)}</strong><span>· {ratingSummary.totalReviews} verified reviews</span></p>
-              <p className="mt-4 text-base leading-8 text-[var(--text-secondary)]">{product.description}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--text-secondary)]">{product.brand}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-400">{product.category}</p>
+              <h1 className="mt-2 text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">{product.name}</h1>
+              <p className="mt-2 flex items-center gap-2 text-sm text-[var(--text-secondary)]" aria-label={`${ratingSummary.averageRating.toFixed(1)} out of 5 from ${ratingSummary.totalReviews} verified reviews`}><Star className="h-4 w-4 fill-amber-400 text-amber-400" /><strong className="text-[var(--text-primary)]">{ratingSummary.averageRating.toFixed(1)}</strong><span>· {ratingSummary.totalReviews} verified reviews</span></p>
+              <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{product.description}</p>
             </div>
-            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl">
+            <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 backdrop-blur-xl">
               <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-                <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Price</p><p className="mt-1 text-3xl font-semibold text-[var(--text-primary)]">{formatINR(product.price)}</p></div>
-                {product.oldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">List price</p><p className="mt-1 text-lg text-[var(--text-secondary)] line-through">{formatINR(product.oldPrice)}</p></div> : null}
+                <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">Price</p><p className="mt-1 text-3xl font-semibold text-[var(--text-primary)]">{formatINR(selectedVariantPrice)}</p></div>
+                {selectedVariantOldPrice ? <div><p className="text-xs uppercase tracking-[0.2em] text-[var(--text-secondary)]">List price</p><p className="mt-1 text-lg text-[var(--text-secondary)] line-through">{formatINR(selectedVariantOldPrice)}</p></div> : null}
                 {discountPercentage != null ? <span className="inline-flex shrink-0 whitespace-nowrap rounded-full bg-[var(--brand-green)]/15 px-3 py-1.5 text-sm font-bold tracking-wide text-[var(--brand-green-dark)]">{discountPercentage}% OFF</span> : null}
               </div>
-              <div className="mt-4 border-t border-[var(--border-subtle)] pt-4">
-                <p className="text-sm leading-6 text-[var(--text-secondary)]" aria-label="Product GST information">
+              <div className="mt-3 border-t border-[var(--border-subtle)] pt-3">
+                <p className="text-sm leading-5 text-[var(--text-secondary)]" aria-label="Product GST information">
                   {productGstInformation(catalogProduct)}
                 </p>
-                {catalogProduct.hsnCode ? <p className="mt-2 text-xs text-[var(--text-secondary)]">HSN {catalogProduct.hsnCode}</p> : null}
+                {catalogProduct.hsnCode ? <p className="mt-1 text-xs text-[var(--text-secondary)]">HSN {catalogProduct.hsnCode}</p> : null}
               </div>
-              {catalogProduct.variants.length ? <label className="mt-4 block text-sm text-[var(--text-secondary)]"><span>Variant</span><select value={selectedVariantId} onChange={(event) => setSelectedVariantId(event.target.value)} className="mt-2 w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">{catalogProduct.variants.map((variant) => <option key={variant.id} value={variant.id} disabled={variant.status !== 'ACTIVE' || variant.availableQuantity < 1}>{[variant.color, variant.size, variant.lensType].filter(Boolean).join(' · ') || variant.sku} · {variant.availableQuantity} available</option>)}</select></label> : null}
             </div>
-            <div className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 backdrop-blur-xl">
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Available options</h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--text-secondary)]">Frame color</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {product.colors.map((color) => <span key={color} className="rounded-full border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)]">{color}</span>)}
+            <div className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 backdrop-blur-xl">
+              <h2 className="text-base font-semibold text-[var(--text-primary)]">Available options</h2>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {colorOptions.length ? <div>
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">Frame color</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {colorOptions.map((color) => {
+                      const optionAvailable = catalogProduct.variants.some((variant) => variant.color === color && isAvailableVariant(variant));
+                      const selected = selectedVariant?.color === color;
+                      return <button key={color} type="button" aria-pressed={selected} disabled={!optionAvailable}
+                        onClick={() => selectVariantOption('color', color)}
+                        className={`max-w-full break-words rounded-full border px-2.5 py-1 text-xs transition-colors ${selected ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/15 font-semibold text-[var(--brand-green-dark)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'} ${optionAvailable ? 'hover:border-[var(--brand-green)]/70' : 'cursor-not-allowed opacity-50'}`}>
+                        {color}{optionAvailable ? null : <span className="ml-1">· Unavailable</span>}
+                      </button>;
+                    })}
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--text-secondary)]">Size</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {product.sizes.map((size) => <span key={size} className="rounded-full border border-[var(--border-subtle)] px-3 py-2 text-sm text-[var(--text-secondary)]">{size}</span>)}
+                </div> : null}
+                {sizeOptions.length ? <div>
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">Size</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {sizeOptions.map((size) => {
+                      const optionAvailable = catalogProduct.variants.some((variant) => variant.size === size && isAvailableVariant(variant));
+                      const selected = selectedVariant?.size === size;
+                      return <button key={size} type="button" aria-pressed={selected} disabled={!optionAvailable}
+                        onClick={() => selectVariantOption('size', size)}
+                        className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${selected ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/15 font-semibold text-[var(--brand-green-dark)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'} ${optionAvailable ? 'hover:border-[var(--brand-green)]/70' : 'cursor-not-allowed opacity-50'}`}>
+                        {size}{optionAvailable ? null : <span className="ml-1">· Unavailable</span>}
+                      </button>;
+                    })}
                   </div>
-                </div>
+                </div> : null}
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 md:flex-row md:items-stretch">
+            <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2 sm:gap-3">
               {supportsPrescription ? (
-                <Button variant="secondary" className={`${actionButtonBase} flex-1 w-full`} onClick={() => navigate(`/virtual-try-on?productId=${encodeURIComponent(product.backendId ?? String(product.id))}`)}>
-                  <Glasses className="mr-2 h-4 w-4" />Virtual Try-On
+                <Button variant="secondary" className={`${actionButtonBase} w-full min-w-0`} onClick={() => navigate(`/virtual-try-on?productId=${encodeURIComponent(product.backendId ?? String(product.id))}`)}>
+                  <Glasses className="mr-1.5 h-3.5 w-3.5 shrink-0 sm:mr-2 sm:h-4 sm:w-4" />Virtual Try-On
                 </Button>
               ) : null}
 
               {supportsPrescription ? (
-                <Button variant="secondary" className={`${actionButtonBase} flex-1 w-full`} onClick={() => navigate(`/prescription/${catalogProduct.id}?variantId=${encodeURIComponent(selectedVariantId)}`)}>
+                <Button variant="secondary" className={`${actionButtonBase} w-full min-w-0`} onClick={() => navigate(`/prescription/${catalogProduct.id}?variantId=${encodeURIComponent(selectedVariantId)}`)}>
                   Add Prescription &amp; Choose Lenses
                 </Button>
               ) : null}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_170px]">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3">
               <Button
                 type="button"
-                className={`${actionButtonBase} w-full bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
+                className={`${actionButtonBase} w-full min-w-0 bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
                 onClick={handleAddToCart}
                 disabled={unavailable || cartLoading || sharedCartLoading}
               >
@@ -325,7 +358,7 @@ export default function ProductDetailPage() {
 
               <Button
                 type="button"
-                className={`${actionButtonBase} w-full bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
+                className={`${actionButtonBase} w-full min-w-0 bg-[var(--brand-green)] text-[var(--text-primary)] shadow-[0_12px_28px_-18px_rgba(120,190,32,0.8)] hover:bg-[var(--brand-green-light)]`}
                 onClick={handleBuyNow}
                 disabled={unavailable || cartLoading || sharedCartLoading}
               >
@@ -335,31 +368,31 @@ export default function ProductDetailPage() {
               <Button
                 type="button"
                 variant="ghost"
-                className={`${actionButtonBase} w-full xl:w-auto ${isWishlisted ? 'border-[var(--brand-green)]/60 bg-[var(--brand-green)]/10 text-[var(--brand-green-dark)]' : ''}`}
+                className={`${actionButtonBase} w-full min-w-0 xl:w-full ${isWishlisted ? 'border-[var(--brand-green)]/60 bg-[var(--brand-green)]/10 text-[var(--brand-green-dark)]' : ''}`}
                 onClick={() => toggleWishlist(product)}
                 aria-pressed={isWishlisted}
               >
-                <Heart className={`mr-2 h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
+                <Heart className={`mr-1.5 h-3.5 w-3.5 shrink-0 sm:mr-2 sm:h-4 sm:w-4 ${isWishlisted ? 'fill-current' : ''}`} />
                 {isWishlisted ? 'Saved' : 'Add to Wishlist'}
               </Button>
             </div>
 
-            {unavailable ? <p role="status" className="text-sm font-medium text-[var(--text-secondary)]">No active variant is currently available for this product.</p> : null}
+            {unavailable ? <p role="status" className="text-sm font-medium text-[var(--text-secondary)]">{selectedVariant ? 'This variant is currently unavailable. Choose another option.' : 'No active variant is currently available for this product.'}</p> : null}
             {addedToCart ? <p role="status" className="text-sm font-medium text-[var(--brand-green-dark)]">{product.name} was added to your cart.</p> : null}
             {cartError ? <p role="alert" className="text-sm font-medium text-red-600">{cartError}</p> : null}
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-[var(--text-primary)]"><ShieldCheck className="h-4 w-4 text-cyan-400" /> Product availability</div><p className="mt-2 text-sm text-[var(--text-secondary)]">{product.stock}</p></div>
-              <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl"><div className="flex items-center gap-2 text-[var(--text-primary)]"><Truck className="h-4 w-4 text-cyan-400" /> Delivery details</div><p className="mt-2 text-sm text-[var(--text-secondary)]">Delivery options are shown during checkout.</p></div>
+            <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-2 sm:gap-3">
+              <div className="rounded-[18px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 backdrop-blur-xl"><div className="flex items-center gap-1.5 text-sm text-[var(--text-primary)]"><ShieldCheck className="h-4 w-4 shrink-0 text-cyan-400" /> Product availability</div><p className="mt-1 text-xs text-[var(--text-secondary)]">{unavailable ? 'Unavailable' : `${selectedVariant.availableQuantity} available`}</p></div>
+              <div className="rounded-[18px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 backdrop-blur-xl"><div className="flex items-center gap-1.5 text-sm text-[var(--text-primary)]"><Truck className="h-4 w-4 shrink-0 text-cyan-400" /> Delivery details</div><p className="mt-1 text-xs text-[var(--text-secondary)]">Delivery options are shown during checkout.</p></div>
             </div>
-            <p className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 text-sm text-[var(--text-secondary)]">
+            <p className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 text-xs leading-5 text-[var(--text-secondary)]">
               Delivery availability is calculated at checkout from your saved map location and the nearest configured store. PIN codes are not used to estimate delivery distance.
             </p>
-            <div className="rounded-[32px] border border-cyan-400/20 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-8">
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Lens selection</p>
-              <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">Make it yours</h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">Review the available lens options and enter your prescription in the guided order flow.</p>
-              {supportsPrescription ? <Link to={`/prescription/${catalogProduct.id}?variantId=${encodeURIComponent(selectedVariantId)}`} className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950">Choose lenses <ArrowRight className="h-4 w-4" /></Link> : <p className="mt-5 text-sm text-[var(--text-secondary)]">Lens selection is not available for this item.</p>}
+            <div className="rounded-[28px] border border-cyan-400/20 bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-5 sm:p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-400">Lens selection</p>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Make it yours</h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Review the available lens options and enter your prescription in the guided order flow.</p>
+              {supportsPrescription ? <Link to={`/prescription/${catalogProduct.id}?variantId=${encodeURIComponent(selectedVariantId)}`} className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-cyan-400 px-4 py-2.5 text-xs font-semibold text-slate-950">Choose lenses <ArrowRight className="h-3.5 w-3.5" /></Link> : <p className="mt-4 text-sm text-[var(--text-secondary)]">Lens selection is not available for this item.</p>}
             </div>
           </motion.div>
         </div>

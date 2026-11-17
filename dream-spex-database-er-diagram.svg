@@ -1,0 +1,41 @@
+
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+      <rect width="1200" height="700" fill="#eef5ff"/>
+      <text x="600" y="40" text-anchor="middle" font-size="26" font-family="Segoe UI" font-weight="700" fill="#12315A">Dream Spex Database ER Diagram</text>
+      <rect x="50" y="110" width="200" height="110" rx="12" fill="#dfeeff" stroke="#3b82b8"/>
+      <text x="150" y="150" text-anchor="middle" font-size="22" font-family="Segoe UI" font-weight="700" fill="#12315A">Users</text>
+      <text x="150" y="180" text-anchor="middle" font-size="14" font-family="Segoe UI" fill="#203C5C">id, email, phone, role</text>
+      <rect x="340" y="110" width="220" height="110" rx="12" fill="#dffaf0" stroke="#3aa66d"/>
+      <text x="450" y="150" text-anchor="middle" font-size="22" font-family="Segoe UI" font-weight="700" fill="#12315A">Products</text>
+      <text x="450" y="180" text-anchor="middle" font-size="14" font-family="Segoe UI" fill="#203C5C">id, sku, name, price</text>
+      <rect x="650" y="110" width="210" height="110" rx="12" fill="#fff0d8" stroke="#d29b36"/>
+      <text x="755" y="150" text-anchor="middle" font-size="22" font-family="Segoe UI" font-weight="700" fill="#12315A">Orders</text>
+      <text x="755" y="180" text-anchor="middle" font-size="14" font-family="Segoe UI" fill="#203C5C">id, order_number, total</text>
+      <rect x="910" y="110" width="210" height="110" rx="12" fill="#f6ecff" stroke="#8d5fd3"/>
+      <text x="1015" y="150" text-anchor="middle" font-size="22" font-family="Segoe UI" font-weight="700" fill="#12315A">Franchises</text>
+      <text x="1015" y="180" text-anchor="middle" font-size="14" font-family="Segoe UI" fill="#203C5C">id, name, city, status</text>
+      <rect x="150" y="350" width="220" height="110" rx="12" fill="#dfeeff" stroke="#3b82b8"/>
+      <text x="260" y="390" text-anchor="middle" font-size="22" font-family="Segoe UI" font-weight="700" fill="#12315A">Addresses</text>
+      <text x="260" y="420" text-anchor="middle" font-size="14" font-family="Segoe UI" fill="#203C5C">user_id, city, state, lat/lng</text>
+      <rect x="430" y="350" width="220" height="110" rx="12" fill="#dffaf0" stroke="#3aa66d"/>
+      <text x="540" y="390" text-anchor="middle" font-size="22" font-family="Segoe UI" font-weight="700" fill="#12315A">Prescriptions</text>
+      <text x="540" y="420" text-anchor="middle" font-size="14" font-family="Segoe UI" fill="#203C5C">user_id, OD, OS, PD</text>
+      <rect x="720" y="350" width="220" height="110" rx="12" fill="#fff0d8" stroke="#d29b36"/>
+      <text x="830" y="390" text-anchor="middle" font-size="22" font-family="Segoe UI" font-weight="700" fill="#12315A">Payments</text>
+      <text x="830" y="420" text-anchor="middle" font-size="14" font-family="Segoe UI" fill="#203C5C">order_id, provider, status</text>
+      <rect x="950" y="350" width="210" height="110" rx="12" fill="#f6ecff" stroke="#8d5fd3"/>
+      <text x="1055" y="390" text-anchor="middle" font-size="22" font-family="Segoe UI" font-weight="700" fill="#12315A">Notifications</text>
+      <text x="1055" y="420" text-anchor="middle" font-size="14" font-family="Segoe UI" fill="#203C5C">user_id, type, status</text>
+      <line x1="250" y1="220" x2="250" y2="350" stroke="#2d466d" stroke-width="2"/>
+      <line x1="450" y1="220" x2="450" y2="350" stroke="#2d466d" stroke-width="2"/>
+      <line x1="755" y1="220" x2="755" y2="350" stroke="#2d466d" stroke-width="2"/>
+      <line x1="1015" y1="220" x2="1015" y2="350" stroke="#2d466d" stroke-width="2"/>
+      <line x1="250" y1="350" x2="430" y2="350" stroke="#2d466d" stroke-width="2"/>
+      <line x1="540" y1="350" x2="720" y2="350" stroke="#2d466d" stroke-width="2"/>
+      <line x1="830" y1="350" x2="950" y2="350" stroke="#2d466d" stroke-width="2"/>
+      <text x="290" y="260" font-size="15" font-family="Segoe UI" fill="#2d466d">1..N</text>
+      <text x="585" y="260" font-size="15" font-family="Segoe UI" fill="#2d466d">1..N</text>
+      <text x="840" y="260" font-size="15" font-family="Segoe UI" fill="#2d466d">1..N</text>
+      <text x="1045" y="260" font-size="15" font-family="Segoe UI" fill="#2d466d">1..N</text>
+    </svg>
+  

@@ -14,6 +14,7 @@ import com.dreamspex.shopping.entity.CartItem;
 import com.dreamspex.shopping.repository.CartRepository;
 import com.dreamspex.common.ApiException;
 import com.dreamspex.config.ShippingProperties;
+import com.dreamspex.delivery.DeliveryFeeService;
 import com.dreamspex.membership.Membership;
 import com.dreamspex.membership.MembershipPlan;
 import com.dreamspex.membership.MembershipRepository;
@@ -61,6 +62,7 @@ class OrderServiceLensPricingTest {
     @Mock NotificationService notifications;
     @Mock LensOptionRepository lensOptions;
     @Mock DeliveryAvailabilityService deliveryAvailability;
+    @Mock DeliveryFeeService deliveryFeeService;
     @Mock GstConfigurationRepository gstConfigurations;
 
     private User user;
@@ -181,6 +183,42 @@ class OrderServiceLensPricingTest {
         assertEquals(order.total(), order.gstSnapshot().finalAmount());
         verify(orders).save(org.mockito.ArgumentMatchers.<Order>argThat(saved -> saved.getGstSnapshot() != null
                 && saved.getGstSnapshot().contains("\"hsnCode\":\"900311\"")));
+    }
+
+    @Test
+    void checkoutQuoteAndCreatedOrderUseTheSameDeliveryFeeCalculation() {
+        Store store = store("Telangana");
+        availableDelivery(store);
+        service = new OrderService(current, addresses, carts, variants, orders, coupons,
+                couponService, memberships, new ObjectMapper(),
+                notifications, new ShippingProperties(new BigDecimal("2000.00"), new BigDecimal("99.00")), lensOptions,
+                org.mockito.Mockito.mock(com.dreamspex.prescription.PrescriptionFileRepository.class),
+                org.mockito.Mockito.mock(com.dreamspex.prescription.PrescriptionStorage.class), deliveryAvailability,
+                deliveryFeeService, gstConfigurations, new GstCalculationService());
+        when(deliveryFeeService.quote(any(), any(), any())).thenReturn(
+                new DeliveryFeeService.DeliveryFeeQuote(new BigDecimal("1100.00"), new BigDecimal("100.00"),
+                        BigDecimal.ZERO, new BigDecimal("380.72"), new BigDecimal("800.00"),
+                        "policy-1", "delivery", "GLOBAL", "slab-31-800", "31-800 km", false, "SLAB"));
+        when(orders.findByUserIdAndIdempotencyKey(user.getId(), "delivery-fee-order")).thenReturn(Optional.empty());
+        when(variants.findWithLockByIdAndStatus(variant.getId(), "ACTIVE")).thenReturn(Optional.of(variant));
+        when(orders.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(gstConfigurations.findFirstByActiveTrueOrderByUpdatedAtDesc())
+                .thenReturn(Optional.of(configuration()));
+        product.setName("Frame");
+        product.setHsnCode("900311");
+        product.setGstRate(new BigDecimal("18.00"));
+
+        var quote = service.quote(auth(), new CheckoutRequest("address", null));
+        var created = service.create(auth(), new CheckoutRequest("address", null), "delivery-fee-order");
+
+        assertEquals(new BigDecimal("100.00"), quote.deliveryFee().appliedFee());
+        assertEquals(new BigDecimal("100.00"), quote.shipping());
+        assertEquals(new BigDecimal("100.00"), created.shipping());
+        assertEquals(new BigDecimal("100.00"), created.total().subtract(new BigDecimal("1100.00")));
+        verify(deliveryFeeService, org.mockito.Mockito.times(2)).quote(any(), any(), any());
+        verify(orders).save(org.mockito.ArgumentMatchers.<Order>argThat(saved ->
+                saved.getDeliveryFeeAmount().compareTo(new BigDecimal("100.00")) == 0
+                        && "slab-31-800".equals(saved.getDeliveryFeeSlabId())));
     }
 
     private org.springframework.security.core.Authentication auth() {

@@ -48,7 +48,6 @@ export default function Footer() {
           </div>
           <div className="mt-6 grid gap-3 text-sm font-medium">
             <Link to="/offers" className="inline-flex items-center gap-2 font-semibold text-[var(--text-primary)] transition hover:text-[#3f7000]">Explore current offers <ArrowRight className="h-4 w-4" /></Link>
-            <Link to="/contact" className="inline-flex items-center gap-2 font-semibold text-[var(--text-primary)] transition hover:text-[#3f7000]">Talk to an advisor <ArrowRight className="h-4 w-4" /></Link>
           </div>
         </div>
       </div>

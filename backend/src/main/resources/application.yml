@@ -213,9 +213,9 @@ dreamspex:
     key-id: ${RAZORPAY_KEY_ID:}
     key-secret: ${RAZORPAY_KEY_SECRET:}
     webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
-  shipping:
-    free-threshold: ${DREAMSPEX_FREE_SHIPPING_THRESHOLD:2000}
-    charge: ${DREAMSPEX_SHIPPING_CHARGE:99}
+  # shipping:
+  #   free-threshold: ${DREAMSPEX_FREE_SHIPPING_THRESHOLD:2000}
+  #   charge: ${DREAMSPEX_SHIPPING_CHARGE:99}
 
 springdoc:
   swagger-ui:

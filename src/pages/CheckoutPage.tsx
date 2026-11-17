@@ -171,8 +171,8 @@ export default function CheckoutPage() {
     return () => { active = false; };
   }, [refreshSession, user?.accessToken]);
   const selectedLocationIsSaved = selectedAddress !== null
-    && !addressChanged(selectedAddress, addressDraft, locationDraft ?? savedAddressCoordinates);
-  const fulfillmentCoordinates = locationDraft ?? savedAddressCoordinates;
+    && !addressChanged(selectedAddress, addressDraft, locationDraft);
+  const fulfillmentCoordinates = locationDraft;
 
   useEffect(() => {
     if (!user?.accessToken || cartLoading || cart.length === 0) {
@@ -210,9 +210,15 @@ export default function CheckoutPage() {
 
   const updateAddressField = (field: Exclude<keyof CustomerAddressRequest, 'defaultAddress' | 'latitude' | 'longitude'>, value: string) => {
     setAddressDraft((current) => ({ ...current, [field]: value }));
+    if (['line1', 'line2', 'city', 'state', 'postalCode', 'countryCode'].includes(field)) {
+      setLocationDraft(null);
+      setLocationNotice('Address details changed. Select the location again on the map before checking delivery.');
+    }
     setCheckoutQuote(null);
     setLocationError('');
-    setLocationNotice('');
+    if (!['line1', 'line2', 'city', 'state', 'postalCode', 'countryCode'].includes(field)) {
+      setLocationNotice('');
+    }
   };
 
   const handleCurrentLocation = async (coordinates: Coordinates) => {
@@ -250,7 +256,7 @@ export default function CheckoutPage() {
       setLocationError('Country code must be two letters.');
       return;
     }
-    const coordinatesToSave = locationDraft ?? savedAddressCoordinates;
+    const coordinatesToSave = locationDraft;
     if (coordinatesToSave && !isValidCoordinates(coordinatesToSave.latitude, coordinatesToSave.longitude)) {
       setLocationError('The selected map coordinates are invalid. Choose another location or clear the pin.');
       return;
@@ -563,8 +569,8 @@ export default function CheckoutPage() {
                 {selectedAddress ? <p className="rounded-xl bg-[var(--bg-primary)] p-3 text-sm text-[var(--text-secondary)]">
                   Selected {selectedAddress.defaultAddress ? 'default ' : ''}address: {selectedAddress.line1}
                   {selectedAddress.line2 ? `, ${selectedAddress.line2}` : ''}, {selectedAddress.city}, {selectedAddress.state} {selectedAddress.postalCode}
-                  {savedAddressCoordinates
-                    ? ` · Saved location ${savedAddressCoordinates.latitude.toFixed(6)}, ${savedAddressCoordinates.longitude.toFixed(6)}`
+                  {locationDraft
+                    ? ` · Saved location ${locationDraft.latitude.toFixed(6)}, ${locationDraft.longitude.toFixed(6)}`
                     : ' · No saved GPS location'}
                 </p> : <p className="text-sm text-[var(--text-secondary)]">Enter a new delivery address below. GPS is optional.</p>}
                 <section className="space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
@@ -603,6 +609,11 @@ export default function CheckoutPage() {
                     : quoteError ? <p className="mt-2 text-sm text-rose-300" role="alert">{quoteError}</p>
                       : checkoutQuote ? <p className={`mt-2 text-sm ${checkoutQuote.deliveryAvailability.available ? 'text-emerald-300' : 'text-amber-300'}`} role="status">
                         {checkoutQuote.deliveryAvailability.message}
+                        {checkoutQuote.deliveryFee ? <span className="mt-1 block text-xs text-[var(--text-secondary)]">
+                          Distance: {checkoutQuote.deliveryFee.distanceKm ?? checkoutQuote.deliveryAvailability.distanceKm ?? '—'} km
+                          {' · '}Delivery: {formatINR(checkoutQuote.deliveryFee.appliedFee)}
+                          {checkoutQuote.deliveryFee.slabLabel ? ` · Slab: ${checkoutQuote.deliveryFee.slabLabel}` : ''}
+                        </span> : null}
                         {checkoutQuote.deliveryAvailability.radiusKm !== null
                           ? <span className="block mt-1 text-xs text-[var(--text-secondary)]">
                             Delivery radius: {checkoutQuote.deliveryAvailability.radiusKm} km

@@ -546,7 +546,7 @@ export default function HomePage() {
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">The brands we carry</p><h2 id="brand-showcase-title" className="mt-2 font-serif text-3xl text-[#182116]">{cmsText(sections, homepageSectionSlugs.brands, 'title', 'Explore by brand')}</h2></div>
-                <p className="max-w-md text-sm leading-6 text-[#5f6c5b]">Brand names are drawn from the current product catalogue.</p>
+                <p className="max-w-md text-sm leading-6 text-[#5f6c5b]">Brands</p>
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
                   {visibleBrandCards.map((card) => <Link key={card.id} to={homepageCardHref(card)} className="rounded-xl border border-[#d5dfd1] bg-[#f7f9f5] px-6 py-4 text-lg font-semibold tracking-wide text-[#263322] transition hover:border-[#689f24] hover:bg-white hover:text-[#4b781a]">{card.title}<span className="ml-3 text-xs font-normal text-[#687468]">{card.buttonText ?? 'Shop frames'}</span></Link>)}

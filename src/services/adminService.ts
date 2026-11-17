@@ -64,6 +64,53 @@ export type AdminGstSettings = {
   updatedByName: string | null;
 };
 
+export type DeliveryFeePolicy = {
+  id: string;
+  name: string;
+  scope: 'GLOBAL' | 'STORE';
+  storeId: string | null;
+  storeName: string | null;
+  freeDeliveryThreshold: number;
+  maxDeliveryDistanceKm: number;
+  unavailableAreas: string[];
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeliveryFeePolicyRequest = {
+  name: string;
+  scope: 'GLOBAL' | 'STORE';
+  storeId: string | null;
+  freeDeliveryThreshold: number;
+  maxDeliveryDistanceKm: number;
+  unavailableAreas: string[];
+  active: boolean;
+};
+
+export type DeliveryFeeSlab = {
+  id: string;
+  policyId: string;
+  label: string;
+  minDistanceKm: number;
+  maxDistanceKm: number | null;
+  feeAmount: number;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeliveryFeeSlabRequest = {
+  policyId: string;
+  label: string;
+  minDistanceKm: number;
+  maxDistanceKm: number | null;
+  feeAmount: number;
+  active: boolean;
+  sortOrder?: number | null;
+};
+
 export type AdminGstSettingsRequest = Pick<AdminGstSettings, 'defaultRate' | 'priceTreatment' | 'enabled'>;
 export type AdminGstHistoryEntry = AdminGstSettings & { active: boolean };
 
@@ -318,6 +365,14 @@ export const adminService = {
   updateGstSettings: (accessToken: string, settings: AdminGstSettingsRequest) =>
     request<AdminGstSettings>(accessToken, '/api/v1/admin/gst/settings', { method: 'PUT', body: JSON.stringify(settings) }),
   gstHistory: (accessToken: string) => request<AdminGstHistoryEntry[]>(accessToken, '/api/v1/admin/gst/history'),
+  deliveryFeePolicies: (accessToken: string) => request<DeliveryFeePolicy[]>(accessToken, '/api/v1/admin/delivery-fee/policies'),
+  createDeliveryFeePolicy: (accessToken: string, policy: DeliveryFeePolicyRequest) => request<DeliveryFeePolicy>(accessToken, '/api/v1/admin/delivery-fee/policies', { method: 'POST', body: JSON.stringify(policy) }),
+  updateDeliveryFeePolicy: (accessToken: string, id: string, policy: DeliveryFeePolicyRequest) => request<DeliveryFeePolicy>(accessToken, `/api/v1/admin/delivery-fee/policies/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(policy) }),
+  deleteDeliveryFeePolicy: (accessToken: string, id: string) => request<void>(accessToken, `/api/v1/admin/delivery-fee/policies/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  deliveryFeeSlabs: (accessToken: string, policyId: string) => request<DeliveryFeeSlab[]>(accessToken, `/api/v1/admin/delivery-fee/slabs?policyId=${encodeURIComponent(policyId)}`),
+  createDeliveryFeeSlab: (accessToken: string, slab: DeliveryFeeSlabRequest) => request<DeliveryFeeSlab>(accessToken, '/api/v1/admin/delivery-fee/slabs', { method: 'POST', body: JSON.stringify(slab) }),
+  updateDeliveryFeeSlab: (accessToken: string, id: string, slab: DeliveryFeeSlabRequest) => request<DeliveryFeeSlab>(accessToken, `/api/v1/admin/delivery-fee/slabs/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(slab) }),
+  deleteDeliveryFeeSlab: (accessToken: string, id: string) => request<void>(accessToken, `/api/v1/admin/delivery-fee/slabs/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   saveSettings: (accessToken: string, settings: AdminSettingsRequest) =>
     request<AdminSettings>(accessToken, '/api/v1/admin/settings', { method: 'PUT', body: JSON.stringify(settings) }),
   changeAdminPassword: (accessToken: string, currentPassword: string, newPassword: string) =>

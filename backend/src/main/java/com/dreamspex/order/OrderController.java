@@ -43,7 +43,8 @@ public class OrderController {
         return new QuoteResponse(quote.subtotal(), quote.discount(), quote.couponDiscount(),
                 quote.membershipDiscount(), quote.shipping(), total, quote.couponCode(),
                 quote.deliveryAvailability(), quote.gstSnapshot(), preview.availablePoints(),
-                preview.requestedPoints(), preview.discount(), preview.maximumRedeemablePoints());
+                preview.requestedPoints(), preview.discount(), preview.maximumRedeemablePoints(),
+                quote.deliveryFee());
     }
 
     @PostMapping("/orders")

@@ -1,0 +1,329 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="2500" viewBox="0 0 1800 2500">
+  <defs>
+    <style>
+      .title { font: 700 34px 'Segoe UI', Arial, sans-serif; fill: #ffffff; }
+      .subtitle { font: 600 20px 'Segoe UI', Arial, sans-serif; fill: #dbe8ff; }
+      .sectionTitle { font: 700 25px 'Segoe UI', Arial, sans-serif; fill: #122b52; }
+      .cardTitle { font: 700 19px 'Segoe UI', Arial, sans-serif; fill: #122b52; }
+      .cardText { font: 500 14px 'Segoe UI', Arial, sans-serif; fill: #2d466d; }
+      .smallLabel { font: 700 12px 'Segoe UI', Arial, sans-serif; fill: #2e4d6d; letter-spacing: 1.5px; }
+      .legendText { font: 600 14px 'Segoe UI', Arial, sans-serif; fill: #13315d; }
+      .smallNote { font: 600 12px 'Segoe UI', Arial, sans-serif; fill: #486b94; }
+      .arrow { stroke: #1e7ac9; stroke-width: 3; fill: none; marker-end: url(#arrowhead); }
+      .arrowThin { stroke: #5ea7d8; stroke-width: 2; fill: none; marker-end: url(#arrowheadSmall); }
+      .panel { fill: #ffffff; stroke: #d9e6f3; stroke-width: 2; }
+      .panelBlue { fill: #f4f9ff; stroke: #bfe0ff; stroke-width: 2; }
+      .layer { fill: #0f274e; stroke: #1d4d82; stroke-width: 1.5; }
+      .frontend { fill: #e8f7ff; stroke: #5bb8ec; stroke-width: 2; }
+      .backend { fill: #edf4ff; stroke: #7ca8ff; stroke-width: 2; }
+      .db { fill: #ebfff5; stroke: #52b57a; stroke-width: 2; }
+      .ext { fill: #fff5ea; stroke: #f2b35c; stroke-width: 2; }
+      .infra { fill: #eef4ff; stroke: #a7b4ff; stroke-width: 2; }
+      .module { fill: #f5f9ff; stroke: #bfcfe6; stroke-width: 2; }
+      .moduleAlt { fill: #eefaf7; stroke: #9ad7c1; stroke-width: 2; }
+      .tag { fill: #dff4ff; stroke: #8ccaf3; stroke-width: 1.3; }
+      .tagGreen { fill: #def9ef; stroke: #71d7a5; stroke-width: 1.3; }
+      .tagOrange { fill: #fff1d6; stroke: #e7b566; stroke-width: 1.3; }
+      .shadow { filter: drop-shadow(0 6px 10px rgba(11, 29, 58, 0.08)); }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#1e7ac9"/>
+    </marker>
+    <marker id="arrowheadSmall" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5ea7d8"/>
+    </marker>
+  </defs>
+
+  <rect width="1800" height="2500" fill="#edf4fb"/>
+
+  <rect x="0" y="0" width="1800" height="120" fill="#0b1d3a"/>
+  <text x="90" y="60" class="title">DREAM SPEX – COMPLETE SYSTEM ARCHITECTURE</text>
+  <text x="90" y="95" class="subtitle">Luxury Eyewear E-Commerce Platform | React.js | Spring Boot | MySQL | Docker</text>
+
+  <text x="90" y="155" class="sectionTitle">1. High-Level System Architecture</text>
+
+  <g class="shadow">
+    <rect x="90" y="180" width="820" height="420" rx="18" class="panel"/>
+    <rect x="95" y="185" width="220" height="38" rx="12" class="frontend"/>
+    <text x="110" y="210" class="smallLabel">FRONTEND LAYER</text>
+
+    <rect x="125" y="250" width="220" height="96" rx="16" class="frontend"/>
+    <text x="165" y="285" class="cardTitle">Customer Website</text>
+    <text x="165" y="310" class="cardText">React.js</text>
+    <text x="165" y="330" class="cardText">TypeScript + Tailwind CSS</text>
+    <text x="165" y="350" class="cardText">Responsive storefront</text>
+
+    <rect x="375" y="250" width="220" height="96" rx="16" class="frontend"/>
+    <text x="417" y="285" class="cardTitle">Admin Dashboard</text>
+    <text x="417" y="310" class="cardText">User management</text>
+    <text x="417" y="330" class="cardText">Orders, products, reports</text>
+    <text x="417" y="350" class="cardText">Excel / PDF exports</text>
+
+    <rect x="125" y="390" width="470" height="120" rx="16" class="frontend"/>
+    <text x="150" y="425" class="cardTitle">Franchise Management Interface</text>
+    <text x="150" y="452" class="cardText">Franchise dashboard</text>
+    <text x="150" y="472" class="cardText">Store operations, approvals, status management</text>
+    <text x="150" y="492" class="cardText">Role-based access control</text>
+
+    <rect x="635" y="250" width="240" height="140" rx="16" class="panelBlue"/>
+    <text x="665" y="285" class="cardTitle">Current Hosting</text>
+    <text x="665" y="310" class="cardText">Vercel</text>
+    <text x="665" y="333" class="cardText">Frontend domains:</text>
+    <text x="665" y="352" class="cardText">dreamspex.in</text>
+    <text x="665" y="370" class="cardText">www.dreamspex.in</text>
+
+    <rect x="635" y="410" width="240" height="110" rx="16" class="panelBlue"/>
+    <text x="665" y="444" class="cardTitle">Future Hosting</text>
+    <text x="665" y="469" class="cardText">Hostinger VPS</text>
+    <text x="665" y="490" class="cardText">OpenLiteSpeed • HTTPS</text>
+    <text x="665" y="508" class="cardText">Custom domain routing</text>
+  </g>
+
+  <g class="shadow">
+    <rect x="960" y="180" width="360" height="420" rx="18" class="panel"/>
+    <rect x="965" y="185" width="220" height="38" rx="12" class="backend"/>
+    <text x="980" y="210" class="smallLabel">BACKEND LAYER</text>
+
+    <rect x="995" y="250" width="300" height="250" rx="16" class="backend"/>
+    <text x="1048" y="285" class="cardTitle">Java 21 + Spring Boot 3.4.4</text>
+    <text x="1048" y="312" class="cardText">REST API architecture</text>
+    <text x="1048" y="335" class="cardText">Spring Security</text>
+    <text x="1048" y="358" class="cardText">JWT authentication</text>
+    <text x="1048" y="381" class="cardText">RBAC / authorization</text>
+    <text x="1048" y="404" class="cardText">Spring Data JPA + Hibernate</text>
+    <text x="1048" y="427" class="cardText">Maven build</text>
+    <text x="1048" y="450" class="cardText">Dockerized backend service</text>
+
+    <rect x="1030" y="520" width="230" height="46" rx="12" class="tagGreen">
+      <text x="1088" y="550" class="smallLabel">HTTPS REST API</text>
+    </rect>
+  </g>
+
+  <g class="shadow">
+    <rect x="1360" y="180" width="350" height="420" rx="18" class="panel"/>
+    <rect x="1365" y="185" width="220" height="38" rx="12" class="db"/>
+    <text x="1380" y="210" class="smallLabel">DATA + EXTERNAL SERVICES</text>
+
+    <rect x="1395" y="242" width="290" height="170" rx="16" class="db"/>
+    <text x="1450" y="276" class="cardTitle">MySQL / MariaDB</text>
+    <text x="1420" y="304" class="cardText">Customer management</text>
+    <text x="1420" y="326" class="cardText">Products &amp; categories</text>
+    <text x="1420" y="348" class="cardText">Orders, payments, memberships</text>
+    <text x="1420" y="370" class="cardText">Prescriptions, franchise data</text>
+    <text x="1420" y="392" class="cardText">Reviews, returns, refunds</text>
+
+    <rect x="1395" y="432" width="290" height="115" rx="16" class="ext"/>
+    <text x="1450" y="465" class="cardTitle">External Integrations</text>
+    <text x="1420" y="492" class="cardText">Razorpay</text>
+    <text x="1420" y="513" class="cardText">Email / OTP service</text>
+    <text x="1420" y="534" class="cardText">Virtual Try-On &amp; OCR pipeline</text>
+  </g>
+
+  <path d="M 910 360 L 960 360" class="arrow"/>
+  <path d="M 1320 360 L 1360 360" class="arrow"/>
+  <path d="M 1210 600 L 1450 600" class="arrowThin"/>
+  <path d="M 1210 600 L 1210 670" class="arrowThin"/>
+  <text x="1040" y="590" class="smallNote">HTTPS</text>
+
+  <text x="90" y="660" class="sectionTitle">2. Detailed Backend Architecture</text>
+
+  <g class="shadow">
+    <rect x="90" y="690" width="1620" height="620" rx="20" class="panel"/>
+
+    <rect x="120" y="720" width="260" height="94" rx="14" class="module"/>
+    <text x="152" y="760" class="cardTitle">Authentication &amp; Authorization</text>
+    <text x="152" y="786" class="cardText">Spring Security • JWT • RBAC</text>
+
+    <rect x="410" y="720" width="260" height="94" rx="14" class="module"/>
+    <text x="442" y="760" class="cardTitle">Product &amp; Inventory Mgmt</text>
+    <text x="442" y="786" class="cardText">Catalog • Pricing • Stocks</text>
+
+    <rect x="700" y="720" width="260" height="94" rx="14" class="module"/>
+    <text x="734" y="760" class="cardTitle">Shopping Cart &amp; Checkout</text>
+    <text x="734" y="786" class="cardText">Cart state • Order creation</text>
+
+    <rect x="990" y="720" width="260" height="94" rx="14" class="module"/>
+    <text x="1022" y="760" class="cardTitle">Virtual Try-On</text>
+    <text x="1022" y="786" class="cardText">Try-on workflows</text>
+
+    <rect x="1280" y="720" width="260" height="94" rx="14" class="module"/>
+    <text x="1310" y="760" class="cardTitle">Prescription Upload &amp; OCR</text>
+    <text x="1310" y="786" class="cardText">Upload • scan • validation</text>
+
+    <rect x="1570" y="720" width="110" height="94" rx="14" class="moduleAlt"/>
+    <text x="1585" y="760" class="cardTitle">Lens</text>
+    <text x="1585" y="786" class="cardText">Recommendations</text>
+
+    <rect x="120" y="870" width="260" height="94" rx="14" class="module"/>
+    <text x="152" y="910" class="cardTitle">Order Management</text>
+    <text x="152" y="936" class="cardText">Tracking • status updates</text>
+
+    <rect x="410" y="870" width="260" height="94" rx="14" class="module"/>
+    <text x="442" y="910" class="cardTitle">Payment Gateway</text>
+    <text x="442" y="936" class="cardText">Razorpay integration</text>
+
+    <rect x="700" y="870" width="260" height="94" rx="14" class="module"/>
+    <text x="734" y="910" class="cardTitle">Membership &amp; Loyalty</text>
+    <text x="734" y="936" class="cardText">Rewards • memberships</text>
+
+    <rect x="990" y="870" width="260" height="94" rx="14" class="module"/>
+    <text x="1022" y="910" class="cardTitle">Coupon &amp; Offers</text>
+    <text x="1022" y="936" class="cardText">Promotions • pricing rules</text>
+
+    <rect x="1280" y="870" width="260" height="94" rx="14" class="module"/>
+    <text x="1310" y="910" class="cardTitle">Store Locator</text>
+    <text x="1310" y="936" class="cardText">Franchise locations</text>
+
+    <rect x="1570" y="870" width="110" height="94" rx="14" class="moduleAlt"/>
+    <text x="1585" y="910" class="cardTitle">Franchise</text>
+    <text x="1585" y="936" class="cardText">Management</text>
+
+    <rect x="120" y="1020" width="260" height="94" rx="14" class="module"/>
+    <text x="152" y="1060" class="cardTitle">Reviews &amp; Ratings</text>
+    <text x="152" y="1086" class="cardText">Product feedback</text>
+
+    <rect x="410" y="1020" width="260" height="94" rx="14" class="module"/>
+    <text x="442" y="1060" class="cardTitle">Returns &amp; Refunds</text>
+    <text x="442" y="1086" class="cardText">Refund workflows</text>
+
+    <rect x="700" y="1020" width="260" height="94" rx="14" class="module"/>
+    <text x="734" y="1060" class="cardTitle">Email &amp; OTP</text>
+    <text x="734" y="1086" class="cardText">Transactional notifications</text>
+
+    <rect x="990" y="1020" width="260" height="94" rx="14" class="module"/>
+    <text x="1022" y="1060" class="cardTitle">Admin Analytics</text>
+    <text x="1022" y="1086" class="cardText">Reports • Excel / PDF</text>
+
+    <rect x="1280" y="1020" width="260" height="94" rx="14" class="module"/>
+    <text x="1310" y="1060" class="cardTitle">User / Franchise / Product</text>
+    <text x="1310" y="1086" class="cardText">Persistence layer</text>
+
+    <rect x="1570" y="1020" width="110" height="94" rx="14" class="moduleAlt"/>
+    <text x="1585" y="1060" class="cardTitle">MySQL</text>
+    <text x="1585" y="1086" class="cardText">Database</text>
+  </g>
+
+  <text x="90" y="1365" class="sectionTitle">3. Deployment Architecture</text>
+
+  <g class="shadow">
+    <rect x="90" y="1395" width="800" height="380" rx="18" class="panel"/>
+    <rect x="110" y="1420" width="210" height="38" rx="12" class="infra"/>
+    <text x="135" y="1446" class="smallLabel">CURRENT PRODUCTION</text>
+
+    <rect x="130" y="1495" width="290" height="180" rx="16" class="infra"/>
+    <text x="160" y="1530" class="cardTitle">Hostinger VPS</text>
+    <text x="160" y="1560" class="cardText">Dockerized Spring Boot backend</text>
+    <text x="160" y="1588" class="cardText">Port: 8082</text>
+    <text x="160" y="1616" class="cardText">Persistent storage:</text>
+    <text x="160" y="1638" class="cardText">/opt/dreamspex/storage</text>
+    <text x="160" y="1660" class="cardText">.env-based configuration</text>
+
+    <rect x="470" y="1495" width="350" height="180" rx="16" class="infra"/>
+    <text x="505" y="1530" class="cardTitle">Runtime Environment</text>
+    <text x="505" y="1560" class="cardText">API hostname:</text>
+    <text x="505" y="1581" class="cardText">api-dreamspex-test.rabbitsoftsolutions.com</text>
+    <text x="505" y="1611" class="cardText">Frontend domains:</text>
+    <text x="505" y="1632" class="cardText">dreamspex.in • www.dreamspex.in</text>
+    <text x="505" y="1660" class="cardText">Current frontend hosting: Vercel</text>
+  </g>
+
+  <g class="shadow">
+    <rect x="930" y="1395" width="780" height="380" rx="18" class="panel"/>
+    <rect x="950" y="1420" width="210" height="38" rx="12" class="tagOrange"/>
+    <text x="975" y="1446" class="smallLabel">FUTURE DEPLOYMENT TARGET</text>
+
+    <rect x="980" y="1495" width="250" height="170" rx="16" class="infra"/>
+    <text x="1015" y="1532" class="cardTitle">React Frontend</text>
+    <text x="1015" y="1560" class="cardText">Vite build</text>
+    <text x="1015" y="1588" class="cardText">Host on Hostinger VPS</text>
+    <text x="1015" y="1616" class="cardText">Custom domain routing</text>
+
+    <rect x="1285" y="1495" width="250" height="170" rx="16" class="infra"/>
+    <text x="1320" y="1532" class="cardTitle">Spring Boot API</text>
+    <text x="1320" y="1560" class="cardText">Java 21 + Spring Boot</text>
+    <text x="1320" y="1588" class="cardText">Same VPS deployment</text>
+    <text x="1320" y="1616" class="cardText">Dockerized runtime</text>
+
+    <rect x="1590" y="1495" width="90" height="170" rx="16" class="infra"/>
+    <text x="1610" y="1560" class="cardTitle">MySQL</text>
+    <text x="1608" y="1588" class="cardText">DB</text>
+    <text x="1599" y="1616" class="cardText">Persistent</text>
+    <text x="1606" y="1637" class="cardText">Storage</text>
+
+    <rect x="1040" y="1690" width="520" height="42" rx="12" class="tagGreen">
+      <text x="1170" y="1718" class="smallLabel">OpenLiteSpeed • HTTPS • SSL • Domain Routing</text>
+    </rect>
+  </g>
+
+  <text x="90" y="1845" class="sectionTitle">4. Request &amp; Response Flow</text>
+
+  <g class="shadow">
+    <rect x="90" y="1880" width="1620" height="360" rx="20" class="panel"/>
+
+    <rect x="130" y="1925" width="220" height="120" rx="16" class="frontend"/>
+    <text x="175" y="1965" class="cardTitle">Customer / Admin</text>
+    <text x="175" y="1993" class="cardText">Browser</text>
+    <text x="175" y="2020" class="cardText">Web app request</text>
+
+    <rect x="420" y="1925" width="220" height="120" rx="16" class="frontend"/>
+    <text x="460" y="1965" class="cardTitle">Frontend Layer</text>
+    <text x="460" y="1993" class="cardText">React + TypeScript</text>
+    <text x="460" y="2020" class="cardText">HTTPS request</text>
+
+    <rect x="710" y="1925" width="250" height="120" rx="16" class="backend"/>
+    <text x="744" y="1965" class="cardTitle">Spring Boot API</text>
+    <text x="744" y="1993" class="cardText">Authentication</text>
+    <text x="744" y="2020" class="cardText">Business logic</text>
+
+    <rect x="1030" y="1925" width="250" height="120" rx="16" class="db"/>
+    <text x="1074" y="1965" class="cardTitle">MySQL / MariaDB</text>
+    <text x="1074" y="1993" class="cardText">JPA / Hibernate</text>
+    <text x="1074" y="2020" class="cardText">Persistent data</text>
+
+    <rect x="1340" y="1925" width="220" height="120" rx="16" class="ext"/>
+    <text x="1380" y="1965" class="cardTitle">External Services</text>
+    <text x="1380" y="1993" class="cardText">Razorpay</text>
+    <text x="1380" y="2020" class="cardText">Email • OTP • OCR</text>
+
+    <path d="M 350 1985 L 420 1985" class="arrow"/>
+    <path d="M 640 1985 L 710 1985" class="arrow"/>
+    <path d="M 960 1985 L 1030 1985" class="arrow"/>
+    <path d="M 1280 1985 L 1340 1985" class="arrow"/>
+
+    <text x="170" y="2110" class="smallLabel">1. User action</text>
+    <text x="454" y="2110" class="smallLabel">2. HTTPS request</text>
+    <text x="760" y="2110" class="smallLabel">3. Validate + process</text>
+    <text x="1075" y="2110" class="smallLabel">4. Query / persist</text>
+    <text x="1385" y="2110" class="smallLabel">5. External call</text>
+
+    <path d="M 1450 2045 L 1450 2145 L 470 2145 L 470 2045" class="arrow"/>
+    <text x="620" y="2165" class="smallLabel">6. Response cycle: JSON / success / error / redirect</text>
+  </g>
+
+  <text x="90" y="2305" class="sectionTitle">5. Technology Legend</text>
+
+  <g class="shadow">
+    <rect x="90" y="2335" width="1620" height="120" rx="16" class="panel"/>
+
+    <rect x="120" y="2360" width="130" height="50" rx="10" class="frontend"/>
+    <text x="160" y="2392" class="legendText">Frontend</text>
+
+    <rect x="290" y="2360" width="130" height="50" rx="10" class="backend"/>
+    <text x="332" y="2392" class="legendText">Backend</text>
+
+    <rect x="460" y="2360" width="130" height="50" rx="10" class="db"/>
+    <text x="500" y="2392" class="legendText">Database</text>
+
+    <rect x="630" y="2360" width="140" height="50" rx="10" class="ext"/>
+    <text x="678" y="2392" class="legendText">External</text>
+
+    <rect x="810" y="2360" width="170" height="50" rx="10" class="infra"/>
+    <text x="856" y="2392" class="legendText">Infrastructure</text>
+
+    <rect x="1020" y="2360" width="220" height="50" rx="10" class="tagGreen"/>
+    <text x="1080" y="2392" class="legendText">HTTPS / Secure Flow</text>
+
+    <rect x="1275" y="2360" width="220" height="50" rx="10" class="tagOrange"/>
+    <text x="1338" y="2392" class="legendText">Future Deployment</text>
+  </g>
+</svg>

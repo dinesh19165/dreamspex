@@ -82,6 +82,7 @@ function getDefaultNavigationGroups(role: 'SUPER_ADMIN' | 'FRANCHISE_ADMIN' | 'C
         { label: 'Franchise Applications', href: '/admin/franchise-applications', icon: MessageSquareText },
         { label: 'Users', href: '/admin/users', icon: UserRound },
         { label: 'Settings', href: '/admin/settings', icon: Settings },
+        { label: 'Delivery Fees', href: '/admin/delivery-fees', icon: CircleDollarSign },
         { label: 'GST Settings', href: '/admin/settings/gst', icon: CircleDollarSign },
       ] },
     ];
@@ -3370,6 +3371,308 @@ function StoreDeliverySettingsPanel({ accessToken }: { accessToken: string }) {
       </div>
     </div> : null}
   </section>;
+}
+
+export function DeliveryFeeManagementPage() {
+  const { user, refreshSession } = useAuth();
+  const token = user?.accessToken ?? '';
+  const [policies, setPolicies] = useState<AdminDeliveryPolicy[]>([]);
+  const [selectedPolicyId, setSelectedPolicyId] = useState('');
+  const [slabs, setSlabs] = useState<AdminDeliverySlab[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [editingSlabId, setEditingSlabId] = useState<string | null>(null);
+  const [policyForm, setPolicyForm] = useState<DeliveryFeePolicyForm>({
+    name: '',
+    scope: 'GLOBAL',
+    storeId: '',
+    freeDeliveryThreshold: 0,
+    maxDeliveryDistanceKm: 30,
+    unavailableAreas: '',
+    active: true,
+  });
+  const [slabForm, setSlabForm] = useState<DeliveryFeeSlabForm>({
+    policyId: '',
+    label: '',
+    minDistanceKm: 0,
+    maxDistanceKm: null,
+    feeAmount: 0,
+    active: true,
+    sortOrder: 0,
+  });
+
+  type AdminDeliveryPolicy = Awaited<ReturnType<typeof adminService.deliveryFeePolicies>>[number];
+  type AdminDeliverySlab = Awaited<ReturnType<typeof adminService.deliveryFeeSlabs>>[number];
+  type DeliveryFeePolicyForm = {
+    name: string;
+    scope: 'GLOBAL' | 'STORE';
+    storeId: string;
+    freeDeliveryThreshold: number;
+    maxDeliveryDistanceKm: number;
+    unavailableAreas: string;
+    active: boolean;
+  };
+  type DeliveryFeeSlabForm = {
+    policyId: string;
+    label: string;
+    minDistanceKm: number;
+    maxDistanceKm: number | null;
+    feeAmount: number;
+    active: boolean;
+    sortOrder: number;
+  };
+
+  const loadPolicies = useCallback(async () => {
+    if (!token) return;
+    setLoading(true); setError(''); setMessage('');
+    try {
+      const loaded = await adminService.deliveryFeePolicies(token);
+      setPolicies(loaded);
+      if (loaded.length) {
+        const active = (currentId: string) => currentId && loaded.some((policy) => policy.id === currentId)
+          ? currentId
+          : loaded[0].id;
+        const nextId = active(selectedPolicyId);
+        setSelectedPolicyId(nextId);
+        const selected = loaded.find((policy) => policy.id === nextId);
+        setPolicyForm({
+          name: selected?.name ?? '',
+          scope: selected?.scope ?? 'GLOBAL',
+          storeId: selected?.storeId ?? '',
+          freeDeliveryThreshold: selected?.freeDeliveryThreshold ?? 0,
+          maxDeliveryDistanceKm: selected?.maxDeliveryDistanceKm ?? 30,
+          unavailableAreas: (selected?.unavailableAreas ?? []).join(', '),
+          active: selected?.active ?? true,
+        });
+      } else {
+        setSelectedPolicyId('');
+        setPolicyForm({ name: '', scope: 'GLOBAL', storeId: '', freeDeliveryThreshold: 0, maxDeliveryDistanceKm: 30, unavailableAreas: '', active: true });
+      }
+    } catch (reason) {
+      if ((reason as { status?: number }).status === 401) { await refreshSession(); }
+      setError(reason instanceof Error ? reason.message : 'Unable to load delivery fee policies.');
+    } finally {
+      setLoading(false);
+    }
+  }, [refreshSession, token]);
+
+  const loadSlabs = useCallback(async (policyId: string) => {
+    if (!policyId || !token) {
+      setSlabs([]);
+      return;
+    }
+    try {
+      const loaded = await adminService.deliveryFeeSlabs(token, policyId);
+      setSlabs(loaded);
+      setSlabForm({ policyId, label: '', minDistanceKm: 0, maxDistanceKm: null, feeAmount: 0, active: true, sortOrder: loaded.length });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to load delivery fee slabs.');
+    }
+  }, [token]);
+
+  useEffect(() => { void loadPolicies(); }, [loadPolicies]);
+  useEffect(() => { if (selectedPolicyId) void loadSlabs(selectedPolicyId); else setSlabs([]); }, [loadSlabs, selectedPolicyId]);
+
+  const savePolicy = async () => {
+    if (!token) return;
+    if (!policyForm.name.trim()) {
+      setError('Policy name is required.');
+      return;
+    }
+    if (policyForm.maxDeliveryDistanceKm <= 0) {
+      setError('Maximum delivery distance must be greater than zero.');
+      return;
+    }
+    setSaving(true); setError(''); setMessage('');
+    try {
+      const payload = {
+        name: policyForm.name.trim(),
+        scope: policyForm.scope,
+        storeId: policyForm.scope === 'STORE' && policyForm.storeId.trim() ? policyForm.storeId.trim() : null,
+        freeDeliveryThreshold: Number(policyForm.freeDeliveryThreshold),
+        maxDeliveryDistanceKm: Number(policyForm.maxDeliveryDistanceKm),
+        unavailableAreas: policyForm.unavailableAreas.split(',').map((item) => item.trim()).filter(Boolean),
+        active: policyForm.active,
+      };
+      const saved = selectedPolicyId
+        ? await adminService.updateDeliveryFeePolicy(token, selectedPolicyId, payload)
+        : await adminService.createDeliveryFeePolicy(token, payload);
+      setMessage(selectedPolicyId ? 'Delivery fee policy updated.' : 'Delivery fee policy created.');
+      setSelectedPolicyId(saved.id);
+      await loadPolicies();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to save policy.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetPolicyForm = () => {
+    setSelectedPolicyId('');
+    setPolicyForm({ name: '', scope: 'GLOBAL', storeId: '', freeDeliveryThreshold: 0, maxDeliveryDistanceKm: 30, unavailableAreas: '', active: true });
+    setSlabs([]);
+  };
+
+  const saveSlab = async () => {
+    if (!selectedPolicyId || !token) return;
+    if (!slabForm.label.trim()) {
+      setError('Slab label is required.');
+      return;
+    }
+    setSaving(true); setError(''); setMessage('');
+    try {
+      const payload = {
+        policyId: selectedPolicyId,
+        label: slabForm.label.trim(),
+        minDistanceKm: Number(slabForm.minDistanceKm),
+        maxDistanceKm: slabForm.maxDistanceKm === null ? null : Number(slabForm.maxDistanceKm),
+        feeAmount: Number(slabForm.feeAmount),
+        active: slabForm.active,
+        sortOrder: slabForm.sortOrder,
+      };
+      if (editingSlabId) {
+        await adminService.updateDeliveryFeeSlab(token, editingSlabId, payload);
+        setMessage('Delivery fee slab updated.');
+      } else {
+        await adminService.createDeliveryFeeSlab(token, payload);
+        setMessage('Delivery fee slab created.');
+      }
+      await loadSlabs(selectedPolicyId);
+      setEditingSlabId(null);
+      setSlabForm({ policyId: selectedPolicyId, label: '', minDistanceKm: 0, maxDistanceKm: null, feeAmount: 0, active: true, sortOrder: (slabs.length + 1) });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : editingSlabId ? 'Unable to update slab.' : 'Unable to create slab.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startEditSlab = (slab: AdminDeliverySlab) => {
+    setEditingSlabId(slab.id);
+    setSlabForm({
+      policyId: selectedPolicyId,
+      label: slab.label,
+      minDistanceKm: slab.minDistanceKm,
+      maxDistanceKm: slab.maxDistanceKm,
+      feeAmount: slab.feeAmount,
+      active: slab.active,
+      sortOrder: slab.sortOrder,
+    });
+  };
+
+  const resetSlabForm = () => {
+    setEditingSlabId(null);
+    setSlabForm({ policyId: selectedPolicyId, label: '', minDistanceKm: 0, maxDistanceKm: null, feeAmount: 0, active: true, sortOrder: slabs.length });
+  };
+
+  const deletePolicy = async (id: string) => {
+    if (!token) return;
+    setSaving(true); setError(''); setMessage('');
+    try {
+      await adminService.deleteDeliveryFeePolicy(token, id);
+      setMessage('Policy deleted.');
+      await loadPolicies();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to delete policy.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteSlab = async (id: string) => {
+    if (!token || !selectedPolicyId) return;
+    setSaving(true); setError(''); setMessage('');
+    try {
+      await adminService.deleteDeliveryFeeSlab(token, id);
+      setMessage('Slab deleted.');
+      if (editingSlabId === id) {
+        setEditingSlabId(null);
+        setSlabForm({ policyId: selectedPolicyId, label: '', minDistanceKm: 0, maxDistanceKm: null, feeAmount: 0, active: true, sortOrder: slabs.length });
+      }
+      await loadSlabs(selectedPolicyId);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to delete slab.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <DashboardShell>
+    <SectionTitle eyebrow="Delivery" title="Delivery fee management" description="Manage dynamic distance slabs, free-delivery thresholds, and area restrictions for order fulfilment." />
+    {message ? <p className="mt-5 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{message}</p> : null}
+    {error ? <p className="mt-5 rounded-2xl border border-red-300/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
+    <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">Policies</h2>
+          <Button type="button" variant="ghost" onClick={() => resetPolicyForm()}>New policy</Button>
+        </div>
+        {loading ? <p className="mt-4 text-sm text-[var(--text-secondary)]">Loading delivery policies...</p> : null}
+        <div className="mt-4 space-y-3">
+          {policies.map((policy) => <button key={policy.id} type="button" onClick={() => setSelectedPolicyId(policy.id)} className={`w-full rounded-2xl border p-4 text-left ${selectedPolicyId === policy.id ? 'border-[var(--brand-green)] bg-[var(--bg-primary)]' : 'border-[var(--border-subtle)] bg-[var(--bg-primary)]/60'}`}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-medium">{policy.name}</span>
+              <span className="rounded-full bg-[var(--bg-secondary)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--text-secondary)]">{policy.scope}</span>
+            </div>
+            <p className="mt-2 text-xs text-[var(--text-secondary)]">Free delivery: ₹{policy.freeDeliveryThreshold.toLocaleString('en-IN')} · Max distance: {policy.maxDeliveryDistanceKm} km · {policy.active ? 'Active' : 'Inactive'}</p>
+          </button>)}
+        </div>
+        <div className="mt-6 space-y-4">
+          <label className="block text-sm">Policy name<input className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={policyForm.name} onChange={(event) => setPolicyForm((current) => ({ ...current, name: event.target.value }))} /></label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm">Scope<select className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={policyForm.scope} onChange={(event) => setPolicyForm((current) => ({ ...current, scope: event.target.value as 'GLOBAL' | 'STORE' }))}><option value="GLOBAL">GLOBAL</option><option value="STORE">STORE</option></select></label>
+            <label className="block text-sm">Store ID (optional)<input className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={policyForm.storeId ?? ''} onChange={(event) => setPolicyForm((current) => ({ ...current, storeId: event.target.value }))} /></label>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm">Free delivery threshold<input type="number" min="0" step="1" className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={policyForm.freeDeliveryThreshold} onChange={(event) => setPolicyForm((current) => ({ ...current, freeDeliveryThreshold: Number(event.target.value) }))} /></label>
+            <label className="block text-sm">Max distance (km)<input type="number" min="1" step="0.01" className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={policyForm.maxDeliveryDistanceKm} onChange={(event) => setPolicyForm((current) => ({ ...current, maxDeliveryDistanceKm: Number(event.target.value) }))} /></label>
+          </div>
+          <label className="block text-sm">Unavailable areas (comma-separated)<textarea rows={3} className="mt-2 w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={policyForm.unavailableAreas} onChange={(event) => setPolicyForm((current) => ({ ...current, unavailableAreas: event.target.value }))} /></label>
+          <label className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--bg-primary)] p-3 text-sm"><span>Policy active</span><input type="checkbox" checked={policyForm.active} onChange={(event) => setPolicyForm((current) => ({ ...current, active: event.target.checked }))} /></label>
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" onClick={() => void savePolicy()} disabled={saving}>{saving ? 'Saving...' : (selectedPolicyId ? 'Update policy' : 'Create policy')}</Button>
+            {selectedPolicyId ? <Button type="button" variant="ghost" onClick={() => void deletePolicy(selectedPolicyId)}>Delete policy</Button> : null}
+          </div>
+        </div>
+      </section>
+      <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6">
+        <h2 className="text-xl font-semibold">Distance slabs</h2>
+        {!selectedPolicyId ? <p className="mt-4 text-sm text-[var(--text-secondary)]">Choose a policy to manage slabs.</p> : null}
+        {selectedPolicyId ? <>
+          <div className="mt-4 divide-y divide-[var(--border-subtle)] overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
+            {slabs.length ? slabs.map((slab) => <div key={slab.id} className="flex items-center justify-between gap-3 p-3 text-sm">
+              <div>
+                <p className="font-medium">{slab.label}</p>
+                <p className="text-[var(--text-secondary)]">{slab.minDistanceKm} km to {slab.maxDistanceKm ?? '∞'} km · ₹{slab.feeAmount.toLocaleString('en-IN')} · {slab.active ? 'Active' : 'Inactive'}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="ghost" onClick={() => startEditSlab(slab)}>Edit</Button>
+                <Button type="button" variant="ghost" onClick={() => void deleteSlab(slab.id)}>Delete</Button>
+              </div>
+            </div>) : <p className="p-4 text-sm text-[var(--text-secondary)]">No slabs configured for this policy.</p>}
+          </div>
+          <div className="mt-6 space-y-4">
+            <label className="block text-sm">Label<input className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={slabForm.label} onChange={(event) => setSlabForm((current) => ({ ...current, label: event.target.value }))} /></label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm">Min distance (km)<input type="number" min="0" step="0.01" className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={slabForm.minDistanceKm} onChange={(event) => setSlabForm((current) => ({ ...current, minDistanceKm: Number(event.target.value) }))} /></label>
+              <label className="block text-sm">Max distance (km)<input type="number" min="0.01" step="0.01" className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={slabForm.maxDistanceKm ?? ''} onChange={(event) => setSlabForm((current) => ({ ...current, maxDistanceKm: event.target.value === '' ? null : Number(event.target.value) }))} /></label>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm">Fee (₹)<input type="number" min="0" step="1" className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={slabForm.feeAmount} onChange={(event) => setSlabForm((current) => ({ ...current, feeAmount: Number(event.target.value) }))} /></label>
+              <label className="block text-sm">Sort order<input type="number" min="0" step="1" className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm" value={slabForm.sortOrder} onChange={(event) => setSlabForm((current) => ({ ...current, sortOrder: Number(event.target.value) }))} /></label>
+            </div>
+            <label className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--bg-primary)] p-3 text-sm"><span>Slab active</span><input type="checkbox" checked={slabForm.active} onChange={(event) => setSlabForm((current) => ({ ...current, active: event.target.checked }))} /></label>
+            <div className="flex flex-wrap gap-3">
+              <Button type="button" onClick={() => void saveSlab()} disabled={saving}>{saving ? 'Saving...' : (editingSlabId ? 'Update slab' : 'Create slab')}</Button>
+              {editingSlabId ? <Button type="button" variant="ghost" onClick={resetSlabForm}>Cancel edit</Button> : null}
+            </div>
+          </div>
+        </> : null}
+      </section>
+    </div>
+  </DashboardShell>;
 }
 
 export function SuperAdminSettingsPage() {

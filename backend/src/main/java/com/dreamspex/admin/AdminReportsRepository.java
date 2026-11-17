@@ -45,7 +45,7 @@ public class AdminReportsRepository {
                        SUM(CASE WHEN status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered,
                        COALESCE(SUM(CASE WHEN payment_status = 'PAID' AND status <> 'CANCELLED' THEN discount_amount ELSE 0 END), 0) AS discounts,
                        COALESCE(SUM(CASE WHEN payment_status = 'PAID' AND status <> 'CANCELLED'
-                           THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(gst_snapshot, '$.gstAmount')) AS DECIMAL(12,2))
+                           THEN CAST(COALESCE(JSON_VALUE(gst_snapshot, '$.gstAmount'), '0') AS DECIMAL(12,2))
                            ELSE 0 END), 0) AS gst_collected,
                        COALESCE(AVG(CASE WHEN payment_status = 'PAID' AND status <> 'CANCELLED' THEN total_amount END), 0) AS average_order_value
                 FROM orders

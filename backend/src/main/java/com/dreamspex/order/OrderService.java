@@ -16,6 +16,7 @@ import com.dreamspex.shopping.repository.CartRepository;
 import com.dreamspex.auth.dto.*; import com.dreamspex.auth.entity.*; import com.dreamspex.auth.repository.*; import com.dreamspex.auth.service.*; import com.dreamspex.auth.controller.*; import com.dreamspex.catalog.dto.*; import com.dreamspex.catalog.entity.*; import com.dreamspex.catalog.repository.*; import com.dreamspex.catalog.service.*; import com.dreamspex.catalog.controller.*; import com.dreamspex.common.ApiException; import com.dreamspex.config.ShippingProperties; import com.dreamspex.membership.Membership; import com.dreamspex.membership.MembershipRepository; import com.dreamspex.notification.NotificationService; import com.dreamspex.prescription.*; import com.dreamspex.security.CurrentUser; import com.dreamspex.shopping.entity.*; import com.dreamspex.shopping.repository.*; import com.dreamspex.shopping.service.*; import com.dreamspex.shopping.controller.*;
 import com.dreamspex.gst.GstCalculationService; import com.dreamspex.gst.GstConfiguration; import com.dreamspex.gst.GstConfigurationRepository; import com.dreamspex.gst.GstPriceTreatment;
 import com.dreamspex.franchise.FranchiseService;
+import com.dreamspex.delivery.DeliveryFeeService;
 import com.fasterxml.jackson.core.JsonProcessingException; import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired; import org.springframework.boot.context.properties.EnableConfigurationProperties; import org.springframework.http.HttpStatus; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,8 +27,12 @@ import static com.dreamspex.catalog.dto.CatalogDtos.*;
 @Service
 public class OrderService {
  @Autowired(required=false) private FranchiseService franchiseService;
- private final CurrentUser current; private final AddressRepository addresses; private final CartRepository carts; private final ProductVariantRepository variants; private final OrderRepository orders; private final CouponRepository coupons; private final CouponService couponService; private final MembershipRepository memberships; private final ObjectMapper mapper; private final NotificationService notifications; private final ShippingProperties shipping; private final LensOptionRepository lensOptions; private final PrescriptionFileRepository prescriptionFiles; private final PrescriptionStorage prescriptionStorage; private final DeliveryAvailabilityService deliveryAvailability; private final GstConfigurationRepository gstConfigurations; private final GstCalculationService gstCalculation;
- public OrderService(CurrentUser c,AddressRepository a,CartRepository carts,ProductVariantRepository v,OrderRepository o,CouponRepository coupons,CouponService couponService,MembershipRepository memberships,ObjectMapper mapper,NotificationService n,ShippingProperties shipping,LensOptionRepository lensOptions,PrescriptionFileRepository prescriptionFiles,PrescriptionStorage prescriptionStorage,DeliveryAvailabilityService deliveryAvailability,GstConfigurationRepository gstConfigurations,GstCalculationService gstCalculation){current=c;addresses=a;this.carts=carts;variants=v;orders=o;this.coupons=coupons;this.couponService=couponService;this.memberships=memberships;this.mapper=mapper;notifications=n;this.shipping=shipping;this.lensOptions=lensOptions;this.prescriptionFiles=prescriptionFiles;this.prescriptionStorage=prescriptionStorage;this.deliveryAvailability=deliveryAvailability;this.gstConfigurations=gstConfigurations;this.gstCalculation=gstCalculation;}
+ private final CurrentUser current; private final AddressRepository addresses; private final CartRepository carts; private final ProductVariantRepository variants; private final OrderRepository orders; private final CouponRepository coupons; private final CouponService couponService; private final MembershipRepository memberships; private final ObjectMapper mapper; private final NotificationService notifications; private final ShippingProperties shipping; private final LensOptionRepository lensOptions; private final PrescriptionFileRepository prescriptionFiles; private final PrescriptionStorage prescriptionStorage; private final DeliveryAvailabilityService deliveryAvailability; private final DeliveryFeeService deliveryFeeService; private final GstConfigurationRepository gstConfigurations; private final GstCalculationService gstCalculation;
+ public OrderService(CurrentUser c,AddressRepository a,CartRepository carts,ProductVariantRepository v,OrderRepository o,CouponRepository coupons,CouponService couponService,MembershipRepository memberships,ObjectMapper mapper,NotificationService n,ShippingProperties shipping,LensOptionRepository lensOptions,PrescriptionFileRepository prescriptionFiles,PrescriptionStorage prescriptionStorage,DeliveryAvailabilityService deliveryAvailability,GstConfigurationRepository gstConfigurations,GstCalculationService gstCalculation){
+   this(c,a,carts,v,o,coupons,couponService,memberships,mapper,n,shipping,lensOptions,prescriptionFiles,prescriptionStorage,deliveryAvailability,null,gstConfigurations,gstCalculation);
+ }
+ @Autowired
+ public OrderService(CurrentUser c,AddressRepository a,CartRepository carts,ProductVariantRepository v,OrderRepository o,CouponRepository coupons,CouponService couponService,MembershipRepository memberships,ObjectMapper mapper,NotificationService n,ShippingProperties shipping,LensOptionRepository lensOptions,PrescriptionFileRepository prescriptionFiles,PrescriptionStorage prescriptionStorage,DeliveryAvailabilityService deliveryAvailability,DeliveryFeeService deliveryFeeService,GstConfigurationRepository gstConfigurations,GstCalculationService gstCalculation){current=c;addresses=a;this.carts=carts;variants=v;orders=o;this.coupons=coupons;this.couponService=couponService;this.memberships=memberships;this.mapper=mapper;notifications=n;this.shipping=shipping;this.lensOptions=lensOptions;this.prescriptionFiles=prescriptionFiles;this.prescriptionStorage=prescriptionStorage;this.deliveryAvailability=deliveryAvailability;this.deliveryFeeService=deliveryFeeService;this.gstConfigurations=gstConfigurations;this.gstCalculation=gstCalculation;}
  @Transactional(readOnly=true)
  public QuoteResponse quote(org.springframework.security.core.Authentication auth, CheckoutRequest request) {
      User user = current.require(auth);
@@ -46,12 +51,13 @@ public class OrderService {
                      selection.store(), selection.distanceKm(), selection.radiusKm(), selection.message());
      String couponCode = normalizeCouponCode(request.couponCode());
      Totals totals = totals(cart, couponCode, user, false, serviceability.store(),
-             "PICKUP".equals(fulfillmentType), selection != null);
+             "PICKUP".equals(fulfillmentType), selection != null, address, serviceability.available());
      GstOrderSnapshot gst = serviceability.store() == null ? null
              : gstSnapshot(cart, totals, serviceability.store().getState(),
                      address == null ? serviceability.store().getState() : address.getState());
      return new QuoteResponse(totals.subtotal, totals.discount, totals.couponDiscount, totals.membershipDiscount,
-             totals.shipping, totals.total, couponCode, availability(serviceability), gst);
+             totals.shipping, totals.total, couponCode, availability(serviceability), gst, 0, 0,
+             BigDecimal.ZERO, 0, deliveryFeeDetails(totals.deliveryFee()));
  }
 
  @Transactional
@@ -78,7 +84,7 @@ public class OrderService {
      if (!serviceability.available()) throw serviceabilityError(serviceability.status(), serviceability.message());
      String couponCode = normalizeCouponCode(request.couponCode());
      Totals totals = totals(cart, couponCode, user, true, serviceability.store(),
-             "PICKUP".equals(fulfillmentType), selection != null);
+             "PICKUP".equals(fulfillmentType), selection != null, address, true);
      GstOrderSnapshot gst = gstSnapshot(cart, totals, serviceability.store().getState(),
              address == null ? serviceability.store().getState() : address.getState());
      boolean franchiseManaged = serviceability.store().isFranchiseManaged();
@@ -97,6 +103,12 @@ public class OrderService {
      order.setMembershipDiscountAmount(totals.membershipDiscount);
      order.setShippingAmount(totals.shipping);
      order.setTotalAmount(totals.total);
+     order.setDeliveryDistanceKm(totals.deliveryFee() == null ? null : totals.deliveryFee().distanceKm());
+     order.setDeliveryFeeAmount(totals.deliveryFee() == null ? null : totals.deliveryFee().appliedFee());
+     order.setDeliveryFeePolicyId(totals.deliveryFee() == null ? null : totals.deliveryFee().policyId());
+     order.setDeliveryFeeSlabId(totals.deliveryFee() == null ? null : totals.deliveryFee().slabId());
+     order.setDeliveryFeeRuleName(totals.deliveryFee() == null ? null : totals.deliveryFee().policyName());
+     order.setDeliveryFeeRuleScope(totals.deliveryFee() == null ? null : totals.deliveryFee().policyScope());
      order.setCouponCode(couponCode);
      for (CartItem item : cart.getItems()) {
          ProductVariant variant = variants.findWithLockByIdAndStatus(item.getVariant().getId(), "ACTIVE")
@@ -231,7 +243,7 @@ public class OrderService {
  private Cart activeCart(User u){return carts.findByUserIdAndStatus(u.getId(),"ACTIVE").orElseThrow(()->new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"CART_EMPTY","Cart is empty."));}
  private String normalizeCouponCode(String code){return code==null||code.isBlank()?null:code.trim().toUpperCase(Locale.ROOT);}
  private Totals totals(Cart cart, String code, User user, boolean lockCoupon, com.dreamspex.admin.Store store,
-                       boolean pickup, boolean franchiseCheckout) {
+                       boolean pickup, boolean franchiseCheckout, Address address, boolean deliveryAvailable) {
      if (cart.getItems().isEmpty()) throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "CART_EMPTY", "Cart is empty.");
      boolean franchiseManaged = franchiseCheckout || (store != null && store.isFranchiseManaged());
      BigDecimal subtotal = BigDecimal.ZERO;
@@ -256,9 +268,20 @@ public class OrderService {
      }
      BigDecimal discount = couponDiscount.add(membershipDiscount);
      BigDecimal net = subtotal.subtract(discount);
-     BigDecimal shippingAmount = pickup || net.compareTo(shipping.freeThreshold()) >= 0
-             ? BigDecimal.ZERO : shipping.charge();
-     return new Totals(subtotal, discount, couponDiscount, membershipDiscount, shippingAmount, net.add(shippingAmount));
+     DeliveryFeeService.DeliveryFeeQuote quote;
+     if (pickup) {
+         quote = new DeliveryFeeService.DeliveryFeeQuote(net, BigDecimal.ZERO, shipping.freeThreshold(), null, null,
+                 null, "PICKUP", "PICKUP", null, null, true, "PICKUP");
+     } else if (!deliveryAvailable || address == null || store == null) {
+         quote = null;
+     } else if (deliveryFeeService == null) {
+         BigDecimal fee = net.compareTo(shipping.freeThreshold()) >= 0 ? BigDecimal.ZERO : shipping.charge();
+         quote = new DeliveryFeeService.DeliveryFeeQuote(net, fee, shipping.freeThreshold(), null, null, null, "LEGACY_STATIC", "LEGACY", null, null, fee.compareTo(BigDecimal.ZERO) == 0, "LEGACY");
+     } else {
+         quote = deliveryFeeService.quote(address, store, net);
+     }
+     BigDecimal shippingAmount = quote == null ? BigDecimal.ZERO : quote.appliedFee();
+     return new Totals(subtotal, discount, couponDiscount, membershipDiscount, shippingAmount, net.add(shippingAmount), quote);
  }
 
  private boolean isFranchiseManaged(Order order) {
@@ -295,6 +318,7 @@ public class OrderService {
  private OrderItem orderItem(String orderId,String itemId){Order order=orders.findById(orderId).orElseThrow(this::notFound);return order.getItems().stream().filter(item->item.getId().equals(itemId)).findFirst().orElseThrow(this::notFound);}
  private Prescription requiredPrescription(OrderItem item){if(item.getPrescription()==null)throw new ApiException(HttpStatus.NOT_FOUND,"PRESCRIPTION_NOT_FOUND","This order item has no prescription.");return item.getPrescription();}
  private DeliveryAvailability availability(DeliveryAvailabilityService.Evaluation result){return new DeliveryAvailability(result.available(),result.status(),result.distanceKm(),result.radiusKm(),result.store()==null?null:result.store().getName(),result.message());}
+ private DeliveryFeeDetails deliveryFeeDetails(DeliveryFeeService.DeliveryFeeQuote quote){return quote==null?null:new DeliveryFeeDetails(quote.distanceKm(),quote.appliedFee(),quote.policyId(),quote.policyName(),quote.policyScope(),quote.slabId(),quote.slabLabel(),quote.freeDelivery());}
  private String fulfillmentType(CheckoutRequest request) {
      if (request.fulfillmentType() == null || request.fulfillmentType().isBlank()) return "DELIVERY";
      return switch (request.fulfillmentType()) {
@@ -306,5 +330,5 @@ public class OrderService {
  }
  private ApiException serviceabilityError(String status,String message){return switch(status){case "LOCATION_REQUIRED"->new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"DELIVERY_LOCATION_REQUIRED",message);case "STORE_CONFIGURATION_REQUIRED"->new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"DELIVERY_CONFIGURATION_UNAVAILABLE",message);case "FRANCHISE_REQUIRED"->new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"FRANCHISE_REQUIRED",message);case "FRANCHISE_STOCK_UNAVAILABLE"->new ApiException(HttpStatus.CONFLICT,"FRANCHISE_STOCK_UNAVAILABLE",message);case "FRANCHISE_UNAVAILABLE"->new ApiException(HttpStatus.CONFLICT,"FRANCHISE_UNAVAILABLE",message);default->new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,"DELIVERY_OUTSIDE_AREA",message);};}
  private List<HistoryResponse> history(Order o){return o.getHistory().stream().map(h->new HistoryResponse(h.getStatus(),h.getNote(),h.getCreatedAt())).sorted(Comparator.comparing(HistoryResponse::createdAt)).toList();}
- private record Totals(BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total){}
+ private record Totals(BigDecimal subtotal,BigDecimal discount,BigDecimal couponDiscount,BigDecimal membershipDiscount,BigDecimal shipping,BigDecimal total,DeliveryFeeService.DeliveryFeeQuote deliveryFee){}
 }

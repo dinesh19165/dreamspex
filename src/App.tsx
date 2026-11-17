@@ -52,6 +52,7 @@ import {
   SuperAdminProductsPage,
   SuperAdminSettingsPage,
   SuperAdminGstSettingsPage,
+  DeliveryFeeManagementPage,
 } from './pages/FranchiseSystemPages';
 import HomepageBuilderPage from './pages/HomepageBuilderPage';
 import MainCategoryManagementPage from './pages/MainCategoryManagementPage';
@@ -207,6 +208,7 @@ function App() {
             <Route path="/admin/users" element={<SuperAdminRoute><SuperAdminUsersPage /></SuperAdminRoute>} />
             <Route path="/admin/profile" element={<SuperAdminRoute><SuperAdminProfilePage /></SuperAdminRoute>} />
             <Route path="/admin/settings" element={<SuperAdminRoute><SuperAdminSettingsPage /></SuperAdminRoute>} />
+            <Route path="/admin/delivery-fees" element={<SuperAdminRoute><DeliveryFeeManagementPage /></SuperAdminRoute>} />
             <Route path="/admin/settings/gst" element={<SuperAdminRoute><SuperAdminGstSettingsPage /></SuperAdminRoute>} />
             <Route path="/admin/content" element={<SuperAdminRoute><HomepageBuilderPage /></SuperAdminRoute>} />
             <Route path="/franchise/dashboard" element={<FranchiseRoute><FranchiseDashboardPage /></FranchiseRoute>} />

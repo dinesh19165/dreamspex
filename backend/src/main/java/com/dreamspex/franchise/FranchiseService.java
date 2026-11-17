@@ -161,7 +161,7 @@ public class FranchiseService {
         return stores.findByFranchiseManagedTrueAndStatusOrderByNameAsc("ACTIVE").stream().map(store -> {
             BigDecimal distance = null;
             boolean serviceable = false;
-            if (request.latitude() != null && request.longitude() != null && hasDeliveryConfiguration(store)) {
+            if (validCoordinates(request.latitude(), request.longitude()) && hasDeliveryConfiguration(store)) {
                 double rawDistance = com.dreamspex.order.DeliveryAvailabilityService.distanceKm(
                         request.latitude().doubleValue(), request.longitude().doubleValue(),
                         store.getLatitude().doubleValue(), store.getLongitude().doubleValue());
@@ -191,7 +191,7 @@ public class FranchiseService {
         if (pickup && (requestedStoreId == null || requestedStoreId.isBlank())) {
             return unavailableSelection("FRANCHISE_REQUIRED", "Select an active franchise for store pickup.");
         }
-        if (!pickup && (address == null || address.getLatitude() == null || address.getLongitude() == null)) {
+        if (!pickup && (address == null || !validCoordinates(address.getLatitude(), address.getLongitude()))) {
             return unavailableSelection("LOCATION_REQUIRED",
                     "Select a valid delivery location on the map to check availability.");
         }
@@ -711,8 +711,16 @@ public class FranchiseService {
     }
 
     private static boolean hasDeliveryConfiguration(Store store) {
-        return store.getLatitude() != null && store.getLongitude() != null
+        return validCoordinates(store.getLatitude(), store.getLongitude())
                 && store.getDeliveryRadiusKm() != null && store.getDeliveryRadiusKm().signum() > 0;
+    }
+
+    private static boolean validCoordinates(BigDecimal latitude, BigDecimal longitude) {
+        return latitude != null && longitude != null
+                && latitude.compareTo(BigDecimal.valueOf(-90)) >= 0
+                && latitude.compareTo(BigDecimal.valueOf(90)) <= 0
+                && longitude.compareTo(BigDecimal.valueOf(-180)) >= 0
+                && longitude.compareTo(BigDecimal.valueOf(180)) <= 0;
     }
 
     private StoreSelection unavailableSelection(String status, String message) {

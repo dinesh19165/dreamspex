@@ -16,6 +16,12 @@ public class Order {
  @Column(name="loyalty_discount_amount",nullable=false,precision=12,scale=2) private BigDecimal loyaltyDiscountAmount=BigDecimal.ZERO;
  @Column(name="loyalty_points_redeemed",nullable=false) private int loyaltyPointsRedeemed;
  @Column(name="shipping_amount",nullable=false,precision=12,scale=2) private BigDecimal shippingAmount; @Column(name="total_amount",nullable=false,precision=12,scale=2) private BigDecimal totalAmount;
+ @Column(name="delivery_distance_km",precision=8,scale=2) private BigDecimal deliveryDistanceKm;
+ @Column(name="delivery_fee_amount",precision=12,scale=2) private BigDecimal deliveryFeeAmount;
+ @Column(name="delivery_fee_policy_id", length = 255) private String deliveryFeePolicyId;
+ @Column(name="delivery_fee_slab_id", length = 255) private String deliveryFeeSlabId;
+ @Column(name="delivery_fee_rule_name", length = 120) private String deliveryFeeRuleName;
+ @Column(name="delivery_fee_rule_scope", length = 20) private String deliveryFeeRuleScope;
  @Column(name="gst_snapshot",columnDefinition="json") private String gstSnapshot;
  @Column(name="coupon_code") private String couponCode; @Column(name="idempotency_key",nullable=false) private String idempotencyKey;
  @OneToMany(mappedBy="order",cascade=CascadeType.ALL,orphanRemoval=true) private List<OrderItem> items=new ArrayList<>();
@@ -33,6 +39,12 @@ public class Order {
  public int getLoyaltyPointsRedeemed(){return loyaltyPointsRedeemed;} public void setLoyaltyPointsRedeemed(int v){loyaltyPointsRedeemed=v;}
  public String getGstSnapshot(){return gstSnapshot;} public void setGstSnapshot(String value){gstSnapshot=value;}
  public BigDecimal getShippingAmount(){return shippingAmount;} public void setShippingAmount(BigDecimal v){shippingAmount=v;} public BigDecimal getTotalAmount(){return totalAmount;} public void setTotalAmount(BigDecimal v){totalAmount=v;}
+ public BigDecimal getDeliveryDistanceKm(){return deliveryDistanceKm;} public void setDeliveryDistanceKm(BigDecimal v){deliveryDistanceKm=v;}
+ public BigDecimal getDeliveryFeeAmount(){return deliveryFeeAmount;} public void setDeliveryFeeAmount(BigDecimal v){deliveryFeeAmount=v;}
+ public String getDeliveryFeePolicyId(){return deliveryFeePolicyId;} public void setDeliveryFeePolicyId(String v){deliveryFeePolicyId=v;}
+ public String getDeliveryFeeSlabId(){return deliveryFeeSlabId;} public void setDeliveryFeeSlabId(String v){deliveryFeeSlabId=v;}
+ public String getDeliveryFeeRuleName(){return deliveryFeeRuleName;} public void setDeliveryFeeRuleName(String v){deliveryFeeRuleName=v;}
+ public String getDeliveryFeeRuleScope(){return deliveryFeeRuleScope;} public void setDeliveryFeeRuleScope(String v){deliveryFeeRuleScope=v;}
  public String getCouponCode(){return couponCode;} public void setCouponCode(String v){couponCode=v;} public String getIdempotencyKey(){return idempotencyKey;} public void setIdempotencyKey(String v){idempotencyKey=v;}
  public List<OrderItem> getItems(){return items;} public List<OrderStatusHistory> getHistory(){return history;} public Instant getCreatedAt(){return createdAt;}
 }

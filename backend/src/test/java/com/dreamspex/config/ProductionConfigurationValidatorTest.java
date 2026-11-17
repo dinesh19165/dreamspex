@@ -22,7 +22,7 @@ class ProductionConfigurationValidatorTest {
     @Test
     void rejectsSecretsThatAreTooShortOrReused() {
         assertThrows(IllegalStateException.class, () -> validator("short", OTP_SECRET, DELIVERY_SECRET,
-                "https://api.dreamspex.example", "https://dreamspex.example").validate());
+                "https://api.dreamspex.example", "https://www.dreamspex.in/").validate());
         assertThrows(IllegalStateException.class, () -> validator(JWT_SECRET, JWT_SECRET, DELIVERY_SECRET,
                 "https://api.dreamspex.example", "https://dreamspex.example").validate());
     }

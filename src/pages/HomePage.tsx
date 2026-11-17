@@ -58,8 +58,8 @@ type HomeCard = Pick<HomepageCard, 'id' | 'title' | 'subtitle' | 'description' |
 function CompactHomeProductCard({ product }: { product: HomeProduct }) {
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_18px_36px_-28px_rgba(15,23,42,0.28)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_42px_-28px_rgba(15,23,42,0.35)]">
-      <div className="relative aspect-[4/3] overflow-hidden bg-[var(--bg-secondary)]">
-        <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-[1.03]" />
+      <div className="relative aspect-[4/3] overflow-hidden bg-white">
+        <img src={product.image} alt={product.name} loading="lazy" className="absolute inset-0 h-full w-full object-contain object-center" />
       </div>
 
       <div className="flex flex-1 flex-col p-3">

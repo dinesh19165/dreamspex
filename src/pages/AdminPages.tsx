@@ -960,7 +960,7 @@ function AdminOrderDetails({ order, onClose }: { order: AdminOrder; onClose: () 
               <PrescriptionEyeDetails title="Left Eye (OS)" sph={prescription.leftSph} cyl={prescription.leftCyl} axis={prescription.leftAxis} add={prescription.leftAdd} />
             </div>
             <div className="mt-4 grid gap-3 rounded-2xl border border-[var(--border-subtle)] p-4 text-sm sm:grid-cols-3">
-              <p>Total PD: <strong>{prescription.pd ?? '—'} mm</strong></p><p>Right monocular PD: <strong>{prescription.rightPd ?? '—'} mm</strong></p><p>Left monocular PD: <strong>{prescription.leftPd ?? '—'} mm</strong></p>
+              <p>Total IPD: <strong>{prescription.pd ?? '—'} mm</strong></p><p>Right monocular PD: <strong>{prescription.rightPd ?? '—'} mm</strong></p><p>Left monocular PD: <strong>{prescription.leftPd ?? '—'} mm</strong></p>
             </div>
             <div className="mt-4">
               <h4 className="text-sm font-semibold">Selected lenses</h4>

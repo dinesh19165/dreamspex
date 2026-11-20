@@ -1,0 +1,3 @@
+ALTER TABLE admin_settings
+    ADD COLUMN email_otp_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN mobile_otp_enabled BOOLEAN NOT NULL DEFAULT FALSE;

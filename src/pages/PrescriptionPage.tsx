@@ -80,7 +80,7 @@ function validatePrescription(values: PrescriptionValues): Record<string, string
   const pd = checkNumber('pd', values.pd, 20, 80);
   const rightPd = checkNumber('rightPd', values.rightPd ?? '', 10, 40);
   const leftPd = checkNumber('leftPd', values.leftPd ?? '', 10, 40);
-  if (pd == null && (rightPd == null || leftPd == null)) errors.pd = 'Enter total PD or both right and left PD values.';
+  if (pd == null && (rightPd == null || leftPd == null)) errors.pd = 'Enter IPD or both right and left PD values.';
   if (values.prescriptionDate && Number.isNaN(Date.parse(values.prescriptionDate))) errors.prescriptionDate = 'Enter a valid prescription date.';
   if (values.expiryDate && Number.isNaN(Date.parse(values.expiryDate))) errors.expiryDate = 'Enter a valid expiry date.';
   if (values.prescriptionDate && values.expiryDate && values.expiryDate < values.prescriptionDate) errors.expiryDate = 'Expiry date cannot be before prescription date.';
@@ -101,7 +101,7 @@ function extractionFieldErrors(fields: string[]) {
   return Object.fromEntries(fields.map((field) => [
     fieldNames[field] ?? field,
     field === 'pd'
-      ? 'PD is missing or ambiguous. Enter total PD or both right and left PD values.'
+      ? 'PD is missing or ambiguous. Enter IPD or both right and left PD values.'
       : 'Missing or uncertain; check the original document.',
   ]));
 }

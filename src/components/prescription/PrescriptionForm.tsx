@@ -23,7 +23,7 @@ const fieldLabels: Record<string, string> = {
   'leftEye.cyl': 'CYL',
   'leftEye.axis': 'AXIS',
   'leftEye.add': 'ADD',
-  pd: 'Total PD',
+  pd: 'PD',
   rightPd: 'Right PD',
   leftPd: 'Left PD',
 };
@@ -71,7 +71,7 @@ export default function PrescriptionForm({ value, errors, onChange }: Prescripti
       </div>
       <section className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
         <h3 className="font-semibold text-[var(--text-primary)]">Pupillary distance (PD)</h3>
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">Enter total PD, or both monocular values. Total is calculated only when both eye values are present.</p>
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">Enter IPD, or both monocular values. Total is calculated only when both eye values are present.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           {input('pd', value.pd, (pd) => onChange({ ...value, pd }), '20', '80', '0.5', Boolean(value.rightPd && value.leftPd))}
           {input('rightPd', value.rightPd ?? '', (rightPd) => onChange({ ...value, rightPd }), '10', '40', '0.5')}

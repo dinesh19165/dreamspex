@@ -19,6 +19,8 @@ public class AdminSettings {
     @Column(nullable = false, precision = 12, scale = 2) private BigDecimal freeShippingThreshold = BigDecimal.ZERO;
     @Column(nullable = false) private int sessionTimeoutMinutes = 60;
     @Column(nullable = false) private boolean emailNotifications = true;
+    @Column(name = "email_otp_enabled", nullable = false) private boolean emailOtpEnabled = true;
+    @Column(name = "mobile_otp_enabled", nullable = false) private boolean mobileOtpEnabled;
     @Column(nullable = false) private boolean orderConfirmationAlerts = true;
     @Column(nullable = false) private boolean paymentAlerts = true;
     @Column(nullable = false) private boolean newCustomerAlerts = true;
@@ -44,6 +46,8 @@ public class AdminSettings {
     public BigDecimal getFreeShippingThreshold() { return freeShippingThreshold; } public void setFreeShippingThreshold(BigDecimal value) { freeShippingThreshold = value; }
     public int getSessionTimeoutMinutes() { return sessionTimeoutMinutes; } public void setSessionTimeoutMinutes(int value) { sessionTimeoutMinutes = value; }
     public boolean isEmailNotifications() { return emailNotifications; } public void setEmailNotifications(boolean value) { emailNotifications = value; }
+    public boolean isEmailOtpEnabled() { return emailOtpEnabled; } public void setEmailOtpEnabled(boolean value) { emailOtpEnabled = value; }
+    public boolean isMobileOtpEnabled() { return mobileOtpEnabled; } public void setMobileOtpEnabled(boolean value) { mobileOtpEnabled = value; }
     public boolean isOrderConfirmationAlerts() { return orderConfirmationAlerts; } public void setOrderConfirmationAlerts(boolean value) { orderConfirmationAlerts = value; }
     public boolean isPaymentAlerts() { return paymentAlerts; } public void setPaymentAlerts(boolean value) { paymentAlerts = value; }
     public boolean isNewCustomerAlerts() { return newCustomerAlerts; } public void setNewCustomerAlerts(boolean value) { newCustomerAlerts = value; }

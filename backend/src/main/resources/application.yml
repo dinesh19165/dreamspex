@@ -226,6 +226,9 @@ spring:
   config:
     activate:
       on-profile: local
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:./backend/.env[.properties]
   mail:
     host: ${MAIL_HOST:}
     port: ${MAIL_PORT:587}

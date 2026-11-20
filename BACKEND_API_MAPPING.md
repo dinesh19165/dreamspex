@@ -28,11 +28,15 @@ Expected statuses: `400` malformed input, `401` unauthenticated/invalid token, `
 | `POST /auth/login` | Public | Identifier/password; rate limited | Req `{ "identifier":"a@example.com","password":"..." }`; Resp `{ "accessToken":"<short-lived>","expiresIn":900,"user":{"id":"u1","role":"CUSTOMER"} }` |
 | `POST /auth/admin/login` | Public portal | Same plus requested admin portal; no open registration | Req `{ "identifier":"admin@...","password":"..." }`; Resp same with `SUPER_ADMIN` |
 | `POST /auth/franchise/login` | Public portal | Same plus active franchise assignment | Req `{ "identifier":"hyd@...","password":"..." }`; Resp includes `franchiseId` |
-| `POST /auth/verify-otp` | Public/challenge | Six digits, purpose, expiry, max attempts | Req `{ "challengeId":"c1","otp":"123456" }`; Resp `{ "verified":true }` |
-| `POST /auth/resend-otp` | Public/challenge | Cooldown and rate limits | Req `{ "challengeId":"c1" }`; Resp `{ "sent":true,"retryAfterSeconds":30 }` |
+| `POST /auth/verify-otp` | Public/challenge | Six digits, latest challenge, expiry, max attempts; completed challenges are idempotent | Req `{ "challengeId":"c1","otp":"123456" }`; Resp `{ "success":true,"code":"OTP_VERIFIED","message":"Account verified." }` |
+| `POST /auth/verify-widget-access-token` | Public/challenge | MSG91 Widget access token, latest challenge, expiry; provider code `703` is treated as an already-verified success | Req `{ "challengeId":"c1","accessToken":"<widget-token>" }`; Resp `{ "success":true,"code":"OTP_VERIFIED","message":"Phone verified." }` |
+| `POST /auth/resend-otp` | Public/challenge | Cooldown and resend limits; expires older pending challenges and returns a replacement ID | Req `{ "challengeId":"c1" }`; Resp `{ "accepted":true,"challengeId":"c2" }` |
+| `POST /auth/resend-widget-otp` | Public/challenge | Widget retry cooldown and resend limits; returns a replacement challenge ID | Req `{ "challengeId":"c1" }`; Resp `{ "accepted":true,"challengeId":"c2" }` |
 | `POST /auth/forgot-password` | Public | Generic response shape; identifier validation | Req `{ "identifier":"a@example.com" }`; Resp `{ "accepted":true,"challengeId":"opaque-id" }` (the ID is opaque and OTP is delivered separately) |
 | `POST /auth/reset-password` | Public/challenge | One-use challenge and password policy | Req `{ "challengeId":"c1","otp":"123456","newPassword":"..." }`; Resp `{ "reset":true,"accepted":true }` |
 | `POST /auth/refresh`, `POST /auth/logout` | Authenticated/refresh | Rotate/revoke refresh token | Resp refresh `{ "accessToken":"...","expiresIn":900 }`; logout `{ "loggedOut":true }` |
+
+Successful verification repeated for an already-verified challenge returns `code:"OTP_ALREADY_VERIFIED"`. Verification errors distinguish `OTP_EXPIRED`, `OTP_INVALID`, and `CHALLENGE_EXPIRED`.
 
 ## Catalog, search, categories, offers, and banners (9 endpoints)
 

@@ -28,7 +28,7 @@ final class PrescriptionSummaryPdf {
         lines.add("Left Eye (OS)");
         lines.add("SPH: " + value(prescription.getLeftSph()) + "    CYL: " + value(prescription.getLeftCyl())
                 + "    AXIS: " + value(prescription.getLeftAxis()) + "    ADD: " + value(prescription.getLeftAdd()));
-        lines.add("Total PD: " + value(prescription.getPd()) + " mm");
+        lines.add(" IPD: " + value(prescription.getPd()) + " mm");
         lines.add("Monocular PD - Right: " + value(prescription.getRightPd()) + " mm"
                 + "    Left: " + value(prescription.getLeftPd()) + " mm");
         lines.add("");

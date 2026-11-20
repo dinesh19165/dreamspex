@@ -42,6 +42,11 @@ public class SmsConfiguration {
         };
     }
 
+    @Bean
+    Msg91OtpWidgetClient msg91OtpWidgetClient(RestClient.Builder builder, SmsProperties properties) {
+        return new Msg91OtpWidgetClient(builder.clone().requestFactory(msg91RequestFactory()), properties);
+    }
+
     private SimpleClientHttpRequestFactory msg91RequestFactory() {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(5));

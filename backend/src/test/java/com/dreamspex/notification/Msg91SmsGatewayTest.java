@@ -42,13 +42,21 @@ class Msg91SmsGatewayTest {
     }
 
     @Test
-    void rejectsNonIndianNumbersWithoutContactingTheProvider() {
+    void sendsInternationalNumbersWithCountryCode() {
         SmsProperties properties = new SmsProperties();
         properties.setMsg91AuthKey("test-auth-key");
-        Msg91SmsGateway gateway = new Msg91SmsGateway(RestClient.builder(), properties);
+        properties.setMsg91FlowUrl("https://msg91.test/flow");
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://msg91.test/flow"))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.recipients[0].mobiles").value("14155550123"))
+                .andRespond(withSuccess("{\"type\":\"success\",\"request_id\":\"msg-intl\"}",
+                        MediaType.APPLICATION_JSON));
+        Msg91SmsGateway gateway = new Msg91SmsGateway(builder, properties);
 
-        assertThrows(SmsProviderException.class,
-                () -> gateway.send("+14155550123", "approved-flow", Map.of("VAR1", "DS-1")));
+        assertEquals("msg-intl", gateway.send("+14155550123", "approved-flow", Map.of("VAR1", "DS-1")));
+        server.verify();
     }
 
     @Test

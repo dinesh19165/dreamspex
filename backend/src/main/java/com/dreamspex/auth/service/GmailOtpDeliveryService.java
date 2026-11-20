@@ -2,6 +2,8 @@ package com.dreamspex.auth.service;
 
 import org.springframework.context.annotation.Profile;
 import com.dreamspex.config.DynamicSmtpMailService;
+import com.dreamspex.notification.SmsGateway;
+import com.dreamspex.notification.SmsProperties;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import com.dreamspex.common.ApiException;
 import org.springframework.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.Map;
 
 
 @Service
@@ -25,19 +28,27 @@ public class GmailOtpDeliveryService implements OtpDeliveryService {
     private final DynamicSmtpMailService mailService;
     private final JavaMailSender legacyMailSender;
     private final String legacyFromAddress;
+    private final SmsGateway smsGateway;
+    private final SmsProperties smsProperties;
     private static final Logger log = LoggerFactory.getLogger(GmailOtpDeliveryService.class);
 
     @Autowired
-    public GmailOtpDeliveryService(DynamicSmtpMailService mailService) {
+    public GmailOtpDeliveryService(DynamicSmtpMailService mailService, SmsGateway smsGateway, SmsProperties smsProperties) {
         this.mailService = mailService; this.legacyMailSender = null; this.legacyFromAddress = null;
+        this.smsGateway = smsGateway; this.smsProperties = smsProperties;
     }
 
     public GmailOtpDeliveryService(JavaMailSender mailSender, String fromAddress) {
         this.mailService = null; this.legacyMailSender = mailSender; this.legacyFromAddress = fromAddress;
+        this.smsGateway = null; this.smsProperties = null;
     }
 
     @Override
     public void send(String identifier, String channel, String purpose, String challengeId, String otp) {
+        if ("SMS".equalsIgnoreCase(channel)) {
+            sendSms(identifier, otp);
+            return;
+        }
         if (!EMAIL_CHANNEL.equalsIgnoreCase(channel)) {
             throw new IllegalStateException("Gmail OTP delivery requires an email identifier");
         }
@@ -59,6 +70,55 @@ public class GmailOtpDeliveryService implements OtpDeliveryService {
                     exception.getClass().getName(), rootCause(exception).getClass().getName());
             throw new ApiException(HttpStatus.BAD_GATEWAY, "OTP_DELIVERY_FAILED",
                     "The verification email could not be sent. Please try again later.", exception);
+        }
+    }
+
+    @Override
+    public void sendPasswordResetLink(String identifier, String resetLink) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new IllegalArgumentException("Password reset recipient is required");
+        }
+        try {
+            String subject = "Reset your Dream Spex password";
+            String text = "Use this secure link to reset your Dream Spex password (valid for 15 minutes): "
+                    + resetLink + "\nIf you did not request this, you can ignore this email.";
+            String html = "<div style=\"font-family:Arial,sans-serif;color:#24352b;line-height:1.6\">"
+                    + "<h2 style=\"color:#1f5c43\">Dream Spex</h2><p>We received a request to reset your password.</p>"
+                    + "<p><a href=\"" + escapeHtml(resetLink) + "\">Reset your password</a></p>"
+                    + "<p>This one-time link expires in 15 minutes. If you did not request this, you can ignore this email.</p>"
+                    + "</div>";
+            if (legacyMailSender != null) {
+                MimeMessage message = legacyMailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message,
+                        MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
+                helper.setFrom(legacyFromAddress);
+                helper.setTo(identifier);
+                helper.setSubject(subject);
+                helper.setText(text, html);
+                legacyMailSender.send(message);
+            } else {
+                mailService.send(identifier, subject, text, html);
+            }
+        } catch (MessagingException | RuntimeException exception) {
+            log.error("Password reset email delivery failed type={} rootCauseType={}",
+                    exception.getClass().getName(), rootCause(exception).getClass().getName());
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "OTP_DELIVERY_FAILED",
+                    "The reset email could not be sent. Please try again later.", exception);
+        }
+    }
+
+    private void sendSms(String identifier, String otp) {
+        if (identifier == null || identifier.isBlank() || smsGateway == null || smsProperties == null) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "OTP_DELIVERY_FAILED",
+                    "The verification message could not be sent. Please try again later.");
+        }
+        try {
+            smsGateway.send(identifier, smsProperties.templateId("AUTH_OTP"), Map.of("VAR1", otp));
+        } catch (RuntimeException exception) {
+            log.error("OTP SMS delivery failed type={} rootCauseType={}",
+                    exception.getClass().getName(), rootCause(exception).getClass().getName());
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "OTP_DELIVERY_FAILED",
+                    "The verification message could not be sent. Please try again later.", exception);
         }
     }
 

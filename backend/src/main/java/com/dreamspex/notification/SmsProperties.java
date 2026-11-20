@@ -9,6 +9,8 @@ public class SmsProperties implements EnvironmentAware {
     private String provider = "mock";
     private String msg91AuthKey = "";
     private String msg91FlowUrl = "https://control.msg91.com/api/v5/flow/";
+    private String msg91WidgetId = "";
+    private String msg91WidgetAuthToken = "";
     private long dispatchDelayMs = 5000;
     private Environment environment;
 
@@ -18,6 +20,10 @@ public class SmsProperties implements EnvironmentAware {
     public void setMsg91AuthKey(String msg91AuthKey) { this.msg91AuthKey = msg91AuthKey; }
     public String getMsg91FlowUrl() { return msg91FlowUrl; }
     public void setMsg91FlowUrl(String msg91FlowUrl) { this.msg91FlowUrl = msg91FlowUrl; }
+    public String getMsg91WidgetId() { return msg91WidgetId; }
+    public void setMsg91WidgetId(String msg91WidgetId) { this.msg91WidgetId = msg91WidgetId; }
+    public String getMsg91WidgetAuthToken() { return msg91WidgetAuthToken; }
+    public void setMsg91WidgetAuthToken(String msg91WidgetAuthToken) { this.msg91WidgetAuthToken = msg91WidgetAuthToken; }
     public long getDispatchDelayMs() { return dispatchDelayMs; }
     public void setDispatchDelayMs(long dispatchDelayMs) { this.dispatchDelayMs = dispatchDelayMs; }
 

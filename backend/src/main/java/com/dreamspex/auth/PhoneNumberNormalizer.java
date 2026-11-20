@@ -13,7 +13,10 @@ public final class PhoneNumberNormalizer {
     public static String normalize(String value) {
         if (value == null || value.isBlank()) return null;
         String compact = value.trim().replaceAll("[\\s().-]", "");
-        if (E164.matcher(compact).matches()) return compact;
+        if (E164.matcher(compact).matches()) {
+            if (compact.startsWith("+91") && !INDIAN_LOCAL.matcher(compact.substring(3)).matches()) return null;
+            return compact;
+        }
         if (INDIAN_LOCAL.matcher(compact).matches()) return "+91" + compact;
         if (INDIAN_WITH_COUNTRY.matcher(compact).matches()) return "+" + compact;
         if (INDIAN_WITH_TRUNK.matcher(compact).matches()) return "+91" + compact.substring(1);

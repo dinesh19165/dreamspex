@@ -271,6 +271,8 @@ export type AdminSettings = {
   shippingFee: number;
   freeShippingThreshold: number;
   sessionTimeoutMinutes: number;
+  emailOtpEnabled: boolean;
+  mobileOtpEnabled: boolean;
   notifications: {
     emailNotifications: boolean;
     orderConfirmationAlerts: boolean;
@@ -287,6 +289,7 @@ export type AdminSettings = {
 export type AdminSettingsRequest = Omit<AdminSettings, 'security' | 'integrations' | 'email'> & {
   email: Omit<AdminSettings['email'], 'passwordConfigured'> & { smtpPassword?: string };
 };
+export type AdminOtpSettings = Pick<AdminSettings, 'emailOtpEnabled' | 'mobileOtpEnabled'>;
 export type CmsBanner = { id: string; title: string; subtitle: string | null; description: string | null; desktopImageUrl: string; mobileImageUrl: string | null; desktopStorageKey: string | null; mobileStorageKey: string | null; desktopMediaType: 'IMAGE' | 'VIDEO'; desktopVideoUrl: string; desktopVideoStorageKey: string; buttonText: string | null; linkUrl: string | null; secondaryButtonText: string | null; secondaryLinkUrl: string | null; positioning: string | null; sortOrder: number; status: string; startsAt: string | null; endsAt: string | null };
 export type CmsSection = { id: string; slug: string; sectionType: string; title: string | null; subtitle: string | null; contentJson: string | null; displayOrder: number; status: string; enabled: boolean; products: Array<{ id: string }>; categories: Array<{ id: string }>; productIds?: string[]; categoryIds?: string[] };
 export type CmsCardSection = 'CATEGORY_BANNER' | 'FRAME_SHAPE' | 'TRENDING_PRODUCT' | 'PROMOTIONAL' | 'SHOP_BY_WEARER' | 'EXPLORE_BY_BRAND';
@@ -361,6 +364,11 @@ export const adminService = {
   updateStore: (accessToken: string, id: string, store: AdminStoreRequest) =>
     request<AdminStore>(accessToken, `/api/v1/admin/stores/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(store) }),
   settings: (accessToken: string) => request<AdminSettings>(accessToken, '/api/v1/admin/settings'),
+  updateOtpSettings: (accessToken: string, settings: AdminOtpSettings) =>
+    request<AdminOtpSettings & { smsConfigured: boolean }>(accessToken, '/api/v1/admin/settings/otp', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    }),
   gstSettings: (accessToken: string) => request<AdminGstSettings>(accessToken, '/api/v1/admin/gst/settings'),
   updateGstSettings: (accessToken: string, settings: AdminGstSettingsRequest) =>
     request<AdminGstSettings>(accessToken, '/api/v1/admin/gst/settings', { method: 'PUT', body: JSON.stringify(settings) }),

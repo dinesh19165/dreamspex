@@ -126,7 +126,7 @@ class PrescriptionExtractionServiceTest {
                 Left Eye: SPH +1.00 CYL -0.50 Axis 95 ADD +1.50
                 Prescription Date: 2025-03-10
                 Expiry Date: 2026-03-10
-                Total PD: 64
+                Total IPD: 64
                 """, null);
 
         assertEquals("Morgan Example", result.patientName());

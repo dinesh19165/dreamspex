@@ -161,6 +161,7 @@ function App() {
             <Route path="/login" element={<CustomerLoginPage />} />
             <Route path="/register" element={<AuthPage mode="register" />} />
             <Route path="/forgot-password" element={<AuthPage mode="forgot" />} />
+            <Route path="/reset-password" element={<AuthPage mode="forgot" />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/payment" element={<PaymentPage />} />

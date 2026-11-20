@@ -25,7 +25,8 @@ public class ApiExceptionHandler {
                     exception.code(), exception.getClass().getName(), rootCause(exception).getClass().getName(),
                     requestId(request), exception);
         }
-        return response(exception.status(), exception.code(), exception.getMessage(), exception.fieldErrors(), request);
+        return response(exception.status(), exception.code(), exception.getMessage(), exception.fieldErrors(),
+                exception.details(), request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -64,10 +65,17 @@ public class ApiExceptionHandler {
 
     private ResponseEntity<ProblemResponse> response(HttpStatus status, String code, String message,
                                                      List<ProblemResponse.FieldError> errors, HttpServletRequest request) {
+        return response(status, code, message, errors, java.util.Map.of(), request);
+    }
+
+    private ResponseEntity<ProblemResponse> response(HttpStatus status, String code, String message,
+                                                     List<ProblemResponse.FieldError> errors,
+                                                     java.util.Map<String, Object> details,
+                                                     HttpServletRequest request) {
         String requestId = requestId(request);
         ProblemResponse body = new ProblemResponse(
                 "https://api.dreamspex.in/problems/" + code.toLowerCase(),
-                status.getReasonPhrase(), status.value(), code, message, requestId, errors);
+                status.getReasonPhrase(), status.value(), code, message, requestId, errors, details);
         return ResponseEntity.status(status).body(body);
     }
 

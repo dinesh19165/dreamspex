@@ -2,6 +2,9 @@ package com.dreamspex.auth;
 
 
 import com.dreamspex.auth.service.GmailOtpDeliveryService;
+import com.dreamspex.config.DynamicSmtpMailService;
+import com.dreamspex.notification.SmsGateway;
+import com.dreamspex.notification.SmsProperties;
 import jakarta.mail.Session;
 import jakarta.mail.Multipart;
 import jakarta.mail.internet.MimeMessage;
@@ -9,8 +12,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.MailSendException;
+import org.springframework.mock.env.MockEnvironment;
 
 import java.util.Properties;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -52,10 +57,47 @@ class GmailOtpDeliveryServiceTest {
     }
 
     @Test
-    void rejectsSmsInsteadOfPretendingGmailDeliveredIt() {
-        assertThrows(IllegalStateException.class,
-                () -> service.send("+15551234567", "SMS", "REGISTRATION", "challenge-id", "123456"));
+    void sendsPasswordResetLinkEmail() throws Exception {
+        service.sendPasswordResetLink("customer@example.com",
+                "https://www.dreamspex.in/reset-password?identifier=customer%40example.com&token=opaque-token");
+
+        assertEquals("Reset your Dream Spex password", message.getSubject());
+        assertTrue(multipartContent(message).contains("opaque-token"));
+        verify(mailSender).send(message);
+    }
+
+    @Test
+    void sendsSmsOtpThroughConfiguredGatewayAndApprovedTemplate() {
+        SmsGateway smsGateway = mock(SmsGateway.class);
+        SmsProperties smsProperties = new SmsProperties();
+        MockEnvironment environment = new MockEnvironment();
+        environment.setProperty("DREAMSPEX_SMS_TEMPLATES_AUTH_OTP", "approved-flow");
+        smsProperties.setEnvironment(environment);
+        GmailOtpDeliveryService smsService = new GmailOtpDeliveryService(
+                mock(DynamicSmtpMailService.class), smsGateway, smsProperties);
+
+        smsService.send("+14155550123", "SMS", "REGISTRATION", "challenge-id", "123456");
+
+        verify(smsGateway).send("+14155550123", "approved-flow", Map.of("VAR1", "123456"));
         verifyNoInteractions(mailSender);
+    }
+
+    @Test
+    void sanitizesSmsDeliveryFailures() {
+        SmsGateway smsGateway = mock(SmsGateway.class);
+        SmsProperties smsProperties = new SmsProperties();
+        MockEnvironment environment = new MockEnvironment();
+        environment.setProperty("DREAMSPEX_SMS_TEMPLATES_AUTH_OTP", "approved-flow");
+        smsProperties.setEnvironment(environment);
+        when(smsGateway.send(anyString(), anyString(), anyMap())).thenThrow(new IllegalStateException("provider secret"));
+        GmailOtpDeliveryService smsService = new GmailOtpDeliveryService(
+                mock(DynamicSmtpMailService.class), smsGateway, smsProperties);
+
+        com.dreamspex.common.ApiException exception = assertThrows(com.dreamspex.common.ApiException.class,
+                () -> smsService.send("+14155550123", "SMS", "REGISTRATION", "challenge-id", "123456"));
+
+        assertEquals("OTP_DELIVERY_FAILED", exception.code());
+        assertEquals("The verification message could not be sent. Please try again later.", exception.getMessage());
     }
 
     @Test

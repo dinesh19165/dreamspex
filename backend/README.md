@@ -4,9 +4,10 @@ Spring Boot 3.4 / Java 21 backend foundation for Dream Spex.
 
 ## Local startup
 
-Set the database values in the process environment, then run:
+Activate the `local` profile and set the database values in the process environment, then run from either the repository root or `backend`. With the `local` profile, Spring also imports an optional `.env` file from the working directory or `backend/.env`; process environment variables take precedence.
 
 ```powershell
+$env:SPRING_PROFILES_ACTIVE = "local"
 $env:SPRING_DATASOURCE_URL = "jdbc:mysql://localhost:3306/dreamspex?serverTimezone=UTC"
 $env:SPRING_DATASOURCE_USERNAME = "..."
 $env:SPRING_DATASOURCE_PASSWORD = "..."
@@ -44,11 +45,21 @@ OTP codes are stored as HMAC-SHA-256 values using `DREAMSPEX_OTP_SECRET`; if it 
 ## Phase 1 endpoints
 
 - `POST /api/v1/auth/register`
+- `GET /api/v1/auth/registration-options`
+- `POST /api/v1/auth/registration/contact` to update a pending registration's contact or verification method
 - `POST /api/v1/auth/login` (customer accounts only)
 - `POST /api/v1/auth/admin/login` (Super Admin accounts only)
 - `POST /api/v1/auth/verify-otp`
 - `POST /api/v1/auth/resend-otp`
+- `POST /api/v1/auth/verify-widget-access-token`
+- `POST /api/v1/auth/registration-widget-sent`
+- `POST /api/v1/auth/password-reset-widget-sent`
+- `POST /api/v1/auth/resend-widget-otp`
+- `GET /api/v1/auth/password-reset-widget-config`
+- `POST /api/v1/auth/resend-password-reset-widget-otp`
 - `POST /api/v1/auth/forgot-password`
+- `POST /api/v1/auth/verify-reset-otp`
+- `POST /api/v1/auth/verify-reset-widget-access-token`
 - `POST /api/v1/auth/reset-password`
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
@@ -56,7 +67,22 @@ OTP codes are stored as HMAC-SHA-256 values using `DREAMSPEX_OTP_SECRET`; if it 
 - `GET/POST/PATCH/DELETE /api/v1/me/addresses`
 - `GET /api/v1/admin/session` (Super Admin authorization smoke endpoint)
 
-The test profile uses a no-op OTP delivery adapter. Local, `prod`, and `production` profiles use Gmail SMTP and require `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and `MAIL_FROM`; startup fails if the required mail configuration is missing. For Gmail, use an app password rather than an account password and enable STARTTLS on port 587. OTP values are never logged or returned by the API. Gmail delivery supports email identifiers; phone OTP requests require a separate SMS adapter.
+The test profile uses a no-op OTP delivery adapter. Local, `prod`, and `production` profiles use Gmail SMTP and require `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and `MAIL_FROM`; startup fails if the required mail configuration is missing. For Gmail, use an app password rather than an account password and enable STARTTLS on port 587. OTP values are never logged or returned by the API.
+
+Customer registration OTP channels are stored in the `admin_settings` row and are controlled independently by a SUPER_ADMIN through Admin Settings. Email OTP is enabled by default and mobile OTP is disabled by default; changing either setting does not require an application redeployment. Customer login accepts email or phone with a password. Registration mobile OTP uses the MSG91 OTP Widget. Configure these values only in the backend environment:
+
+- `DREAMSPEX_SMS_PROVIDER=msg91`
+- `DREAMSPEX_SMS_MSG91_WIDGET_ID` with the Widget ID
+- `DREAMSPEX_SMS_MSG91_WIDGET_AUTH_TOKEN` with the Widget Auth Token
+- `DREAMSPEX_SMS_MSG91_AUTH_KEY` with the account Authkey used in the documented retry, verify, and access-token verification request headers
+
+Mobile registration uses MSG91's Web SDK custom-UI flow so CAPTCHA remains enabled and is rendered and verified by MSG91 in the browser. The browser receives the Widget ID and Widget Auth Token from `GET /api/v1/auth/registration-widget-config`; the Widget Auth Token is a client-side widget credential and is visible in browser traffic by design. The account Authkey is never sent to the frontend. MSG91 handles mobile OTP send, retry, and OTP verification through the SDK; Dream Spex sends the returned access token to the backend, which validates it with the account Authkey before activating registration. The Widget Auth Token, account Authkey, CAPTCHA proof, OTP, and access token are never written to Dream Spex logs. Existing Flow SMS remains available for notifications.
+
+Password recovery accepts either `identifier` or the legacy `email` field. Email recovery sends a one-time reset link using `FRONTEND_BASE_URL` (15-minute expiry). Phone recovery uses the same browser MSG91 OTP Widget SDK send, retry, and access-token verification calls as mobile registration; `PASSWORD_RESET` is stored only as the Dream Spex challenge purpose. The backend returns the same Widget ID and Widget Auth Token configuration and verifies the returned access token with the account Authkey. `/api/v1/auth/verify-reset-widget-access-token` exchanges a verified provider token for a ten-minute reset token accepted by `/api/v1/auth/reset-password`. Requests are limited to three per identifier per ten minutes, and five incorrect verification attempts block further attempts for fifteen minutes. The older server-generated SMS OTP verification endpoint and challenge-ID/OTP reset request remain available for compatibility.
+
+OTP verification is idempotent: a verified challenge returns success without another MSG91 request, and the provider's code `703` response for an already-verified OTP completes the local challenge. Resending returns a replacement challenge ID and expires older pending challenges for that identifier and purpose.
+
+For web registration, keep CAPTCHA Validation enabled and disable Invisible OTP and Mobile Integration if they are enabled; MSG91 documents those features for mobile-app integrations, not its Web SDK. The custom OTP screen must include the SDK CAPTCHA render container. Do not call the Widget REST send/retry/verify endpoints from the backend for this CAPTCHA-enabled web flow, because MSG91 documents CAPTCHA validation as unsupported by those REST endpoints.
 
 At startup, the backend logs safe resolved SMTP diagnostics: active profile, host, port, whether username/password are configured, sender, whether username matches sender, the resolved JavaMailSender username, and whether SMTP authentication/STARTTLS are enabled. It never logs the password. Gmail App Password formatting spaces are removed before configuring JavaMail.
 

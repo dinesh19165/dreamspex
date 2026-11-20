@@ -2,14 +2,22 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, Camera, Eye, EyeOff, Lock, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from '../components/ui/BrandLogo';
+import OtpVerification from '../components/auth/OtpVerification';
 import { useAuth } from '../context/useAuth';
 import { adminLogin } from '../services/adminProductService';
-import { authService } from '../services/authService';
+import { authService, AuthApiError, type RegistrationWidgetConfig } from '../services/authService';
 import { intendedPath } from '../utils/authNavigation';
 import { getTokenExpiration } from '../utils/authExpiration';
 import { pendingProductActionPath } from '../utils/pendingProductAction';
+import { isValidEmailOrIndianPhone } from '../utils/authIdentifier';
 
 const CUSTOMER_PROMO = 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1400&q=80';
+type LoginVerification = {
+  challengeId: string;
+  verificationChannel: 'EMAIL' | 'SMS';
+  identifier: string;
+};
+type LoginCredentials = { identifier: string; password: string };
 
 function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -138,12 +146,14 @@ function RoleLoginForm({
   kind,
   onSubmit,
   registerState,
+  onVerificationRequired,
 }: {
   kind: 'customer' | 'franchise' | 'admin';
-  onSubmit: (email: string, password: string) => void | Promise<void>;
+  onSubmit: (identifier: string, password: string) => void | Promise<void>;
   registerState?: unknown;
+  onVerificationRequired?: (error: AuthApiError, identifier: string, password: string) => Promise<boolean>;
 }) {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -154,20 +164,29 @@ function RoleLoginForm({
     event.preventDefault();
     setError('');
 
-    if (!email.trim() || !password.trim()) {
-      setError('Please enter both email and password.');
+    if (!identifier.trim() || !password.trim()) {
+      setError(kind === 'customer' ? 'Please enter an email or phone number and password.' : 'Please enter both email and password.');
+      return;
+    }
+    if (kind === 'customer' && !isValidEmailOrIndianPhone(identifier)) {
+      setError('Enter a valid email or 10-digit Indian mobile number.');
       return;
     }
 
     setLoading(true);
     try {
-      await onSubmit(email.trim(), password.trim());
+      await onSubmit(identifier.trim(), password.trim());
       if (rememberMe) {
-        window.localStorage.setItem('dream-spex-remember-me', email.trim());
+        window.localStorage.setItem('dream-spex-remember-me', identifier.trim());
       } else {
         window.localStorage.removeItem('dream-spex-remember-me');
       }
     } catch (reason) {
+      if (reason instanceof AuthApiError && reason.code === 'NEED_VERIFICATION'
+          && onVerificationRequired
+          && await onVerificationRequired(reason, identifier.trim(), password.trim())) {
+        return;
+      }
       setError(reason instanceof Error ? reason.message : 'Unable to sign in.');
     } finally {
       setLoading(false);
@@ -177,15 +196,15 @@ function RoleLoginForm({
   return (
     <form className="space-y-4" onSubmit={handleSubmit} noValidate>
       <label className="block text-sm text-[var(--text-secondary)]">
-        <span className="mb-2 inline-block">Email</span>
+        <span className="mb-2 inline-block">{kind === 'customer' ? 'Email or Phone Number' : 'Email'}</span>
         <div className="flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3">
           <Mail className="h-4 w-4 text-[var(--brand-green-dark)]" />
           <input
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            type="email"
-            autoComplete="email"
-            placeholder="Enter your email"
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+            type={kind === 'customer' ? 'text' : 'email'}
+            autoComplete="username"
+            placeholder={kind === 'customer' ? 'Enter email or 10-digit mobile number' : 'Enter your email'}
             className="w-full bg-[var(--control-surface)] text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]"
           />
         </div>
@@ -235,12 +254,125 @@ export function CustomerLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setAuthenticated, isAuthenticated, role } = useAuth();
+  const [pendingVerification, setPendingVerification] = useState<LoginVerification | null>(null);
+  const [pendingCredentials, setPendingCredentials] = useState<LoginCredentials | null>(null);
+  const [widgetConfig, setWidgetConfig] = useState<RegistrationWidgetConfig | null>(null);
+  const [widgetConfigLoading, setWidgetConfigLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState('');
+
+  const beginVerification = async (error: AuthApiError, identifier: string, password: string) => {
+    const details = error.details;
+    const challengeId = details?.challengeId;
+    const channel = details?.verificationChannel;
+    const challengeIdentifier = details?.identifier;
+    if (typeof challengeId !== 'string' || typeof challengeIdentifier !== 'string'
+        || (channel !== 'EMAIL' && channel !== 'SMS')) {
+      return false;
+    }
+    setPendingVerification({
+      challengeId,
+      verificationChannel: channel,
+      identifier: challengeIdentifier,
+    });
+    setPendingCredentials({ identifier, password });
+    setVerificationError('');
+    setWidgetConfig(null);
+    if (channel === 'SMS') {
+      setWidgetConfigLoading(true);
+      try {
+        setWidgetConfig(await authService.registrationWidgetConfig());
+      } catch (reason) {
+        setVerificationError(reason instanceof Error ? reason.message : 'Mobile verification is unavailable.');
+      } finally {
+        setWidgetConfigLoading(false);
+      }
+    }
+    return true;
+  };
+
+  const completeVerifiedLogin = async () => {
+    if (!pendingCredentials) {
+      throw new Error('Please sign in again to continue.');
+    }
+    const login = await authService.login(pendingCredentials);
+    setAuthenticated('CUSTOMER', {
+      id: login.user.id,
+      name: login.user.displayName,
+      email: login.user.email ?? pendingCredentials.identifier,
+      role: 'CUSTOMER',
+      accessToken: login.accessToken,
+      accessTokenExpiresAt: getTokenExpiration(login.accessToken) ?? Date.now() + login.expiresIn * 1000,
+      refreshToken: login.refreshToken,
+    });
+    navigate(pendingProductActionPath() ?? intendedPath(location.state, '/'), { replace: true });
+  };
 
   useEffect(() => {
     if (isAuthenticated && role === 'CUSTOMER') {
       navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate, role]);
+
+  if (pendingVerification) {
+    if (pendingVerification.verificationChannel === 'SMS' && !widgetConfig) {
+      return <CustomerPortalLayout>
+        <div className="space-y-4 text-center">
+          <p role={verificationError ? 'alert' : 'status'} className="text-sm text-[var(--text-secondary)]">
+            {verificationError || (widgetConfigLoading ? 'Loading mobile verification...' : 'Mobile verification is unavailable.')}
+          </p>
+          <button type="button" onClick={() => setPendingVerification(null)}
+            className="font-medium text-[var(--brand-green-dark)]">Back to sign in</button>
+        </div>
+      </CustomerPortalLayout>;
+    }
+    const maskedIdentifier = pendingVerification.identifier.includes('@')
+      ? `${pendingVerification.identifier[0]}****${pendingVerification.identifier.slice(pendingVerification.identifier.indexOf('@'))}`
+      : `******${pendingVerification.identifier.replace(/\D/g, '').slice(-4)}`;
+    const updateChallengeId = (challengeId: string) => {
+      setPendingVerification((current) => current ? { ...current, challengeId } : current);
+    };
+    return <CustomerPortalLayout>
+      <OtpVerification
+        identifier={maskedIdentifier}
+        onBack={() => {
+          setPendingVerification(null);
+          setPendingCredentials(null);
+        }}
+        onVerified={async (otp) => {
+          await authService.verifyOtp(pendingVerification.challengeId, otp);
+          await completeVerifiedLogin();
+        }}
+        onResend={async () => {
+          const response = await authService.resendOtp(pendingVerification.challengeId);
+          if (!response.accepted || !response.challengeId) {
+            throw new Error('We could not resend the code. Please try again.');
+          }
+          updateChallengeId(response.challengeId);
+        }}
+        msg91Widget={pendingVerification.verificationChannel === 'SMS' && widgetConfig ? {
+          challengeId: pendingVerification.challengeId,
+          config: widgetConfig,
+          phoneNumber: pendingVerification.identifier,
+          onVerified: async (accessToken) => {
+            await authService.verifyWidgetAccessToken(pendingVerification.challengeId, accessToken);
+            await completeVerifiedLogin();
+          },
+          onSent: async (requestId, sentChallengeId) => {
+            const response = await authService.registrationWidgetSent(sentChallengeId, requestId);
+            if (!response.accepted) throw new Error('We could not start mobile verification. Please try again.');
+          },
+          onResendPermit: async () => {
+            const response = await authService.resendWidgetOtp(pendingVerification.challengeId);
+            if (!response.accepted || !response.challengeId) {
+              throw new Error('Please wait before requesting another verification code.');
+            }
+            updateChallengeId(response.challengeId);
+            return response.challengeId;
+          },
+        } : undefined}
+      />
+    </CustomerPortalLayout>;
+  }
 
   return (
     <CustomerPortalLayout>
@@ -260,6 +392,7 @@ export function CustomerLoginPage() {
           });
           navigate(pendingProductActionPath() ?? intendedPath(location.state, '/'), { replace: true });
         }}
+        onVerificationRequired={beginVerification}
       />
     </CustomerPortalLayout>
   );

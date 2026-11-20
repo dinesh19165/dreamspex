@@ -7,6 +7,7 @@ import com.dreamspex.audit.AuditLogService;import com.dreamspex.common.ApiExcep
 import com.dreamspex.payment.PaymentProperties;
 import com.dreamspex.config.DynamicSmtpMailService;
 import com.dreamspex.config.SmtpSecretCipher;
+import com.dreamspex.auth.service.RegistrationOtpSettingsService;
 import com.dreamspex.security.CurrentUser;
 import jakarta.transaction.Transactional;
 import org.springframework.core.env.Environment;
@@ -27,13 +28,16 @@ public class AdminSettingsService {
     private final Environment environment;
     private final SmtpSecretCipher cipher;
     private final DynamicSmtpMailService mailService;
+    private final RegistrationOtpSettingsService otpSettings;
 
     public AdminSettingsService(AdminSettingsRepository repository, CurrentUser current, UserRepository users,
             PasswordEncoder passwordEncoder, AuditLogService audit, PaymentProperties payment, Environment environment,
-            SmtpSecretCipher cipher, DynamicSmtpMailService mailService) {
+            SmtpSecretCipher cipher, DynamicSmtpMailService mailService,
+            RegistrationOtpSettingsService otpSettings) {
         this.repository = repository; this.current = current; this.users = users; this.passwordEncoder = passwordEncoder;
         this.audit = audit; this.payment = payment; this.environment = environment;
         this.cipher = cipher; this.mailService = mailService;
+        this.otpSettings = otpSettings;
     }
 
     @Transactional
@@ -51,6 +55,14 @@ public class AdminSettingsService {
         settings.setSecondaryColor(request.secondaryColor()); settings.setCurrency(request.currency());
         settings.setShippingFee(request.shippingFee()); settings.setFreeShippingThreshold(request.freeShippingThreshold());
         settings.setSessionTimeoutMinutes(request.sessionTimeoutMinutes());
+        if (request.emailOtpEnabled() != null) settings.setEmailOtpEnabled(request.emailOtpEnabled());
+        if (request.mobileOtpEnabled() != null) {
+            if (request.mobileOtpEnabled() && !otpSettings.smsConfigured()) {
+                throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "OTP_SMS_NOT_CONFIGURED",
+                        "Configure the MSG91 OTP Widget and server credentials before enabling mobile OTP.");
+            }
+            settings.setMobileOtpEnabled(request.mobileOtpEnabled());
+        }
         settings.setEmailNotifications(request.notifications().emailNotifications());
         settings.setOrderConfirmationAlerts(request.notifications().orderConfirmationAlerts());
         settings.setPaymentAlerts(request.notifications().paymentAlerts());
@@ -69,6 +81,24 @@ public class AdminSettingsService {
     }
 
     @Transactional
+    public OtpSettingsResponse saveOtpSettings(org.springframework.security.core.Authentication authentication,
+                                               OtpSettingsRequest request) {
+        User actor = current.require(authentication);
+        AdminSettings settings = repository.findById("global").orElseGet(AdminSettings::new);
+        if (request.mobileOtpEnabled() && !otpSettings.smsConfigured()) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "OTP_SMS_NOT_CONFIGURED",
+                    "Configure the MSG91 OTP Widget and server credentials before enabling mobile OTP.");
+        }
+        settings.setEmailOtpEnabled(request.emailOtpEnabled());
+        settings.setMobileOtpEnabled(request.mobileOtpEnabled());
+        settings.setUpdatedAt(Instant.now());
+        repository.save(settings);
+        audit.record(actor, "ADMIN_OTP_SETTINGS_UPDATED", "ADMIN_SETTINGS", "global");
+        return new OtpSettingsResponse(settings.isEmailOtpEnabled(), settings.isMobileOtpEnabled(),
+                otpSettings.smsConfigured());
+    }
+
+    @Transactional
     public void changePassword(org.springframework.security.core.Authentication authentication, PasswordChangeRequest request) {
         User actor = current.require(authentication);
         if (!passwordEncoder.matches(request.currentPassword(), actor.getPasswordHash()))
@@ -83,7 +113,9 @@ public class AdminSettingsService {
         return switch (integration.toLowerCase()) {
             case "razorpay" -> new ConnectionResponse("razorpay", hasText(payment.keyId()) && hasText(payment.keySecret()), "Uses configured Razorpay test credentials.");
             case "smtp" -> new ConnectionResponse("smtp", mailService.configuration().enabled() && hasText(mailService.configuration().host()) && hasText(mailService.configuration().username()) && hasText(mailService.configuration().password()), "Uses saved SMTP configuration or environment fallback.");
-            case "sms", "whatsapp" -> new ConnectionResponse(integration.toLowerCase(), false, "No provider is configured.");
+            case "sms" -> new ConnectionResponse("sms", otpSettings.smsConfigured(),
+                    otpSettings.smsConfigured() ? "MSG91 OTP Widget is configured for registration." : "Configure MSG91 OTP Widget credentials.");
+            case "whatsapp" -> new ConnectionResponse("whatsapp", false, "No provider is configured.");
             default -> throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_INTEGRATION", "Unknown integration.");
         };
     }
@@ -100,10 +132,11 @@ public class AdminSettingsService {
     private SettingsResponse response(AdminSettings settings, User actor) {
         return new SettingsResponse(settings.getStoreName(), settings.getLogoUrl(), settings.getFaviconUrl(), settings.getPrimaryColor(),
             settings.getSecondaryColor(), settings.getCurrency(), settings.getShippingFee(), settings.getFreeShippingThreshold(),
-            settings.getSessionTimeoutMinutes(), new Notifications(settings.isEmailNotifications(), settings.isOrderConfirmationAlerts(),
+            settings.getSessionTimeoutMinutes(), settings.isEmailOtpEnabled(), settings.isMobileOtpEnabled(),
+            new Notifications(settings.isEmailNotifications(), settings.isOrderConfirmationAlerts(),
             settings.isPaymentAlerts(), settings.isNewCustomerAlerts(), settings.isLowStockAlerts()),
             new SecurityProfile(actor.getDisplayName(), actor.getEmail(), "Minimum 12 characters; never reuse an old password."),
-            new Integrations(test("razorpay").configured(), test("smtp").configured(), false, false),
+            new Integrations(test("razorpay").configured(), test("smtp").configured(), otpSettings.smsConfigured(), false),
             new EmailConfiguration(settings.getSmtpHost(), settings.getSmtpPort(), settings.getSmtpUsername(),
                 settings.getSmtpPasswordEncrypted() != null, settings.getFromEmail(), settings.getSenderDisplayName(),
                 settings.isSmtpTlsEnabled(), settings.isSmtpSslEnabled(), settings.isEmailNotifications()));

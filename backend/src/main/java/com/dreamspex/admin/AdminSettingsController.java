@@ -15,6 +15,8 @@ public class AdminSettingsController {
     public AdminSettingsController(AdminSettingsService service) { this.service = service; }
     @GetMapping SettingsResponse get(Authentication authentication) { return service.get(authentication); }
     @PutMapping SettingsResponse save(Authentication authentication, @Valid @RequestBody SettingsRequest request) { return service.save(authentication, request); }
+    @PutMapping("/otp") OtpSettingsResponse saveOtpSettings(Authentication authentication,
+            @Valid @RequestBody OtpSettingsRequest request) { return service.saveOtpSettings(authentication, request); }
     @PostMapping("/password") @ResponseStatus(HttpStatus.NO_CONTENT)
     void password(Authentication authentication, @Valid @RequestBody PasswordChangeRequest request) { service.changePassword(authentication, request); }
     @PostMapping("/test/{integration}") ConnectionResponse test(@PathVariable String integration) { return service.test(integration); }

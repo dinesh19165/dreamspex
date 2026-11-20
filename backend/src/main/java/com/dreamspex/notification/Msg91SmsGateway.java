@@ -1,5 +1,6 @@
 package com.dreamspex.notification;
 
+import com.dreamspex.auth.PhoneNumberNormalizer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,12 +29,13 @@ public class Msg91SmsGateway implements SmsGateway {
         if (templateId == null || templateId.isBlank()) {
             throw new SmsProviderException("The approved MSG91 DLT flow template is not configured.", false);
         }
-        if (phoneNumber == null || !phoneNumber.startsWith("+91")) {
-            throw new SmsProviderException("MSG91 SMS is configured for verified Indian mobile numbers only.", false);
+        String normalizedPhone = PhoneNumberNormalizer.normalize(phoneNumber);
+        if (normalizedPhone == null) {
+            throw new SmsProviderException("A valid international phone number is required.", false);
         }
 
         Map<String, String> recipient = new LinkedHashMap<>();
-        recipient.put("mobiles", phoneNumber.substring(1));
+        recipient.put("mobiles", normalizedPhone.substring(1));
         variables.forEach(recipient::put);
         Map<String, Object> body = Map.of("template_id", templateId, "recipients", List.of(recipient));
 

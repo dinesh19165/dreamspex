@@ -1,6 +1,7 @@
 package com.dreamspex.auth.dto;
 
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.dreamspex.auth.entity.Role;
 import com.dreamspex.auth.entity.User;
 import com.dreamspex.auth.PhoneNumberNormalizer;
@@ -15,19 +16,45 @@ public final class AuthDtos {
             @Email String email,
             @Size(max = 32) @Pattern(regexp = "^[+0-9\\s().-]*$", message = "Enter a valid phone number") String phone,
             @NotBlank @Size(min = 12, max = 128) @Utf8ByteSize(max = 72) String password,
-            @Size(max = 32) @Pattern(regexp = "^[A-Za-z0-9-]*$") String referralCode) {
+            @Size(max = 32) @Pattern(regexp = "^[A-Za-z0-9-]*$") String referralCode,
+            @Pattern(regexp = "^(EMAIL|SMS)?$") String verificationChannel) {
         public RegisterRequest(String name, String email, String phone, String password) {
-            this(name, email, phone, password, null);
+            this(name, email, phone, password, null, null);
+        }
+        public RegisterRequest(String name, String email, String phone, String password, String referralCode) {
+            this(name, email, phone, password, referralCode, null);
         }
     }
-    public record LoginRequest(@NotBlank String identifier, @NotBlank String password) {}
+    public record ChangeRegistrationRequest(
+            @NotBlank String challengeId,
+            @NotBlank @Size(min = 12, max = 128) @Utf8ByteSize(max = 72) String password,
+            @Email String email,
+            @Size(max = 32) @Pattern(regexp = "^[+0-9\\s().-]*$", message = "Enter a valid phone number") String phone,
+            @NotBlank @Pattern(regexp = "^(EMAIL|SMS)$") String verificationChannel) {}
+    public record RegistrationOtpOptions(boolean emailOtpEnabled, boolean mobileOtpEnabled,
+                                         boolean smsConfigured) {}
+    public record RegistrationWidgetConfig(String widgetId, String tokenAuth) {}
+    public record LoginRequest(@NotBlank @JsonAlias("email") String identifier, @NotBlank String password) {}
     public record ResendOtpRequest(@NotBlank String challengeId) {}
+    public record WidgetOtpSentRequest(@NotBlank String challengeId,
+                                      @NotBlank @Size(max = 256) String requestId) {}
+    public record WidgetAccessTokenRequest(@NotBlank String challengeId,
+                                           @NotBlank @Size(max = 8192) String accessToken) {}
+    public record OtpVerificationResponse(boolean success, String code, String message) {}
+    public record ResendOtpResponse(boolean accepted, String challengeId) {}
     public record VerifyOtpRequest(@NotBlank String challengeId, @NotBlank @Pattern(regexp = "^\\d{6}$") String otp) {}
-    public record ResetPasswordRequest(@NotBlank String challengeId, @NotBlank @Pattern(regexp = "^\\d{6}$") String otp,
-                                       @NotBlank @Size(min = 12, max = 128) @Utf8ByteSize(max = 72) String newPassword) {}
+    public record ResetPasswordRequest(String identifier, String resetToken, String challengeId,
+                                       @Pattern(regexp = "^\\d{6}$") String otp,
+                                       @NotBlank @Size(min = 12, max = 128) @Utf8ByteSize(max = 72) String newPassword) {
+        public ResetPasswordRequest(String challengeId, String otp, String newPassword) {
+            this(null, null, challengeId, otp, newPassword);
+        }
+    }
+    public record VerifyResetOtpRequest(@NotBlank @JsonAlias("email") String identifier,
+                                        @NotBlank @Pattern(regexp = "^\\d{6}$") String otp) {}
     public record FranchiseSetupRequest(@NotBlank @Size(min = 40, max = 200) String token,
                                         @NotBlank @Size(min = 12, max = 128) @Utf8ByteSize(max = 72) String newPassword) {}
-    public record IdentifierRequest(@NotBlank String identifier) {}
+    public record IdentifierRequest(@NotBlank @JsonAlias("email") String identifier) {}
     public record RefreshRequest(@NotBlank String refreshToken) {}
     public record RegisterResponse(String userId, boolean verificationRequired, Set<String> channels, String challengeId) {}
     public record TokenResponse(String accessToken, String refreshToken, long expiresIn, UserResponse user) {}
@@ -39,7 +66,9 @@ public final class AuthDtos {
         }
     }
     public record SimpleResponse(boolean accepted) {}
-    public record ForgotPasswordResponse(boolean accepted, String challengeId) {}
+    public record ForgotPasswordResponse(boolean accepted, String method, String nextStep,
+                                         String message, String challengeId) {}
+    public record ResetOtpVerificationResponse(boolean verified, String resetToken, long expiresInSeconds) {}
     public record ResetPasswordResponse(boolean reset, boolean accepted) {}
     public record ProfileResponse(String id, String displayName, String email, String phone,
                                   String firstName, String lastName, java.time.LocalDate dateOfBirth,

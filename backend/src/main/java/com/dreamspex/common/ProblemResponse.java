@@ -1,6 +1,7 @@
 package com.dreamspex.common;
 
 import java.util.List;
+import java.util.Map;
 
 public record ProblemResponse(
         String type,
@@ -9,6 +10,7 @@ public record ProblemResponse(
         String code,
         String message,
         String requestId,
-        List<FieldError> fieldErrors) {
+        List<FieldError> fieldErrors,
+        Map<String, Object> details) {
     public record FieldError(String field, String message) {}
 }

@@ -23,6 +23,7 @@ import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.security.MessageDigest;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -59,11 +60,133 @@ class AuthPasswordResetValidationTest {
         mockMvc.perform(post("/api/v1/auth/forgot-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"identifier":"unknown@example.com"}
+                                {"email":"unknown@example.com"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accepted").value(true))
+                .andExpect(jsonPath("$.method").value("EMAIL"))
+                .andExpect(jsonPath("$.nextStep").value("CHECK_EMAIL"))
+                .andExpect(jsonPath("$.message").value("If an account exists, reset instructions have been sent."))
                 .andExpect(jsonPath("$.challengeId").isNotEmpty());
+    }
+
+    @Test
+    void forgotPasswordAcceptsPhoneAndCreatesSmsChallenge() throws Exception {
+        User user = createPhoneUser();
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"identifier":"%s"}
+                                """.formatted(user.getPhone().substring(3))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.method").value("PHONE"))
+                .andExpect(jsonPath("$.nextStep").value("VERIFY_OTP"));
+
+        OtpChallenge challenge = challenges.findFirstByIdentifierAndPurposeOrderByCreatedAtDesc(
+                user.getPhone(), "PASSWORD_RESET").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals("SMS", challenge.getDeliveryChannel());
+    }
+
+    @Test
+    void resetRequestRateLimitAllowsThreeRequestsPerTenMinutes() throws Exception {
+        User user = createPhoneUser();
+        String requestBody = """
+                {"identifier":"%s"}
+                """.formatted(user.getPhone());
+        for (int request = 0; request < 3; request++) {
+            mockMvc.perform(post("/api/v1/auth/forgot-password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(requestBody))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RESET_REQUEST_LIMIT"));
+    }
+
+    @Test
+    void phoneOtpExchangesForResetTokenAndResetsPassword() throws Exception {
+        User user = createPhoneUser();
+        OtpChallenge challenge = createChallenge(user, Instant.now().plus(10, ChronoUnit.MINUTES), "123456");
+        challenge.setIdentifier(user.getPhone());
+        challenge.setDeliveryChannel("SMS");
+        challenges.save(challenge);
+
+        String verifyResponse = mockMvc.perform(post("/api/v1/auth/verify-reset-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"identifier":"%s","otp":"123456"}
+                                """.formatted(user.getPhone().substring(3))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verified").value(true))
+                .andExpect(jsonPath("$.resetToken").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
+        String resetToken = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(verifyResponse).get("resetToken").asText();
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"identifier":"%s","resetToken":"%s",
+                                 "newPassword":"NewSecurePassword123!"}
+                                """.formatted(user.getPhone(), resetToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reset").value(true));
+
+        entityManager.clear();
+        assertTrue(passwordEncoder.matches("NewSecurePassword123!",
+                users.findById(user.getId()).orElseThrow().getPasswordHash()));
+        assertTrue(challenges.findById(challenge.getId()).orElseThrow().getExpiresAt().isBefore(Instant.now()));
+    }
+
+    @Test
+    void fifthWrongPhoneOtpBlocksFurtherAttemptsForFifteenMinutes() throws Exception {
+        User user = createPhoneUser();
+        OtpChallenge challenge = createChallenge(user, Instant.now().plus(10, ChronoUnit.MINUTES), "123456");
+        challenge.setIdentifier(user.getPhone());
+        challenge.setDeliveryChannel("SMS");
+        challenges.save(challenge);
+
+        for (int attempt = 0; attempt < 5; attempt++) {
+            mockMvc.perform(post("/api/v1/auth/verify-reset-otp")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"identifier":"%s","otp":"654321"}
+                                    """.formatted(user.getPhone())))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("OTP_INVALID"));
+        }
+
+        mockMvc.perform(post("/api/v1/auth/verify-reset-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"identifier":"%s","otp":"123456"}
+                                """.formatted(user.getPhone())))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("OTP_TEMPORARILY_BLOCKED"));
+
+        assertTrue(challenges.findById(challenge.getId()).orElseThrow().getLockedUntil().isAfter(Instant.now()));
+    }
+
+    @Test
+    void expiredPhoneResetOtpReturnsSpecificError() throws Exception {
+        User user = createPhoneUser();
+        OtpChallenge challenge = createChallenge(user, Instant.now().minus(1, ChronoUnit.MINUTES), "123456");
+        challenge.setIdentifier(user.getPhone());
+        challenge.setDeliveryChannel("SMS");
+        challenges.save(challenge);
+
+        mockMvc.perform(post("/api/v1/auth/verify-reset-otp")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"identifier":"%s","otp":"123456"}
+                                """.formatted(user.getPhone())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("OTP_EXPIRED"));
     }
 
     @Test
@@ -195,6 +318,13 @@ class AuthPasswordResetValidationTest {
         user.setPasswordHash(passwordEncoder.encode("OldSecurePassword123!"));
         user.setStatus("ACTIVE");
         user.getRoles().add(role);
+        return users.save(user);
+    }
+
+    private User createPhoneUser() {
+        User user = createUser();
+        String nationalNumber = "8" + String.format("%09d", Math.floorMod(System.nanoTime(), 1_000_000_000L));
+        user.setPhone("+91" + nationalNumber);
         return users.save(user);
     }
 

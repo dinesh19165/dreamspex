@@ -537,6 +537,10 @@ export default function HomePage() {
   const shapeCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'FRAME_SHAPE');
   const visibleShapeCards: HomeCard[] = shapeCards.length ? shapeCards : availableShapes.map((shape, index) => ({ id: shape, title: shape, subtitle: null, description: null, imageUrl: null, buttonText: null, destinationType: 'SHAPE', destinationValue: shape, displayOrder: index }));
   const promotionalCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'PROMOTIONAL');
+  const promotionalImageCards = promotionalCards.flatMap((card) => {
+    const image = card.imageUrl ?? card.product?.imageUrl ?? card.category?.imageUrl;
+    return image ? [{ card, image }] : [];
+  });
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -823,44 +827,31 @@ export default function HomePage() {
           <section hidden={cmsHidden(homepageSectionSlugs.stores, sections)} className="bg-[#dfe9d8] py-16"><div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]"><MapPin className="h-4 w-4" /> Visit Dream Spex</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">Your vision deserves expert care.</h2></div><div><Link to="/stores" className="inline-flex items-center gap-2 rounded-full border border-[#a9bba2] px-5 py-3 text-sm font-semibold text-[#182116]">Find a store <ArrowRight className="h-4 w-4" /></Link></div></div></section>
 
           <section hidden={cmsHidden(homepageSectionSlugs.promos, sections)} aria-label="Brand promotions" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <div className="mb-5 flex items-end justify-between gap-4">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Brand promos</p>
                 <h2 className="mt-2 font-serif text-3xl text-[var(--text-primary)]">Premium picks for every day</h2>
               </div>
-              <Link to="/shop" className="hidden items-center gap-1 text-sm font-semibold text-[#689f24] sm:inline-flex">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
+              <Link to="/shop" className="inline-flex w-fit shrink-0 items-center gap-1 self-end text-sm font-semibold text-[#689f24]">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
-              {promotionalCards.map((card, index) => {
-                const image = card.imageUrl ?? card.product?.imageUrl ?? card.category?.imageUrl;
-                if (!image) return null;
-                return (
-                <Link
-                  key={card.id}
-                  to={homepageCardHref(card)}
-                  className={`group relative overflow-hidden rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_22px_50px_-36px_rgba(17,24,39,0.25)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_30px_60px_-36px_rgba(17,24,39,0.28)] ${index === 0 ? 'lg:col-span-2' : ''}`}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#0f1b13]/75 via-[#0f1b13]/30 to-transparent" aria-hidden="true" />
-                  <img src={image} alt={card.title} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" />
-
-                  <div className="relative flex min-h-[260px] flex-col justify-between p-5 sm:p-6 lg:min-h-[300px] lg:p-7">
-                    <div className="inline-flex w-fit rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-white/90 backdrop-blur-sm">
-                      {card.subtitle ?? 'Featured promotion'}
-                    </div>
-
-                    <div className="max-w-[18rem]">
-                      <h3 className="font-serif text-3xl leading-none text-white sm:text-4xl">{card.title}</h3>
-                      {card.description ? <p className="mt-3 max-w-xs text-sm leading-6 text-white/85">{card.description}</p> : null}
-                    </div>
-
-                    <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#172015] shadow-lg shadow-[#0f1b13]/20 transition group-hover:bg-[#dfeec8]">
-                      {card.buttonText ?? 'Explore collection'} <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
-                </Link>
-              );})}
-              {!promotionalCards.length ? <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>{cmsError ? 'Promotions could not be loaded.' : 'No promotions are available right now.'}</p> : null}
+              {promotionalImageCards.map(({ card, image }, index) => (
+                  <Link
+                    key={card.id}
+                    to={homepageCardHref(card)}
+                    aria-label={`Shop ${card.title}`}
+                    className={`block overflow-hidden rounded-xl bg-[var(--bg-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#689f24] ${index === 0 ? promotionalImageCards.length > 1 ? 'lg:col-span-2' : 'lg:col-span-3' : ''}`}
+                  >
+                    <img
+                      src={image}
+                      alt={card.title}
+                      loading="lazy"
+                      className="block h-[200px] w-full object-contain sm:h-[240px] lg:h-[300px]"
+                    />
+                  </Link>
+              ))}
+              {!promotionalImageCards.length ? <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>{cmsError ? 'Promotions could not be loaded.' : 'No promotions are available right now.'}</p> : null}
             </div>
           </section>
         </div>

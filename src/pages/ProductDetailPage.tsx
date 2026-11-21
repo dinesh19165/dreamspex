@@ -289,6 +289,29 @@ export default function ProductDetailPage() {
               </div> : null}
             </div>
             <p className="mt-3 text-center text-xs text-[var(--text-secondary)]">Swipe or use the arrows to view product images</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6" aria-labelledby="product-specifications">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">At a glance</p>
+                <h2 id="product-specifications" className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Specifications</h2>
+                <dl className="mt-4 grid grid-cols-2 gap-3">
+                  {productDetails.map((detail) => <div key={detail.label} className="rounded-2xl bg-[var(--bg-secondary)] p-3">
+                    <dt className="text-xs text-[var(--text-secondary)]">{detail.label}</dt>
+                    <dd className="mt-1 break-words text-sm font-semibold text-[var(--text-primary)]">{detail.value}</dd>
+                  </div>)}
+                </dl>
+              </article>
+              <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">Fit &amp; finish</p>
+                <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Frame information</h2>
+                {frameDetails.length ? <dl className="mt-4 grid grid-cols-2 gap-3">
+                  {frameDetails.map((detail) => <div key={detail.label} className="rounded-2xl bg-[var(--bg-secondary)] p-3">
+                    <dt className="text-xs text-[var(--text-secondary)]">{detail.label}</dt>
+                    <dd className="mt-1 break-words text-sm font-semibold text-[var(--text-primary)]">{detail.value}</dd>
+                  </div>)}
+                </dl> : null}
+                {selectedVariant?.size ? <p className="mt-3 text-sm text-[var(--text-secondary)]">Selected frame size: <strong className="text-[var(--text-primary)]">{selectedVariant.size}</strong></p> : null}
+              </article>
+            </div>
           </motion.section>
 
           <motion.aside initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -429,27 +452,6 @@ export default function ProductDetailPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">About this frame</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Product details</h2>
             {product.description ? <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[var(--text-secondary)]">{product.description}</p> : null}
-          </article>
-          <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-7" aria-labelledby="product-specifications">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">At a glance</p>
-            <h2 id="product-specifications" className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Specifications</h2>
-            <dl className="mt-4 grid grid-cols-2 gap-3">
-              {productDetails.map((detail) => <div key={detail.label} className="rounded-2xl bg-[var(--bg-secondary)] p-3">
-                <dt className="text-xs text-[var(--text-secondary)]">{detail.label}</dt>
-                <dd className="mt-1 break-words text-sm font-semibold text-[var(--text-primary)]">{detail.value}</dd>
-              </div>)}
-            </dl>
-          </article>
-          <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-7">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">Fit &amp; finish</p>
-            <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Frame information</h2>
-            {frameDetails.length ? <dl className="mt-4 grid grid-cols-2 gap-3">
-              {frameDetails.map((detail) => <div key={detail.label} className="rounded-2xl bg-[var(--bg-secondary)] p-3">
-                <dt className="text-xs text-[var(--text-secondary)]">{detail.label}</dt>
-                <dd className="mt-1 break-words text-sm font-semibold text-[var(--text-primary)]">{detail.value}</dd>
-              </div>)}
-            </dl> : null}
-            {selectedVariant?.size ? <p className="mt-3 text-sm text-[var(--text-secondary)]">Selected frame size: <strong className="text-[var(--text-primary)]">{selectedVariant.size}</strong></p> : null}
           </article>
           <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-7">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">Personalise your vision</p>

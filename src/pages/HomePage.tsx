@@ -327,6 +327,10 @@ export default function HomePage() {
   const [categoryCarouselPaused, setCategoryCarouselPaused] = useState(false);
   const categoryTouchStartX = useRef<number | null>(null);
   const categorySwipeTriggered = useRef(false);
+  const [activePromotionSlide, setActivePromotionSlide] = useState(0);
+  const [promotionCarouselPaused, setPromotionCarouselPaused] = useState(false);
+  const promotionTouchStartX = useRef<number | null>(null);
+  const promotionSwipeTriggered = useRef(false);
   const activeBanners = useMemo(() => (cms?.banners ?? []).filter((banner) => (
     banner.status === 'PUBLISHED'
     && (!banner.startsAt || new Date(banner.startsAt).getTime() <= bannerClock)
@@ -536,12 +540,49 @@ export default function HomePage() {
   const availableShapes = [...new Set((catalog?.products ?? []).map((product) => product.frameShape).filter((shape): shape is string => Boolean(shape)))];
   const shapeCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'FRAME_SHAPE');
   const visibleShapeCards: HomeCard[] = shapeCards.length ? shapeCards : availableShapes.map((shape, index) => ({ id: shape, title: shape, subtitle: null, description: null, imageUrl: null, buttonText: null, destinationType: 'SHAPE', destinationValue: shape, displayOrder: index }));
-  const promotionalCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'PROMOTIONAL');
+  const promotionalCards = (cms?.cards ?? [])
+    .filter((card) => card.sectionKey === 'PROMOTIONAL' && card.status.toUpperCase() === 'PUBLISHED' && card.enabled)
+    .sort((first, second) => first.displayOrder - second.displayOrder);
   const promotionalImageCards = promotionalCards.flatMap((card) => {
     const image = card.imageUrl ?? card.product?.imageUrl ?? card.category?.imageUrl;
     return image ? [{ card, image }] : [];
   });
-  const leadPromotion = promotionalImageCards[0];
+  const activePromotionIndex = promotionalImageCards.length ? activePromotionSlide % promotionalImageCards.length : 0;
+  const activePromotion = promotionalImageCards[activePromotionIndex];
+  useEffect(() => {
+    if (reducedMotion || promotionCarouselPaused || promotionalImageCards.length < 2) return undefined;
+    const timer = window.setInterval(() => {
+      setActivePromotionSlide((index) => (index + 1) % promotionalImageCards.length);
+    }, 4500);
+    return () => window.clearInterval(timer);
+  }, [activePromotionSlide, promotionCarouselPaused, promotionalImageCards.length, reducedMotion]);
+  useEffect(() => {
+    if (promotionalImageCards.length && activePromotionSlide >= promotionalImageCards.length) setActivePromotionSlide(0);
+  }, [activePromotionSlide, promotionalImageCards.length]);
+  const movePromotionSlide = (offset: number) => {
+    if (promotionalImageCards.length < 2) return;
+    setActivePromotionSlide((index) => (index + offset + promotionalImageCards.length) % promotionalImageCards.length);
+  };
+  const handlePromotionTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    promotionTouchStartX.current = event.changedTouches[0]?.clientX ?? null;
+    promotionSwipeTriggered.current = false;
+    setPromotionCarouselPaused(true);
+  };
+  const handlePromotionTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const endX = event.changedTouches[0]?.clientX;
+    const startX = promotionTouchStartX.current;
+    promotionTouchStartX.current = null;
+    setPromotionCarouselPaused(false);
+    if (startX === null || endX === undefined || Math.abs(endX - startX) < 45) return;
+    promotionSwipeTriggered.current = true;
+    movePromotionSlide(endX < startX ? 1 : -1);
+  };
+  const handlePromotionClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (!promotionSwipeTriggered.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    promotionSwipeTriggered.current = false;
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -833,21 +874,62 @@ export default function HomePage() {
               <Link to="/shop" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#689f24]">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
             </div>
 
-            {leadPromotion ? <Link
-              to={homepageCardHref(leadPromotion.card)}
-              aria-label={`Shop ${leadPromotion.card.title}`}
-              className="home-brand-promo"
+            {activePromotion ? <div
+              className="home-brand-promo-carousel"
+              onFocusCapture={() => setPromotionCarouselPaused(true)}
+              onBlurCapture={(event) => {
+                if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setPromotionCarouselPaused(false);
+              }}
             >
-              <span className="home-brand-promo__copy">
-                <span className="home-brand-promo__eyebrow">Premium eyewear</span>
-                <h2 className="home-brand-promo__title">Discover Your Signature Style</h2>
-                <p className="home-brand-promo__description">Crafted for clarity. Designed for confidence.</p>
-              </span>
-              <span className="home-brand-promo__visual" aria-hidden="true">
-                <img src={leadPromotion.image} alt="" loading="lazy" />
-              </span>
-            </Link> : <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>
-              {cmsError ? 'Promotions could not be loaded.' : 'No promotions are available right now.'}
+              <div
+                className="home-brand-promo__stage"
+                onPointerEnter={(event) => {
+                  if (event.pointerType === 'mouse') setPromotionCarouselPaused(true);
+                }}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === 'mouse') setPromotionCarouselPaused(false);
+                }}
+                onTouchStart={handlePromotionTouchStart}
+                onTouchEnd={handlePromotionTouchEnd}
+                onClickCapture={handlePromotionClickCapture}
+              >
+                <AnimatePresence initial={false} mode="sync">
+                  <motion.div
+                    key={activePromotion.card.id}
+                    className="home-brand-promo__slide"
+                    initial={{ opacity: 0, x: 28 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -28 }}
+                    transition={{ duration: reducedMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <Link
+                      to={homepageCardHref(activePromotion.card)}
+                      aria-label={`Shop ${activePromotion.card.title}`}
+                      className="home-brand-promo"
+                    >
+                      <span className="home-brand-promo__copy">
+                        <span className="home-brand-promo__eyebrow">Premium eyewear</span>
+                        <h2 className="home-brand-promo__title">{activePromotion.card.title}</h2>
+                        <p className="home-brand-promo__description">Discover Your Signature Style. Crafted for clarity. Designed for confidence.</p>
+                      </span>
+                      <span className="home-brand-promo__visual" aria-hidden="true">
+                        <img src={activePromotion.image} alt="" loading="lazy" />
+                      </span>
+                    </Link>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              {promotionalImageCards.length > 1 ? <div className="home-brand-promo__pagination" role="group" aria-label="Choose a promotion">
+                {promotionalImageCards.map(({ card }, index) => <button
+                  key={card.id}
+                  type="button"
+                  aria-label={`Show promotion: ${card.title}`}
+                  aria-current={index === activePromotionIndex ? 'true' : undefined}
+                  onClick={() => setActivePromotionSlide(index)}
+                />)}
+              </div> : null}
+            </div> : <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>
+              {cmsError ? 'Promotions could not be loaded.' : 'No active promotions are available right now.'}
             </p>}
           </section>
         </div>

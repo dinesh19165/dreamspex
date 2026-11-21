@@ -1621,6 +1621,21 @@ img {
   text-decoration: none;
 }
 
+.home-brand-promo-carousel {
+  min-width: 0;
+}
+
+.home-brand-promo__stage {
+  display: grid;
+  min-width: 0;
+  touch-action: pan-y;
+}
+
+.home-brand-promo__slide {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
 .home-brand-promo::after {
   position: absolute;
   z-index: 0;
@@ -1699,6 +1714,29 @@ img {
 .home-brand-promo:focus-visible {
   outline: 3px solid #6f984f;
   outline-offset: 4px;
+}
+
+.home-brand-promo__pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.home-brand-promo__pagination button {
+  width: 0.48rem;
+  height: 0.48rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #c7d0c2;
+  cursor: pointer;
+  transition: width 180ms ease, background-color 180ms ease;
+}
+
+.home-brand-promo__pagination button[aria-current='true'] {
+  width: 1.45rem;
+  background: #6f984f;
 }
 
 @media (max-width: 1023px) {

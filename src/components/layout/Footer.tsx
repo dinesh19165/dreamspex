@@ -52,7 +52,20 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-[var(--border-subtle)] px-4 py-6 text-center text-sm text-[var(--text-secondary)] lg:px-8">
-        © 2026 Dream Spex. Crafted with care for modern luxury.
+        <div className="flex flex-col items-center justify-center gap-x-2 gap-y-1 sm:flex-row">
+          <span>© 2026 Dream Spex. Crafted with care for modern luxury.</span>
+          <span>
+            Developed by{' '}
+            <a
+              href="https://rabbitsoftsolutions.com/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-medium text-[#3f7000] transition-colors duration-200 hover:text-[#147c9f]"
+            >
+              Rabbit Soft Solutions Pvt. Ltd.
+            </a>
+          </span>
+        </div>
       </div>
     </footer>
   );

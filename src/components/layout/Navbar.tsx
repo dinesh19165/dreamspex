@@ -396,13 +396,13 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
           <nav aria-label="Store information" className="hidden border-t border-[var(--border-subtle)] lg:block">
             <div className="mx-auto flex max-w-7xl items-center justify-center gap-5 overflow-x-auto px-2 py-2 text-sm font-medium text-[var(--text-secondary)] xl:gap-7">
               {navItems.filter((item) => ['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
-                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`group relative inline-flex h-9 shrink-0 items-center whitespace-nowrap transition-colors duration-200 hover:text-[var(--text-primary)] ${megaMenuOpen === item.label ? 'text-cyan-300' : ''}`}>
-                  {item.label}<span className={`absolute -bottom-0.5 left-0 h-0.5 w-full origin-left rounded-full bg-cyan-400 transition-transform duration-200 ${megaMenuOpen === item.label ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`} />
+                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`customer-nav-link customer-nav-link--primary${megaMenuOpen === item.label ? ' is-active' : ''}`}>
+                  {item.label}
                 </Link>
               ))}
               <span aria-hidden="true" className="h-5 shrink-0 border-l border-[var(--border-subtle)]" />
               {navItems.filter((item) => !['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
-                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`shrink-0 whitespace-nowrap transition hover:text-[var(--brand-green-dark)] ${megaMenuOpen === item.label ? 'text-[var(--brand-green-dark)]' : ''}`}>{item.label}</Link>
+                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`customer-nav-link customer-nav-link--category${megaMenuOpen === item.label ? ' is-active' : ''}`}>{item.label}</Link>
               ))}
             </div>
           </nav>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Camera, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
@@ -29,6 +29,29 @@ function normalizedCategory(value: string) {
 function categoryMatchesEyewearType(category: CatalogCategory, type: 'eyeglasses' | 'sunglasses') {
   const token = type === 'eyeglasses' ? 'eyeglass' : 'sunglass';
   return `${normalizedCategory(category.name)} ${normalizedCategory(category.slug)}`.includes(token);
+}
+
+function formatFilterLabel(value: string) {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, ' ');
+  const colorAliases: Record<string, string> = {
+    't purple': 'Purple',
+    't peach': 'Peach',
+    'mat black/red': 'Black/Red',
+    hawana: 'Havana',
+  };
+  if (colorAliases[normalized]) return colorAliases[normalized];
+  if (normalized === 'tr90') return 'TR90';
+  if (normalized === 'tr') return 'TR';
+  const minorWords = new Set(['and', 'with', 'of']);
+  const formatted = normalized.replace(/(^|[\s/-])([a-z])/g, (match, separator: string, letter: string) => {
+    const wordStart = match.slice(separator.length).toLowerCase();
+    return `${separator}${minorWords.has(wordStart) && separator ? wordStart : letter.toUpperCase()}`;
+  });
+  return formatted.replace(/^Tr(?=\s)/, 'TR');
+}
+
+function uniqueColorFilterOptions(colors: string[]) {
+  return [...new Set(colors)].map((value) => ({ value, label: formatFilterLabel(value) }));
 }
 
 const homeServiceLinks = [
@@ -300,6 +323,10 @@ export default function HomePage() {
   const [cmsHeroError, setCmsHeroError] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [bannerClock, setBannerClock] = useState(() => Date.now());
+  const [activeCategorySlide, setActiveCategorySlide] = useState(0);
+  const [categoryCarouselPaused, setCategoryCarouselPaused] = useState(false);
+  const categoryTouchStartX = useRef<number | null>(null);
+  const categorySwipeTriggered = useRef(false);
   const activeBanners = useMemo(() => (cms?.banners ?? []).filter((banner) => (
     banner.status === 'PUBLISHED'
     && (!banner.startsAt || new Date(banner.startsAt).getTime() <= bannerClock)
@@ -437,6 +464,57 @@ export default function HomePage() {
     : cmsCategorySection?.categories.length
       ? cmsCategorySection.categories.filter((category) => category.imageUrl && category.name).map((category) => ({ name: category.name, slug: category.slug, image: category.imageUrl as string, copy: 'Explore the collection' }))
       : (catalog?.categories ?? []).filter((category) => category.imageUrl).map((category) => ({ name: category.name, slug: category.slug, image: resolveCmsMediaUrl(category.imageUrl) ?? category.imageUrl as string, copy: category.description ?? 'Explore the collection' }));
+  const categoryCarousel = [
+    { token: 'sunglass', title: 'Sunglasses' },
+    { token: 'eyeglass', title: 'Eyeglasses' },
+    { token: 'lens', title: 'Contact Lenses' },
+  ].flatMap(({ token, title }) => {
+    const category = collectionCategories.find((item) => {
+      const catalogCategory = catalog?.categories.find((entry) => entry.slug === item.slug);
+      return normalizedCategory(`${item.name} ${catalogCategory?.name ?? ''} ${item.slug}`).includes(token);
+    });
+    return category ? [{ ...category, title }] : [];
+  });
+  const activeCarouselIndex = categoryCarousel.length ? activeCategorySlide % categoryCarousel.length : 0;
+  const materialsSectionHidden = cmsHidden(homepageSectionSlugs.materials, sections);
+  const categoriesSectionHidden = cmsHidden(homepageSectionSlugs.categories, sections);
+  const categoryCarouselColumns = materialsSectionHidden || categoriesSectionHidden
+    ? ' home-shopping-showcase__layout--single'
+    : '';
+  useEffect(() => {
+    if (reducedMotion || categoryCarouselPaused || categoryCarousel.length < 2) return undefined;
+    const timer = window.setInterval(() => {
+      setActiveCategorySlide((index) => (index + 1) % categoryCarousel.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [activeCategorySlide, categoryCarousel.length, categoryCarouselPaused, reducedMotion]);
+  useEffect(() => {
+    if (categoryCarousel.length && activeCategorySlide >= categoryCarousel.length) setActiveCategorySlide(0);
+  }, [activeCategorySlide, categoryCarousel.length]);
+  const moveCategorySlide = (offset: number) => {
+    if (categoryCarousel.length < 2) return;
+    setActiveCategorySlide((index) => (index + offset + categoryCarousel.length) % categoryCarousel.length);
+  };
+  const handleCategoryTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    categoryTouchStartX.current = event.changedTouches[0]?.clientX ?? null;
+    categorySwipeTriggered.current = false;
+    setCategoryCarouselPaused(true);
+  };
+  const handleCategoryTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const endX = event.changedTouches[0]?.clientX;
+    const startX = categoryTouchStartX.current;
+    categoryTouchStartX.current = null;
+    setCategoryCarouselPaused(false);
+    if (startX === null || endX === undefined || Math.abs(endX - startX) < 45) return;
+    categorySwipeTriggered.current = true;
+    moveCategorySlide(endX < startX ? 1 : -1);
+  };
+  const handleCategoryClickCapture = (event: MouseEvent<HTMLDivElement>) => {
+    if (!categorySwipeTriggered.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    categorySwipeTriggered.current = false;
+  };
   const heroCategory = catalog?.categories.find((category) => category.slug === 'eyeglasses')
     ?? catalog?.categories[0];
   const cmsCollectionProducts = cmsSelectedProducts(sections, homepageSectionSlugs.collections, catalogHomeProducts);
@@ -510,25 +588,123 @@ export default function HomePage() {
         </section>}
 
         <div className="homepage-main-sections">
-          <CmsSectionGate slug={homepageSectionSlugs.categories} sections={sections}><section aria-label="Shop eyewear collections" className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {collectionCategories.map((category, index) => (
-                <motion.div key={category.slug} initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * .06 }} className="h-full">
-                  <Link to={`/shop?category=${category.slug}`} className="home-category-card group h-full">
-                    <div className="home-category-card__image">
-                      <img src={category.image} alt="" loading="lazy" className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+          <section
+            hidden={materialsSectionHidden && categoriesSectionHidden}
+            aria-label="Shop by material, colour, and category"
+            className="home-shopping-showcase"
+          >
+            <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
+              <div className={`home-shopping-showcase__layout${categoryCarouselColumns}`}>
+                {!materialsSectionHidden ? <aside className="home-shopping-filters" aria-label="Shopping filters">
+                  <div className="home-shopping-filters__heading">
+                    <p className="home-shopping-filters__eyebrow">Shop by material</p>
+                    <h2>{cmsText(sections, homepageSectionSlugs.materials, 'title', 'Made from considered materials')}</h2>
+                    <p>Find the right finish, tone, and feel for your next pair.</p>
+                  </div>
+
+                  <section className="home-shopping-filters__group" aria-labelledby="home-material-filter-title">
+                    <h3 id="home-material-filter-title">Materials</h3>
+                    <div className="home-filter-chip-list" aria-label="Filter by material">
+                      {supportedMaterials.map((material) => <Link
+                        key={material}
+                        to={`/shop?material=${encodeURIComponent(material)}`}
+                        className="home-filter-chip home-filter-chip--material"
+                      >
+                        <span className="home-filter-chip__material-mark" aria-hidden="true" />
+                        {formatFilterLabel(material)}
+                      </Link>)}
+                      {!supportedMaterials.length ? <p className="home-shopping-filters__empty" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading materials...' : catalogError || 'No materials are available right now.'}</p> : null}
                     </div>
-                    <div className="home-category-card__content">
-                      <h2 className="font-serif text-base font-medium text-[#17231C] sm:text-lg">{category.name}</h2>
-                      <p className="text-xs leading-5 text-[#2d3a34] sm:text-sm">{category.copy}</p>
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#3d6b3d] sm:text-sm">Shop now <ArrowRight className="h-3.5 w-3.5" /></span>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-              {!collectionCategories.length ? <p className="col-span-full py-8 text-center text-sm text-[var(--text-secondary)]" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading categories...' : catalogError || cmsError ? 'Homepage categories could not be loaded.' : 'No active categories are available right now.'}</p> : null}
+                  </section>
+
+                  <section className="home-shopping-filters__group home-shopping-filters__group--colours" aria-labelledby="home-colour-filter-title">
+                    <h3 id="home-colour-filter-title">Shop by colour</h3>
+                    {supportedColorGroups.map(({ label, categorySlug, colors }) => {
+                      const colorOptions = uniqueColorFilterOptions(colors);
+                      return <div key={label} className="home-shopping-filters__colour-group">
+                        <h4>{label}</h4>
+                        <div className="home-filter-chip-list" aria-label={`Filter ${label.toLowerCase()} by colour`}>
+                          {colorOptions.map(({ value, label: colorLabel }) => <Link
+                            key={colorLabel}
+                            to={`/shop?category=${encodeURIComponent(categorySlug)}&color=${encodeURIComponent(value)}`}
+                            className="home-filter-chip home-filter-chip--colour"
+                          >
+                            <span aria-hidden="true" className="home-filter-chip__swatch" style={{ background: getColorSwatch(value) }} />
+                            {colorLabel}
+                          </Link>)}
+                        </div>
+                      </div>;
+                    })}
+                    {!supportedColorGroups.length ? <p className="home-shopping-filters__empty" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading colours...' : catalogError || 'No colour options are available right now.'}</p> : null}
+                  </section>
+                </aside> : null}
+
+                {!categoriesSectionHidden ? <section
+                  className="home-category-carousel"
+                  aria-label="Shop eyewear collections"
+                  aria-roledescription="carousel"
+                  onMouseEnter={() => setCategoryCarouselPaused(true)}
+                  onMouseLeave={() => setCategoryCarouselPaused(false)}
+                  onFocusCapture={() => setCategoryCarouselPaused(true)}
+                  onBlurCapture={(event) => {
+                    if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setCategoryCarouselPaused(false);
+                  }}
+                >
+                  <div
+                    className="home-category-carousel__viewport"
+                    onTouchStart={handleCategoryTouchStart}
+                    onTouchEnd={handleCategoryTouchEnd}
+                    onClickCapture={handleCategoryClickCapture}
+                  >
+                    {categoryCarousel.length ? <motion.div
+                      id="home-category-carousel-slides"
+                      className="home-category-carousel__track"
+                      animate={{ x: `${-activeCarouselIndex * 100}%` }}
+                      transition={{ duration: reducedMotion ? 0 : 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      {categoryCarousel.map((category, index) => <Link
+                        key={category.slug}
+                        to={`/shop?category=${encodeURIComponent(category.slug)}`}
+                        className="home-category-carousel__slide"
+                        aria-hidden={index !== activeCarouselIndex}
+                        aria-roledescription="slide"
+                        aria-label={`${index + 1} of ${categoryCarousel.length}: ${category.title}`}
+                        tabIndex={index === activeCarouselIndex ? 0 : -1}
+                      >
+                        <img src={category.image} alt="" loading={index === activeCarouselIndex ? 'eager' : 'lazy'} />
+                        <span className="home-category-carousel__shade" aria-hidden="true" />
+                        <span className="home-category-carousel__copy">
+                          <span className="home-category-carousel__eyebrow">Dream Spex collections</span>
+                          <span className="home-category-carousel__title">{category.title}</span>
+                          <span className="home-category-carousel__description">{category.copy}</span>
+                          <span className="home-category-carousel__shop-link">Shop Now <ArrowRight aria-hidden="true" /></span>
+                        </span>
+                      </Link>)}
+                    </motion.div> : <p className="home-category-carousel__empty" role={catalogError || cmsError ? 'alert' : 'status'}>
+                      {catalogLoading ? 'Loading eyewear categories...' : catalogError || cmsError ? 'Homepage categories could not be loaded.' : 'No category images are available right now.'}
+                    </p>}
+                    {categoryCarousel.length > 1 ? <div className="home-category-carousel__arrows">
+                      <button type="button" aria-label="Previous category" aria-controls="home-category-carousel-slides" onClick={() => moveCategorySlide(-1)}>
+                        <ArrowLeft aria-hidden="true" />
+                      </button>
+                      <button type="button" aria-label="Next category" aria-controls="home-category-carousel-slides" onClick={() => moveCategorySlide(1)}>
+                        <ArrowRight aria-hidden="true" />
+                      </button>
+                    </div> : null}
+                    {categoryCarousel.length > 1 ? <div className="home-category-carousel__pagination" role="group" aria-label="Choose eyewear category">
+                      {categoryCarousel.map((category, index) => <button
+                        key={category.slug}
+                        type="button"
+                        aria-label={`Show ${category.title}`}
+                        aria-current={index === activeCarouselIndex ? 'true' : undefined}
+                        onClick={() => setActiveCategorySlide(index)}
+                      />)}
+                    </div> : null}
+                  </div>
+                </section> : null}
+              </div>
             </div>
-          </section></CmsSectionGate>
+          </section>
 
           <CmsSectionGate slug={homepageSectionSlugs.services} sections={sections}><section aria-label="Services and store information" className="home-service-strip">
             <div className="home-service-strip__grid">
@@ -568,31 +744,6 @@ export default function HomePage() {
                 </div>
             </div>
           </section></CmsSectionGate>
-
-          <section hidden={cmsHidden(homepageSectionSlugs.materials, sections)} className="border-y border-black/10 bg-[#f0f4ed] py-12">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Shop by material</p>
-              <h2 className="mt-3 font-serif text-4xl text-[#182116]">{cmsText(sections, homepageSectionSlugs.materials, 'title', 'Made from considered materials')}</h2>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[#5f6c5b]">Browse materials and colours represented in the current product catalogue.</p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                {supportedMaterials.map((material) => <Link key={material} to={`/shop?material=${encodeURIComponent(material)}`} className="rounded-full border border-[#cbd7c5] bg-white px-5 py-3 text-sm font-semibold text-[#263322] transition hover:border-[#689f24] hover:text-[#4b781a]">{material}</Link>)}
-              </div>
-              <h3 className="mt-10 text-sm font-semibold uppercase tracking-[0.18em] text-[#5d6c55]">Shop by colour</h3>
-              <div className="mt-4 space-y-4">
-                {supportedColorGroups.map(({ label, categorySlug, colors }) => (
-                  <div key={label}>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#5d6c55]">{label}</p>
-                    <div className="flex flex-wrap gap-3">
-                      {colors.map((color) => <Link key={color} to={`/shop?category=${encodeURIComponent(categorySlug)}&color=${encodeURIComponent(color)}`} className="inline-flex items-center gap-2 rounded-full border border-[#cbd7c5] bg-white px-4 py-2.5 text-sm text-[#263322] transition hover:border-[#689f24] hover:text-[#4b781a]">
-                        <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ background: getColorSwatch(color) }} />
-                        {color}
-                      </Link>)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
 
           {newArrivalCount > 0 || bestsellerCount > 0 || featuredCollection ? <section hidden={cmsHidden(homepageSectionSlugs.edit, sections)} className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Discover the edit</p><h2 className="mt-3 font-serif text-4xl">Fresh arrivals &amp; featured frames</h2></div></div>

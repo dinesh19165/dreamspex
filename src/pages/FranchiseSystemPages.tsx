@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Glasses, LayoutGrid, LogOut, MapPin, MessageSquareText, PackageOpen, PanelLeftClose, PanelLeftOpen, Printer, RefreshCw, Search, Settings, ShoppingCart, Store, Star, TrendingUp, UserRound, Users, Warehouse, PanelsTopLeft, Tags, RotateCcw, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Glasses, LayoutGrid, LogOut, MapPin, MessageSquareText, PackageOpen, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Printer, RefreshCw, Search, Settings, ShoppingCart, Store, Star, TrendingUp, UserRound, Users, Warehouse, PanelsTopLeft, Tags, RotateCcw, Save, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
@@ -15,6 +15,7 @@ import AdminDateRangeFilter from '../components/ui/AdminDateRangeFilter';
 import { downloadReportExcel, downloadReportPdf, printReport, type AdminReportDocument } from '../utils/adminReportExport';
 import { franchiseService, type Franchise, type FranchiseAssignment, type FranchiseDashboard, type FranchiseInventory, type FranchiseOrder, type FranchiseReport, type FranchiseRequest, type FranchiseReturn, type FranchiseUser } from '../services/franchiseService';
 import { isPickupOrder, nextFranchiseOrderStatuses, orderStatusLabel } from '../utils/orderWorkflow';
+import BulkProductManagement from '../components/admin/BulkProductManagement';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -348,7 +349,7 @@ export function SuperAdminInventoryPage() {
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead><tr>{['Product', 'Product SKU', 'Variant', 'Status', 'Available', 'Reserved'].map((label) => <th key={label} className="px-4 py-3">{label}</th>)}</tr></thead>
               <tbody>{filteredItems.map(({ product, variant, available }) => <tr key={variant.id ?? variant.sku} className="border-t border-[var(--border-subtle)]">
-                <td className="px-4 py-3 font-medium"><Link to={`/admin/products?productId=${encodeURIComponent(product.id)}`} className="underline-offset-2 hover:underline">{product.name}</Link></td>
+                <td className="px-4 py-3 font-medium"><Link to={`/admin/products/${encodeURIComponent(product.id)}/edit`} state={{ from: '/admin/products' }} className="underline-offset-2 hover:underline">{product.name}</Link></td>
                 <td className="px-4 py-3 text-[var(--text-secondary)]">{product.sku}</td>
                 <td className="px-4 py-3">{variant.sku}</td>
                 <td className="px-4 py-3"><StatusBadge status={available === 0 ? 'Out of Stock' : available <= 5 ? 'Low Stock' : variant.status} /></td>
@@ -1770,35 +1771,35 @@ export function SuperAdminOrdersPage() {
 }
 
 export function SuperAdminProductsPage() {
-  const { user, refreshSession } = useAuth();
+  const location = useLocation();
+  const { pathname, search } = location;
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
-  const [returnabilityByProductId, setReturnabilityByProductId] = useState<Record<string, boolean>>({});
-  const [selected, setSelected] = useState<AdminProduct | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState(() => {
+    const state = location.state as { notice?: string } | null;
+    return state?.notice ?? '';
+  });
   const [productQuery, setProductQuery] = useState(() => searchParams.get('q') ?? '');
   const [productStatus, setProductStatus] = useState(() => searchParams.get('status') ?? 'ALL');
   const [productCategory, setProductCategory] = useState(() => searchParams.get('categoryId') ?? 'ALL');
   const [productPage, setProductPage] = useState(0);
+  const activeTab = searchParams.get('tab') === 'bulk' ? 'bulk' : 'catalog';
 
   const refresh = async () => {
     setLoading(true);
     setError('');
     try {
-      const [nextProducts, nextCategories, returnability] = await Promise.all([
+      const [nextProducts, nextCategories] = await Promise.all([
         adminProductService.list(),
         adminProductService.categories(),
-        adminProductService.returnability(),
       ]);
       setProducts(nextProducts);
       setCategories(nextCategories.filter((category) => category.status === 'ACTIVE'));
-      setReturnabilityByProductId(Object.fromEntries(returnability.map((item) => [item.productId, item.returnable])));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to load products.');
     } finally {
@@ -1815,17 +1816,11 @@ export function SuperAdminProductsPage() {
     setProductStatus(searchParams.get('status') ?? 'ALL');
     setProductCategory(searchParams.get('categoryId') ?? 'ALL');
     setProductPage(0);
-    const productId = searchParams.get('productId');
-    const product = productId ? products.find((item) => item.id === productId) : undefined;
-    if (product) {
-      setSelected(product);
-      setEditorOpen(true);
-    }
   }, [products, searchParams]);
 
   const filteredProducts = useMemo(() => products.filter((product) => {
     const query = productQuery.trim().toLowerCase();
-    const matchesQuery = !query || product.name.toLowerCase().includes(query) || product.sku.toLowerCase().includes(query) || product.brand.toLowerCase().includes(query) || product.categories.some((category) => category.name.toLowerCase().includes(query));
+    const matchesQuery = !query || product.name.toLowerCase().includes(query) || product.sku.toLowerCase().includes(query) || product.brand.toLowerCase().includes(query);
     const matchesStatus = productStatus === 'ALL' || product.status === productStatus;
     const matchesCategory = productCategory === 'ALL' || product.categories.some((category) => category.id === productCategory);
     return matchesQuery && matchesStatus && matchesCategory;
@@ -1838,75 +1833,26 @@ export function SuperAdminProductsPage() {
     Object.entries(updates).forEach(([key, value]) => value && value !== 'ALL' ? next.set(key, value) : next.delete(key));
     setSearchParams(next, { replace: true });
   };
-  const openProductEditor = (product: AdminProduct | null) => {
-    setSelected(product);
-    setEditorOpen(true);
+
+  const listingLocation = `${pathname}${search}`;
+  const editorLocation = (productId: string) => ({
+    pathname: `/admin/products/${encodeURIComponent(productId)}/edit`,
+    search: searchParams.toString() ? `?${searchParams.toString()}` : '',
+  });
+  const openCreateEditor = () => navigate('/admin/products/new', { state: { from: listingLocation } });
+  const setTab = (tab: 'catalog' | 'bulk') => {
     const next = new URLSearchParams(searchParams);
-    if (product) next.set('productId', product.id);
-    else next.delete('productId');
-    setSearchParams(next);
-  };
-  const closeProductEditor = () => {
-    setSelected(null);
-    setEditorOpen(false);
-    const next = new URLSearchParams(searchParams);
-    next.delete('productId');
+    if (tab === 'bulk') next.set('tab', 'bulk');
+    else next.delete('tab');
     setSearchParams(next, { replace: true });
   };
-
-  const storedMediaPath = (upload: { url: string; storageKey: string }) => ({
-    ...upload,
-    url: new URL(upload.url).pathname,
-  });
-
-  const uploadProductImage = async (file: File) => {
-    if (!user?.accessToken) throw new Error('Your admin session has expired. Please sign in again.');
-    try {
-      return storedMediaPath(await adminService.uploadCmsImage(user.accessToken, file));
-    } catch (reason) {
-      if (!(reason instanceof AdminApiError) || reason.status !== 401 || !(await refreshSession())) throw reason;
-      const session = JSON.parse(window.localStorage.getItem('dream-spex-auth-session') ?? '{}') as { accessToken?: string };
-      if (!session.accessToken) throw new Error('Your admin session has expired. Please sign in again.');
-      return storedMediaPath(await adminService.uploadCmsImage(session.accessToken, file));
-    }
-  };
-
-  const save = async (request: AdminProductRequest, gst: AdminProductGstRequest, returnable: boolean) => {
-    setError('');
-    setNotice('');
-    setSaving(true);
-    try {
-      const savedProduct = selected
-        ? await adminProductService.update(selected.id, request)
-        : await adminProductService.create(request);
-      setSelected(savedProduct);
-      try {
-        await adminProductService.updateGst(savedProduct.id, gst);
-      } catch (reason) {
-        await refresh();
-        setError(`Product was saved, but its GST classification could not be updated: ${reason instanceof Error ? reason.message : 'Please try again.'}`);
-        return;
-      }
-      try {
-        await adminProductService.setReturnable(savedProduct.id, returnable);
-      } catch (reason) {
-        await refresh();
-        setError(`Product was saved, but its return setting could not be updated: ${reason instanceof Error ? reason.message : 'Please try again.'}`);
-        return;
-      }
-      setReturnabilityByProductId((current) => ({ ...current, [savedProduct.id]: returnable }));
-      setNotice(selected ? 'Product and return setting updated successfully.' : 'Product created successfully.');
-      setSelected(null);
-      setEditorOpen(false);
-      const nextParams = new URLSearchParams(searchParams);
-      nextParams.delete('productId');
-      setSearchParams(nextParams, { replace: true });
-      await refresh();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to save product.');
-    } finally {
-      setSaving(false);
-    }
+  const statusHref = (status: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (status === 'ALL') next.delete('status');
+    else next.set('status', status);
+    next.delete('tab');
+    const query = next.toString();
+    return `/admin/products${query ? `?${query}` : ''}`;
   };
 
   const changeStatus = async (product: AdminProduct, status: string) => {
@@ -1929,13 +1875,6 @@ export function SuperAdminProductsPage() {
     try {
       await adminProductService.delete(product.id);
       setNotice(`${product.name} was deleted successfully.`);
-      if (selected?.id === product.id) {
-        setSelected(null);
-        setEditorOpen(false);
-        const nextParams = new URLSearchParams(searchParams);
-        nextParams.delete('productId');
-        setSearchParams(nextParams, { replace: true });
-      }
       await refresh();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to delete product.');
@@ -1946,86 +1885,298 @@ export function SuperAdminProductsPage() {
 
   return (
     <DashboardShell>
-      <SectionTitle eyebrow="Products" title="Network products" description="Manage the catalog, inventory and publishing status from the live backend." />
-      {error ? <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
-      {notice ? <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{notice}</div> : null}
-      {editorOpen ? (
-        <ProductEditor
-          product={selected}
-          returnable={selected ? returnabilityByProductId[selected.id] ?? false : false}
-          categories={categories}
-          saving={saving}
-          onUploadImage={uploadProductImage}
-          onCancel={closeProductEditor}
-          onSave={save}
-        />
-      ) : null}
-      <div className="mb-5 flex justify-end">
-        <Button onClick={() => openProductEditor(null)}>Create Product</Button>
+      <div className="mb-7 flex flex-col gap-5 rounded-2xl border border-[#e1e8e2] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-7">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#426a43]">Catalogue administration</p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight text-[#1d2b22]">Products</h1>
+            <span className="rounded-full bg-[#edf4eb] px-3 py-1 text-sm font-semibold text-[#315b36]">
+              {products.length.toLocaleString('en-IN')} total
+            </span>
+          </div>
+          <p className="mt-2 max-w-2xl text-sm text-[#5b685f]">Manage product details, inventory, publishing, and catalogue imports.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={openCreateEditor}><Plus className="mr-2 h-4 w-4" />Create product</Button>
+          <Button type="button" variant="ghost" onClick={() => setTab('bulk')}>Bulk management</Button>
+        </div>
       </div>
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+
+      {error ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{error}</div> : null}
+      {notice ? <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">{notice}</div> : null}
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {[
-          { label: 'Total products', count: products.length, status: 'ALL' },
-          { label: 'Published', count: products.filter((product) => product.status === 'PUBLISHED').length, status: 'PUBLISHED' },
-          { label: 'Draft', count: products.filter((product) => product.status === 'DRAFT').length, status: 'DRAFT' },
-          { label: 'Inactive', count: products.filter((product) => product.status === 'INACTIVE').length, status: 'INACTIVE' },
-          { label: 'Categories', count: categories.length, href: '/admin/categories' },
-        ].map((metric) => <Link key={metric.label} to={metric.href ?? `/admin/products${metric.status === 'ALL' ? '' : `?status=${metric.status}`}`} className="group rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--brand-green)]/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)]">
-          <p className="text-xs font-medium text-[var(--text-secondary)]">{metric.label}</p><p className="mt-2 text-2xl font-semibold">{metric.count.toLocaleString('en-IN')}</p><span className="mt-2 block text-[11px] font-medium text-[var(--brand-green-dark)]">View details →</span>
+          { label: 'Total products', count: products.length, href: statusHref('ALL'), accent: 'bg-[#eaf2e8]' },
+          { label: 'Published', count: products.filter((product) => product.status === 'PUBLISHED').length, href: statusHref('PUBLISHED'), accent: 'bg-emerald-50' },
+          { label: 'Draft', count: products.filter((product) => product.status === 'DRAFT').length, href: statusHref('DRAFT'), accent: 'bg-amber-50' },
+          { label: 'Inactive', count: products.filter((product) => product.status === 'INACTIVE').length, href: statusHref('INACTIVE'), accent: 'bg-slate-100' },
+          { label: 'Categories', count: categories.length, href: '/admin/categories', accent: 'bg-[#f0f4f0]' },
+        ].map((metric) => <Link key={metric.label} to={metric.href} className="group rounded-xl border border-[#e1e8e2] bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#9dbb9c] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7cbf00]">
+          <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium text-[#5b685f]">{metric.label}</p><span className={`h-2.5 w-2.5 rounded-full ${metric.accent}`} /></div>
+          <p className="mt-3 text-2xl font-semibold tracking-tight text-[#1d2b22]">{metric.count.toLocaleString('en-IN')}</p>
         </Link>)}
       </div>
-      <div className="mb-5 flex flex-wrap gap-3 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
-        <input value={productQuery} onChange={(event) => { setProductQuery(event.target.value); setProductPage(0); updateProductFilters({ q: event.target.value }); }} placeholder="Search name, SKU or brand" className="min-w-[220px] flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" />
-        <select value={productStatus} onChange={(event) => { setProductStatus(event.target.value); setProductPage(0); updateProductFilters({ status: event.target.value }); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
-          <option value="ALL">All statuses</option>
-          {['DRAFT', 'PUBLISHED', 'INACTIVE'].map((value) => <option key={value}>{value}</option>)}
-        </select>
-        <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductPage(0); updateProductFilters({ categoryId: event.target.value }); }} className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
-          <option value="ALL">All categories</option>
-          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-        </select>
+
+      <div className="mb-5 flex gap-1 border-b border-[#dfe7df]" role="tablist" aria-label="Product management sections">
+        <button type="button" role="tab" aria-selected={activeTab === 'catalog'} onClick={() => setTab('catalog')}
+          className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'catalog' ? 'border-[#315b36] text-[#315b36]' : 'border-transparent text-[#66736a] hover:text-[#1d2b22]'}`}>
+          Catalogue
+        </button>
+        <button type="button" role="tab" aria-selected={activeTab === 'bulk'} onClick={() => setTab('bulk')}
+          className={`border-b-2 px-4 py-3 text-sm font-semibold transition ${activeTab === 'bulk' ? 'border-[#315b36] text-[#315b36]' : 'border-transparent text-[#66736a] hover:text-[#1d2b22]'}`}>
+          Bulk management
+        </button>
       </div>
-      {loading && products.length === 0 ? (
-        <div className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-sm text-[var(--text-secondary)]">Loading products...</div>
-      ) : filteredProducts.length === 0 ? (
-        <div className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 text-sm text-[var(--text-secondary)]">No products match the selected filters.</div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {pagedProducts.map((product) => (
-            <div key={product.id} className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-              {resolveCmsMediaUrl(product.images[0]?.imageUrl) ? <img src={resolveCmsMediaUrl(product.images[0]?.imageUrl) ?? undefined} alt={product.images[0]?.altText ?? product.name} className="mb-4 h-40 w-full rounded-2xl object-cover" /> : null}
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-xl font-semibold text-[var(--text-primary)]"><button type="button" onClick={() => openProductEditor(product)} className="text-left underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--brand-green)]">{product.name}</button></h3>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">{product.brand} · {product.sku}</p>
-                </div>
-                <StatusBadge status={product.status} />
-              </div>
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-lg font-semibold text-[var(--text-primary)]">{formatCurrency(product.basePrice)}</span>
-                <span className="text-xs text-[var(--text-secondary)]">
-                  {product.variants.reduce((total, variant) => total + (variant.availableQuantity ?? Math.max(0, variant.quantity - (variant.reservedQuantity ?? 0))), 0)} available
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                HSN {product.hsnCode || 'not set'} · {product.gstEnabled ? product.gstRate == null ? 'Global GST rate' : `${product.gstRate}% product rate` : 'GST disabled'}
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button variant="ghost" onClick={() => openProductEditor(product)}>Edit</Button>
-                <Button variant="ghost" onClick={() => void changeStatus(product, product.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}>
-                  {product.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
-                </Button>
-                <Button variant="ghost" disabled={deletingId === product.id} onClick={() => void deleteProduct(product)}>
-                  {deletingId === product.id ? 'Deleting...' : 'Delete'}
-                </Button>
+
+      <div role="tabpanel" hidden={activeTab !== 'catalog'}>
+        <div className="mb-4 rounded-xl border border-[#e1e8e2] bg-white p-4 shadow-sm">
+          <div className="grid gap-3 md:grid-cols-[minmax(240px,1fr)_190px_220px]">
+            <label className="relative block">
+              <span className="sr-only">Search products by name, SKU or brand</span>
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#758178]" />
+              <input value={productQuery} onChange={(event) => { setProductQuery(event.target.value); setProductPage(0); updateProductFilters({ q: event.target.value }); }}
+                placeholder="Search name, SKU or brand" className="h-11 w-full rounded-lg border border-[#d5dfd6] bg-white pl-10 pr-3 text-sm text-[#1d2b22] outline-none focus:border-[#527a4c] focus:ring-2 focus:ring-[#7cbf00]/15" />
+            </label>
+            <label className="text-xs font-medium text-[#5b685f]">
+              <span className="sr-only">Filter by status</span>
+              <select value={productStatus} onChange={(event) => { setProductStatus(event.target.value); setProductPage(0); updateProductFilters({ status: event.target.value }); }}
+                className="h-11 w-full rounded-lg border border-[#d5dfd6] bg-white px-3 text-sm text-[#1d2b22] outline-none focus:border-[#527a4c] focus:ring-2 focus:ring-[#7cbf00]/15">
+                <option value="ALL">All statuses</option>
+                {['PUBLISHED', 'DRAFT', 'INACTIVE'].map((value) => <option key={value}>{value}</option>)}
+              </select>
+            </label>
+            <label className="text-xs font-medium text-[#5b685f]">
+              <span className="sr-only">Filter by category</span>
+              <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductPage(0); updateProductFilters({ categoryId: event.target.value }); }}
+                className="h-11 w-full rounded-lg border border-[#d5dfd6] bg-white px-3 text-sm text-[#1d2b22] outline-none focus:border-[#527a4c] focus:ring-2 focus:ring-[#7cbf00]/15">
+                <option value="ALL">All categories</option>
+                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {loading && products.length === 0 ? (
+          <div className="rounded-xl border border-[#e1e8e2] bg-white p-8 text-sm text-[#5b685f]">Loading products...</div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="rounded-xl border border-[#e1e8e2] bg-white px-5 py-14 text-center shadow-sm">
+            <PackageOpen className="mx-auto h-8 w-8 text-[#758178]" />
+            <h2 className="mt-3 text-base font-semibold text-[#1d2b22]">No products found</h2>
+            <p className="mt-1 text-sm text-[#5b685f]">{products.length ? 'Try adjusting your search or filters.' : 'Create a product or import your catalogue to get started.'}</p>
+          </div>
+        ) : (
+          <>
+            <div className="hidden overflow-hidden rounded-xl border border-[#e1e8e2] bg-white shadow-sm md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-left text-sm">
+                  <thead className="bg-[#f6f8f6] text-xs uppercase tracking-wide text-[#68756b]">
+                    <tr>{['Product', 'Category', 'Price', 'Stock', 'Status', 'Actions'].map((heading) => <th key={heading} className="px-4 py-3 font-semibold">{heading}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {pagedProducts.map((product) => {
+                      const imageUrl = resolveCmsMediaUrl(product.images.find((image) => image.primaryImage)?.imageUrl ?? product.images[0]?.imageUrl);
+                      const available = product.variants.reduce((total, variant) => total + (variant.availableQuantity ?? Math.max(0, variant.quantity - (variant.reservedQuantity ?? 0))), 0);
+                      const editState = { state: { from: listingLocation } };
+                      return <tr key={product.id} className="border-t border-[#edf1ed] hover:bg-[#fbfcfb]">
+                        <td className="px-4 py-3">
+                          <div className="flex min-w-0 items-center gap-3">
+                            {imageUrl ? <img src={imageUrl} alt={product.images[0]?.altText ?? product.name} className="h-12 w-12 shrink-0 rounded-lg border border-[#e1e8e2] bg-[#f7f9f7] object-cover" />
+                              : <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[#e1e8e2] bg-[#f7f9f7]"><PackageOpen className="h-5 w-5 text-[#758178]" /></span>}
+                            <div className="min-w-0">
+                              <Link to={editorLocation(product.id)} {...editState} className="block max-w-[360px] truncate font-semibold text-[#24352a] hover:text-[#315b36] hover:underline">{product.name}</Link>
+                              <p className="mt-1 text-xs text-[#68756b]">{product.brand} · SKU {product.sku}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="max-w-[200px] px-4 py-3 text-[#5b685f]">{product.categories.map((category) => category.name).join(', ') || 'Uncategorized'}</td>
+                        <td className="whitespace-nowrap px-4 py-3 font-semibold text-[#24352a]">{formatCurrency(product.basePrice)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-[#5b685f]">{available.toLocaleString('en-IN')} available</td>
+                        <td className="px-4 py-3"><ProductStatusPill status={product.status} /></td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <Link to={editorLocation(product.id)} {...editState} className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-[#315b36] hover:bg-[#edf4eb]"><Pencil className="h-3.5 w-3.5" />Edit</Link>
+                            <button type="button" className="rounded-lg px-2.5 py-2 text-xs font-semibold text-[#5b685f] hover:bg-[#f1f4f1]" onClick={() => void changeStatus(product, product.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED')}>
+                              {product.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+                            </button>
+                            <button type="button" disabled={deletingId === product.id} className="rounded-lg px-2.5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50" onClick={() => void deleteProduct(product)}>
+                              {deletingId === product.id ? 'Deleting…' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>;
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-      {!loading && filteredProducts.length > 0 ? <div className="mt-5 flex items-center justify-between gap-4 text-sm text-[var(--text-secondary)]"><span>Showing {productPage * productsPerPage + 1}-{Math.min((productPage + 1) * productsPerPage, filteredProducts.length)} of {filteredProducts.length}</span><div className="flex gap-2"><Button type="button" variant="ghost" disabled={productPage === 0} onClick={() => setProductPage((page) => page - 1)}>Previous</Button><Button type="button" variant="ghost" disabled={productPage + 1 >= productPageCount} onClick={() => setProductPage((page) => page + 1)}>Next</Button></div></div> : null}
+            <div className="grid gap-3 md:hidden">
+              {pagedProducts.map((product) => {
+                const imageUrl = resolveCmsMediaUrl(product.images.find((image) => image.primaryImage)?.imageUrl ?? product.images[0]?.imageUrl);
+                const editState = { state: { from: listingLocation } };
+                return <article key={product.id} className="rounded-xl border border-[#e1e8e2] bg-white p-4 shadow-sm">
+                  <div className="flex gap-3">
+                    {imageUrl ? <img src={imageUrl} alt={product.images[0]?.altText ?? product.name} className="h-16 w-16 shrink-0 rounded-lg border border-[#e1e8e2] bg-[#f7f9f7] object-cover" />
+                      : <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-[#e1e8e2] bg-[#f7f9f7]"><PackageOpen className="h-5 w-5 text-[#758178]" /></span>}
+                    <div className="min-w-0 flex-1">
+                      <Link to={editorLocation(product.id)} {...editState} className="font-semibold text-[#24352a] hover:text-[#315b36]">{product.name}</Link>
+                      <p className="mt-1 truncate text-xs text-[#68756b]">{product.brand} · SKU {product.sku}</p>
+                      <p className="mt-2 text-sm font-semibold text-[#24352a]">{formatCurrency(product.basePrice)}</p>
+                    </div>
+                    <ProductStatusPill status={product.status} />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#edf1ed] pt-3">
+                    <p className="text-xs text-[#68756b]">{product.categories.map((category) => category.name).join(', ') || 'Uncategorized'} · {product.variants.length} variant(s)</p>
+                    <div className="flex items-center gap-2">
+                      <Link to={editorLocation(product.id)} {...editState} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#315b36] hover:bg-[#edf4eb]"><Pencil className="h-3.5 w-3.5" />Edit</Link>
+                      <button type="button" disabled={deletingId === product.id} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50" onClick={() => void deleteProduct(product)}>Delete</button>
+                    </div>
+                  </div>
+                </article>;
+              })}
+            </div>
+            {!loading && filteredProducts.length > 0 ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-[#68756b]">
+              <span>Showing {productPage * productsPerPage + 1}–{Math.min((productPage + 1) * productsPerPage, filteredProducts.length)} of {filteredProducts.length}</span>
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" disabled={productPage === 0} onClick={() => setProductPage((page) => page - 1)}>Previous</Button>
+                <Button type="button" variant="ghost" disabled={productPage + 1 >= productPageCount} onClick={() => setProductPage((page) => page + 1)}>Next</Button>
+              </div>
+            </div> : null}
+          </>
+        )}
+      </div>
+
+      <div role="tabpanel" hidden={activeTab !== 'bulk'}>
+        <BulkProductManagement products={products} categories={categories} onImported={refresh} />
+      </div>
     </DashboardShell>
   );
+}
+
+function ProductStatusPill({ status }: { status: string }) {
+  const classes = status === 'PUBLISHED'
+    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+    : status === 'INACTIVE'
+      ? 'border-slate-200 bg-slate-100 text-slate-700'
+      : 'border-amber-200 bg-amber-50 text-amber-800';
+  return <span className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${classes}`}>{status}</span>;
+}
+
+export function SuperAdminProductEditorPage({ create = false }: { create?: boolean }) {
+  const { productId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, refreshSession } = useAuth();
+  const [product, setProduct] = useState<AdminProduct | null>(null);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
+  const [returnable, setReturnable] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const routeState = location.state as { from?: unknown } | null;
+  const backTo = typeof routeState?.from === 'string'
+    && routeState.from.startsWith('/admin/products')
+    && !routeState.from.includes('/edit')
+    ? routeState.from
+    : '/admin/products';
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    void Promise.all([
+      create ? Promise.resolve([] as AdminProduct[]) : adminProductService.list(),
+      adminProductService.categories(),
+      !create && productId ? adminProductService.returnability() : Promise.resolve([]),
+    ]).then(([products, allCategories, returnability]) => {
+      if (!active) return;
+      const currentProduct = productId ? products.find((item) => item.id === productId) ?? null : null;
+      if (!create && (!productId || !currentProduct)) {
+        setError('This product could not be found. It may have been deleted or is no longer available.');
+      }
+      setProduct(currentProduct);
+      setCategories(allCategories.filter((category) => category.status === 'ACTIVE'
+        || currentProduct?.categories.some((current) => current.id === category.id)));
+      setReturnable(returnability.find((item) => item.productId === currentProduct?.id)?.returnable ?? false);
+    }).catch((reason: unknown) => {
+      if (active) setError(reason instanceof Error ? reason.message : 'Unable to load the product editor.');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, [create, productId]);
+
+  const uploadProductImage = async (file: File) => {
+    if (!user?.accessToken) throw new Error('Your admin session has expired. Please sign in again.');
+    const storedMediaPath = (upload: { url: string; storageKey: string }) => ({
+      ...upload,
+      url: new URL(upload.url).pathname,
+    });
+    try {
+      return storedMediaPath(await adminService.uploadCmsImage(user.accessToken, file));
+    } catch (reason) {
+      if (!(reason instanceof AdminApiError) || reason.status !== 401 || !(await refreshSession())) throw reason;
+      const session = JSON.parse(window.localStorage.getItem('dream-spex-auth-session') ?? '{}') as { accessToken?: string };
+      if (!session.accessToken) throw new Error('Your admin session has expired. Please sign in again.');
+      return storedMediaPath(await adminService.uploadCmsImage(session.accessToken, file));
+    }
+  };
+
+  const save = async (request: AdminProductRequest, gst: AdminProductGstRequest, nextReturnable: boolean) => {
+    setError('');
+    setSaving(true);
+    try {
+      const savedProduct = product
+        ? await adminProductService.update(product.id, request)
+        : await adminProductService.create(request);
+      setProduct(savedProduct);
+      try {
+        await adminProductService.updateGst(savedProduct.id, gst);
+      } catch (reason) {
+        setError(`Product details were saved, but GST settings could not be updated: ${reason instanceof Error ? reason.message : 'Please try again.'}`);
+        return;
+      }
+      try {
+        await adminProductService.setReturnable(savedProduct.id, nextReturnable);
+      } catch (reason) {
+        setError(`Product details were saved, but the return setting could not be updated: ${reason instanceof Error ? reason.message : 'Please try again.'}`);
+        return;
+      }
+      navigate(backTo, {
+        replace: true,
+        state: { notice: product ? 'Product changes saved successfully.' : 'Product created successfully.' },
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to save product.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <DashboardShell><p role="status" className="rounded-xl border border-[#e1e8e2] bg-white p-8 text-sm text-[#5b685f]">Loading product editor...</p></DashboardShell>;
+  }
+  if (error && !product && !create) {
+    return <DashboardShell>
+      <div className="rounded-xl border border-red-200 bg-white p-6 shadow-sm">
+        <p role="alert" className="text-sm text-red-700">{error}</p>
+        <Link to={backTo} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#315b36]"><ArrowLeft className="h-4 w-4" />Back to Products</Link>
+      </div>
+    </DashboardShell>;
+  }
+
+  return <DashboardShell>
+    {error ? <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+    <ProductEditor
+      product={product}
+      returnable={returnable}
+      categories={categories}
+      saving={saving}
+      onUploadImage={uploadProductImage}
+      onCancel={() => navigate(backTo)}
+      onSave={save}
+    />
+  </DashboardShell>;
 }
 
 type ProductEditorProps = {
@@ -2045,9 +2196,35 @@ type ProductImageDraft = AdminProductRequest['images'][number] & {
 
 const productImageMaxBytes = 10_000_000;
 
+function productEditorSnapshot(
+  form: AdminProductRequest,
+  images: ProductImageDraft[],
+  returnable: boolean,
+  hsnCode: string,
+  useGlobalRate: boolean,
+  gstRate: string,
+  gstEnabled: boolean,
+  tryOnFile: File | null,
+) {
+  return JSON.stringify({
+    form,
+    images: images.map(({ file, previewUrl: _previewUrl, ...image }) => ({
+      ...image,
+      file: file ? [file.name, file.size, file.lastModified] : null,
+    })),
+    returnable,
+    hsnCode,
+    useGlobalRate,
+    gstRate,
+    gstEnabled,
+    tryOnFile: tryOnFile ? [tryOnFile.name, tryOnFile.size, tryOnFile.lastModified] : null,
+  });
+}
+
 function ProductEditor({ product, returnable: initialReturnable, categories, saving, onUploadImage, onCancel, onSave }: ProductEditorProps) {
   const [form, setForm] = useState<AdminProductRequest>(() => productRequest(product));
   const [productImages, setProductImages] = useState<ProductImageDraft[]>(() => imageDrafts(product));
+  const initialSnapshot = useRef('');
   const previewUrls = useRef(new Set<string>());
   const [returnable, setReturnable] = useState(initialReturnable);
   const [hsnCode, setHsnCode] = useState(product?.hsnCode ?? '');
@@ -2061,10 +2238,12 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
   const [uploadingProductImages, setUploadingProductImages] = useState(false);
 
   useEffect(() => {
-    setForm(productRequest(product));
+    const nextForm = productRequest(product);
+    const nextImages = imageDrafts(product);
+    setForm(nextForm);
     previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
     previewUrls.current.clear();
-    setProductImages(imageDrafts(product));
+    setProductImages(nextImages);
     setReturnable(initialReturnable);
     setHsnCode(product?.hsnCode ?? '');
     setUseGlobalRate(product?.gstRate == null);
@@ -2072,6 +2251,16 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
     setGstEnabled(product?.gstEnabled ?? true);
     setTryOnFile(null);
     setValidationError('');
+    initialSnapshot.current = productEditorSnapshot(
+      nextForm,
+      nextImages,
+      initialReturnable,
+      product?.hsnCode ?? '',
+      product?.gstRate == null,
+      product?.gstRate == null ? '' : String(product.gstRate),
+      product?.gstEnabled ?? true,
+      null,
+    );
   }, [initialReturnable, product]);
 
   useEffect(() => () => {
@@ -2088,6 +2277,25 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
     setTryOnPreviewUrl(previewUrl);
     return () => URL.revokeObjectURL(previewUrl);
   }, [tryOnFile]);
+
+  const hasUnsavedChanges = initialSnapshot.current !== productEditorSnapshot(
+    form, productImages, returnable, hsnCode, useGlobalRate, gstRate, gstEnabled, tryOnFile,
+  );
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return undefined;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const cancel = () => {
+    if (hasUnsavedChanges && !window.confirm('Discard your unsaved product changes?')) return;
+    onCancel();
+  };
 
   const update = <K extends keyof AdminProductRequest>(key: K, value: AdminProductRequest[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -2232,35 +2440,82 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
   };
 
   return (
-    <form onSubmit={submit} className="mb-6 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[var(--brand-green-dark)]">{product ? 'Edit product' : 'New product'}</p>
-          <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{product ? product.name : 'Create a catalog product'}</h3>
+    <form id="product-editor-form" onSubmit={submit} className="space-y-5 pb-24">
+      <div className="-mx-5 sticky top-[72px] z-20 flex flex-wrap items-center justify-between gap-3 border-y border-[#e1e8e2] bg-white/95 px-5 py-3 shadow-sm backdrop-blur">
+        <div className="flex min-w-0 items-center gap-3">
+          <button type="button" onClick={cancel} className="inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#315b36] hover:bg-[#edf4eb]">
+            <ArrowLeft className="h-4 w-4" /><span className="hidden sm:inline">Back to Products</span><span className="sm:hidden">Back</span>
+          </button>
+          <span className="hidden h-8 w-px bg-[#e1e8e2] sm:block" />
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-[#68756b]">{product ? 'Editing product' : 'New product'}</p>
+            <p className="truncate text-sm font-semibold text-[#24352a]">{product?.name || 'Create a catalog product'}</p>
+          </div>
         </div>
-        <Button type="button" variant="ghost" onClick={onCancel}>Close</Button>
+        <div className="flex items-center gap-2">
+          <span role="status" className="hidden text-xs text-[#68756b] sm:inline">{saving ? 'Saving changes…' : hasUnsavedChanges ? 'Unsaved changes' : 'All changes saved'}</span>
+          <Button type="button" variant="ghost" onClick={cancel}>Cancel</Button>
+          <Button type="submit" form="product-editor-form" disabled={saving || uploadingTryOnImage || uploadingProductImages}>
+            <Save className="mr-2 h-4 w-4" />
+            {uploadingTryOnImage || uploadingProductImages ? 'Uploading…' : saving ? 'Saving…' : product ? 'Save changes' : 'Create product'}
+          </Button>
+        </div>
       </div>
-      {validationError ? <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{validationError}</div> : null}
-      <div className="grid gap-4 md:grid-cols-2">
-        <ProductInput label="SKU" value={form.sku} onChange={(value) => update('sku', value)} required />
-        <ProductInput label="Name" value={form.name} onChange={(value) => update('name', value)} required />
-        <ProductInput label="Slug" value={form.slug} onChange={(value) => update('slug', value)} required />
-        <ProductInput label="Brand" value={form.brand} onChange={(value) => update('brand', value)} required />
-        <ProductInput label="Base price" type="number" min="0" step="0.01" value={String(form.basePrice)} onChange={(value) => update('basePrice', Number(value))} required />
-        <ProductInput label="Compare-at price" type="number" min="0" step="0.01" value={form.compareAtPrice == null ? '' : String(form.compareAtPrice)} onChange={(value) => update('compareAtPrice', value === '' ? null : Number(value))} />
-        <ProductInput label="Material" value={form.material ?? ''} onChange={(value) => update('material', value || null)} />
-        <ProductInput label="Gender" value={form.gender ?? ''} onChange={(value) => update('gender', value || null)} />
-        <ProductInput label="Frame shape" value={form.frameShape ?? ''} onChange={(value) => update('frameShape', value || null)} />
-        <ProductInput label="Frame type" value={form.frameType ?? ''} onChange={(value) => update('frameType', value || null)} />
-        <ProductInput label="Badge" value={form.badge ?? ''} onChange={(value) => update('badge', value || null)} />
-        <label className="text-sm text-[var(--text-secondary)]">
-          <span>Status</span>
-          <select className={inputClass} value={form.status} onChange={(event) => update('status', event.target.value)}>
-            {['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'PUBLISHED', 'INACTIVE'].map((status) => <option key={status}>{status}</option>)}
-          </select>
+      {validationError ? <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{validationError}</div> : null}
+
+      <section className="rounded-xl border border-[#e1e8e2] bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#527a4c]">01 · Product details</p>
+          <h2 className="mt-1 text-lg font-semibold text-[#1d2b22]">Basic information</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ProductInput label="Product name" value={form.name} onChange={(value) => update('name', value)} required />
+          <ProductInput label="SKU" value={form.sku} onChange={(value) => update('sku', value)} required />
+          <ProductInput label="Slug" value={form.slug} onChange={(value) => update('slug', value)} required />
+          <ProductInput label="Brand" value={form.brand} onChange={(value) => update('brand', value)} required />
+          <ProductInput label="Material" value={form.material ?? ''} onChange={(value) => update('material', value || null)} />
+          <ProductInput label="Gender" value={form.gender ?? ''} onChange={(value) => update('gender', value || null)} />
+          <ProductInput label="Frame shape" value={form.frameShape ?? ''} onChange={(value) => update('frameShape', value || null)} />
+          <ProductInput label="Frame type" value={form.frameType ?? ''} onChange={(value) => update('frameType', value || null)} />
+          <ProductInput label="Badge" value={form.badge ?? ''} onChange={(value) => update('badge', value || null)} />
+        </div>
+        <label className="mt-4 block text-sm text-[var(--text-secondary)]">
+          <span>Description</span>
+          <textarea className={`${inputClass} min-h-28 rounded-xl`} value={form.description} onChange={(event) => update('description', event.target.value)} />
         </label>
-      </div>
-      <section className="mt-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
+        <div className="mt-5 border-t border-[#edf1ed] pt-5">
+          <EditorHeading title="Categories" action={<Button type="button" variant="ghost" onClick={() => update('categoryIds', [...form.categoryIds, ''])}><Plus className="mr-1 h-4 w-4" />Add category</Button>} />
+          <div className="space-y-2">
+            {form.categoryIds.map((categoryId, index) => (
+              <div key={`${categoryId}-${index}`} className="flex flex-col gap-2 sm:flex-row">
+                <select className={inputClass} value={categoryId} onChange={(event) => update('categoryIds', form.categoryIds.map((id, itemIndex) => itemIndex === index ? event.target.value : id))}>
+                  <option value="">Select category</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                </select>
+                <Button type="button" variant="ghost" onClick={() => update('categoryIds', form.categoryIds.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-[#e1e8e2] bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#527a4c]">02 · Pricing</p>
+          <h2 className="mt-1 text-lg font-semibold text-[#1d2b22]">Product pricing</h2>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <ProductInput label="Regular price" type="number" min="0" step="0.01" value={String(form.basePrice)} onChange={(value) => update('basePrice', Number(value))} required />
+          <ProductInput label="Sale / compare-at price" type="number" min="0" step="0.01" value={form.compareAtPrice == null ? '' : String(form.compareAtPrice)} onChange={(value) => update('compareAtPrice', value === '' ? null : Number(value))} />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-[#e1e8e2] bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#527a4c]">Product settings</p>
+          <h2 className="mt-1 text-lg font-semibold text-[#1d2b22]">Tax and returns</h2>
+        </div>
+        <div className="rounded-lg border border-[#e7ece7] bg-[#f9fbf9] p-4">
         <h4 className="font-semibold text-[var(--text-primary)]">GST classification</h4>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <label className="text-sm text-[var(--text-secondary)]">
@@ -2277,87 +2532,50 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
           </label>
           {!useGlobalRate ? <ProductInput label="Product GST rate (%)" type="number" min="0" max="100" step="0.01" value={gstRate} onChange={setGstRate} required /> : null}
         </div>
-      </section>
-      <label className="mt-5 flex items-start gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 text-sm">
-        <input type="checkbox" checked={returnable} onChange={(event) => setReturnable(event.target.checked)} className="mt-0.5 h-4 w-4 accent-[#7CBF00]" />
-        <span><span className="block font-semibold text-[var(--text-primary)]">{returnable ? 'Returnable' : 'Non-returnable'}</span><span className="mt-1 block text-xs text-[var(--text-secondary)]">Customers can request a return or replacement for this product only when enabled and when the order meets the configured return policy.</span></span>
-      </label>
-      <label className="mt-4 block text-sm text-[var(--text-secondary)]">
-        <span>Description</span>
-        <textarea className={`${inputClass} min-h-24 rounded-2xl`} value={form.description} onChange={(event) => update('description', event.target.value)} />
-      </label>
-      <section className="mt-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4">
-        <h4 className="font-semibold text-[var(--text-primary)]">Virtual Try-On image</h4>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">Optional. Upload a transparent PNG or WebP containing only the glasses, without a background. This image is stored separately and does not replace the catalogue image.</p>
-        {tryOnPreviewUrl || form.tryOnImageUrl ? <img
-          src={tryOnPreviewUrl ?? resolveCmsMediaUrl(form.tryOnImageUrl) ?? ''}
-          alt="Virtual Try-On frame preview"
-          className="mt-3 h-28 w-full rounded-xl border border-[var(--border-subtle)] bg-[linear-gradient(45deg,#d1d5db_25%,transparent_25%,transparent_75%,#d1d5db_75%),linear-gradient(45deg,#d1d5db_25%,#fff_25%,#fff_75%,#d1d5db_75%)] bg-[length:16px_16px] bg-[position:0_0,8px_8px] object-contain"
-        /> : null}
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:border-[var(--brand-green)]">
-            {tryOnFile || form.tryOnImageUrl ? 'Replace image' : 'Upload image'}
-            <input
-              type="file"
-              accept="image/png,image/webp,.png,.webp"
-              className="sr-only"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = '';
-                if (!file) return;
-                if (!['image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
-                  setValidationError('Choose a PNG or WebP image no larger than 10 MB.');
-                  return;
-                }
-                setValidationError('');
-                setTryOnFile(file);
-              }}
-            />
-          </label>
-          {form.tryOnImageUrl || tryOnFile ? <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setTryOnFile(null);
-              update('tryOnImageUrl', '');
-            }}
-          >Remove image</Button> : null}
-          {uploadingTryOnImage ? <span role="status" className="text-sm text-[var(--text-secondary)]">Uploading image...</span> : null}
         </div>
+        <label className="mt-4 flex items-start gap-3 rounded-lg border border-[#e7ece7] bg-[#f9fbf9] p-4 text-sm">
+          <input type="checkbox" checked={returnable} onChange={(event) => setReturnable(event.target.checked)} className="mt-0.5 h-4 w-4 accent-[#7CBF00]" />
+          <span><span className="block font-semibold text-[var(--text-primary)]">{returnable ? 'Returnable' : 'Non-returnable'}</span><span className="mt-1 block text-xs text-[var(--text-secondary)]">Customers can request a return or replacement for this product only when enabled and when the order meets the configured return policy.</span></span>
+        </label>
       </section>
-      <div className="mt-6">
-        <EditorHeading title="Categories" action={<Button type="button" variant="ghost" onClick={() => update('categoryIds', [...form.categoryIds, ''])}>Add category</Button>} />
-        <div className="space-y-2">
-          {form.categoryIds.map((categoryId, index) => (
-            <div key={`${categoryId}-${index}`} className="flex gap-2">
-              <select className={inputClass} value={categoryId} onChange={(event) => update('categoryIds', form.categoryIds.map((id, itemIndex) => itemIndex === index ? event.target.value : id))}>
-                <option value="">Select category</option>
-                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-              </select>
-              <Button type="button" variant="ghost" onClick={() => update('categoryIds', form.categoryIds.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
+
+      <section className="rounded-xl border border-[#e1e8e2] bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#527a4c]">03 · Inventory</p>
+              <h2 className="mt-1 text-lg font-semibold text-[#1d2b22]">Variants and inventory</h2>
             </div>
-          ))}
+            <Button type="button" variant="ghost" onClick={() => update('variants', [...form.variants, emptyVariant()])}><Plus className="mr-1 h-4 w-4" />Add variant</Button>
+          </div>
         </div>
-      </div>
-      <div className="mt-6">
-        <EditorHeading title="Variants and inventory" action={<Button type="button" variant="ghost" onClick={() => update('variants', [...form.variants, emptyVariant()])}>Add variant</Button>} />
         <div className="space-y-3">
           {form.variants.map((variant, index) => (
-            <div key={index} className="grid gap-2 rounded-2xl border border-[var(--border-subtle)] p-3 md:grid-cols-8">
-              <ProductInput label="SKU" value={variant.sku} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, sku: value } : item))} />
-              <ProductInput label="Color" value={variant.color ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, color: value || null } : item))} />
-              <ProductInput label="Size" value={variant.size ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, size: value || null } : item))} />
-              <ProductInput label="Lens type" value={variant.lensType ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, lensType: value || null } : item))} />
-              <ProductInput label="Adjustment" type="number" min="0" step="0.01" value={String(variant.additionalPrice)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, additionalPrice: Number(value) } : item))} />
-              <ProductInput label="Quantity" type="number" min="0" value={String(variant.quantity)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(value) } : item))} />
-              <ProductInput label="Reserved" type="number" min="0" max={String(variant.quantity)} value={String(variant.reservedQuantity)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, reservedQuantity: Number(value) } : item))} />
-              <div className="flex items-end"><Button type="button" variant="ghost" onClick={() => update('variants', form.variants.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button></div>
+            <div key={variant.id ?? index} className="rounded-lg border border-[#e7ece7] bg-[#fbfcfb] p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-[#24352a]">Variant {index + 1}{variant.sku ? ` · ${variant.sku}` : ''}</p>
+                <Button type="button" variant="ghost" aria-label={`${variant.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'} ${variant.sku || `variant ${index + 1}`}`} onClick={() => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, status: item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' } : item))}>{variant.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}</Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <ProductInput label="Variant SKU" value={variant.sku} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, sku: value } : item))} />
+                <ProductInput label="Color" value={variant.color ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, color: value || null } : item))} />
+                <ProductInput label="Size" value={variant.size ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, size: value || null } : item))} />
+                <ProductInput label="Lens type" value={variant.lensType ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, lensType: value || null } : item))} />
+                <ProductInput label="Price adjustment" type="number" min="0" step="0.01" value={String(variant.additionalPrice)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, additionalPrice: Number(value) } : item))} />
+                <ProductInput label="Quantity" type="number" min="0" value={String(variant.quantity)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(value) } : item))} />
+                <ProductInput label="Reserved quantity" type="number" min="0" max={String(variant.quantity)} value={String(variant.reservedQuantity)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, reservedQuantity: Number(value) } : item))} />
+                <p className="self-end pb-2 text-xs text-[#68756b]">Available: {Math.max(0, variant.quantity - variant.reservedQuantity)}</p>
+              </div>
             </div>
           ))}
         </div>
-      </div>
-      <div className="mt-6">
-        <EditorHeading title="Images" action={
+      </section>
+      <section className="rounded-xl border border-[#e1e8e2] bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#527a4c]">04 · Catalogue media</p>
+            <h2 className="mt-1 text-lg font-semibold text-[#1d2b22]">Product images</h2>
+          </div>
           <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:border-[var(--brand-green)]">
             Upload images
             <input
@@ -2371,7 +2589,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
               }}
             />
           </label>
-        } />
+        </div>
         <p className="mb-3 text-xs text-[var(--text-secondary)]">JPG, JPEG, PNG, or WebP · Up to 10 MB per image</p>
         <div className="space-y-3">
           {productImages.map((image, index) => (
@@ -2411,11 +2629,59 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
           ))}
           {uploadingProductImages ? <p role="status" className="text-sm text-[var(--text-secondary)]">Uploading product images...</p> : null}
         </div>
-      </div>
-      <div className="mt-6 flex justify-end gap-3">
-        <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" disabled={saving || uploadingTryOnImage || uploadingProductImages}>{uploadingTryOnImage || uploadingProductImages ? 'Uploading image...' : saving ? 'Saving...' : product ? 'Save changes' : 'Create product'}</Button>
-      </div>
+        <div className="mt-6 border-t border-[#edf1ed] pt-5">
+          <h3 className="font-semibold text-[#24352a]">Virtual Try-On image</h3>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Optional transparent PNG or WebP containing only the glasses. This image is stored separately and does not replace the catalogue image.</p>
+          {tryOnPreviewUrl || form.tryOnImageUrl ? <img
+            src={tryOnPreviewUrl ?? resolveCmsMediaUrl(form.tryOnImageUrl) ?? ''}
+            alt="Virtual Try-On frame preview"
+            className="mt-3 h-28 w-full rounded-xl border border-[var(--border-subtle)] bg-[linear-gradient(45deg,#d1d5db_25%,transparent_25%,transparent_75%,#d1d5db_75%),linear-gradient(45deg,#d1d5db_25%,#fff_25%,#fff_75%,#d1d5db_75%)] bg-[length:16px_16px] bg-[position:0_0,8px_8px] object-contain"
+          /> : null}
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--border-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:border-[var(--brand-green)]">
+              {tryOnFile || form.tryOnImageUrl ? 'Replace image' : 'Upload image'}
+              <input
+                type="file"
+                accept="image/png,image/webp,.png,.webp"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (!file) return;
+                  if (!['image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+                    setValidationError('Choose a PNG or WebP image no larger than 10 MB.');
+                    return;
+                  }
+                  setValidationError('');
+                  setTryOnFile(file);
+                }}
+              />
+            </label>
+            {form.tryOnImageUrl || tryOnFile ? <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setTryOnFile(null);
+                update('tryOnImageUrl', '');
+              }}
+            >Remove image</Button> : null}
+            {uploadingTryOnImage ? <span role="status" className="text-sm text-[var(--text-secondary)]">Uploading image...</span> : null}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-[#e1e8e2] bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#527a4c]">05 · Publishing</p>
+          <h2 className="mt-1 text-lg font-semibold text-[#1d2b22]">Product visibility</h2>
+        </div>
+        <label className="block max-w-sm text-sm text-[var(--text-secondary)]">
+          <span>Status</span>
+          <select className={inputClass} value={form.status} onChange={(event) => update('status', event.target.value)}>
+            {['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'PUBLISHED', 'INACTIVE'].map((status) => <option key={status}>{status}</option>)}
+          </select>
+        </label>
+      </section>
     </form>
   );
 }

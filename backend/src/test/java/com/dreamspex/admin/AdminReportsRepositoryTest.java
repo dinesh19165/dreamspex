@@ -23,7 +23,8 @@ class AdminReportsRepositoryTest {
 
     @BeforeEach
     void createSchema() {
-        jdbc.execute("CREATE TABLE orders (id VARCHAR(40), user_id VARCHAR(40), status VARCHAR(32), payment_status VARCHAR(32), total_amount DECIMAL(12,2), created_at TIMESTAMP)");
+        jdbc.execute("CREATE ALIAS IF NOT EXISTS JSON_VALUE FOR \"com.dreamspex.admin.AdminReportsH2Functions.jsonValue\"");
+        jdbc.execute("CREATE TABLE orders (id VARCHAR(40), user_id VARCHAR(40), status VARCHAR(32), payment_status VARCHAR(32), total_amount DECIMAL(12,2), discount_amount DECIMAL(12,2), created_at TIMESTAMP, gst_snapshot CLOB)");
         jdbc.execute("CREATE TABLE return_refund_transactions (status VARCHAR(32), amount DECIMAL(12,2), processed_at TIMESTAMP)");
         jdbc.execute("CREATE TABLE users (id VARCHAR(40), deleted_at TIMESTAMP, created_at TIMESTAMP)");
         jdbc.execute("CREATE TABLE user_roles (user_id VARCHAR(40), role_id VARCHAR(40))");
@@ -45,10 +46,10 @@ class AdminReportsRepositoryTest {
         jdbc.update("INSERT INTO roles VALUES ('customer-role', 'CUSTOMER')");
         jdbc.update("INSERT INTO users VALUES (?, NULL, ?)", customerId, createdAt);
         jdbc.update("INSERT INTO user_roles VALUES (?, 'customer-role')", customerId);
-        jdbc.update("INSERT INTO orders VALUES ('paid-1', ?, 'DELIVERED', 'PAID', 100.00, ?)", customerId, createdAt);
-        jdbc.update("INSERT INTO orders VALUES ('paid-2', ?, 'PAID', 'PAID', 50.00, ?)", customerId, createdAt);
-        jdbc.update("INSERT INTO orders VALUES ('pending', ?, 'PENDING_PAYMENT', 'PENDING', 80.00, ?)", customerId, createdAt);
-        jdbc.update("INSERT INTO orders VALUES ('cancelled', ?, 'CANCELLED', 'PAID', 200.00, ?)", customerId, createdAt);
+        jdbc.update("INSERT INTO orders VALUES ('paid-1', ?, 'DELIVERED', 'PAID', 100.00, 0.00, ?, '{\"gstAmount\":15.00}')", customerId, createdAt);
+        jdbc.update("INSERT INTO orders VALUES ('paid-2', ?, 'PAID', 'PAID', 50.00, 0.00, ?, NULL)", customerId, createdAt);
+        jdbc.update("INSERT INTO orders VALUES ('pending', ?, 'PENDING_PAYMENT', 'PENDING', 80.00, 0.00, ?, NULL)", customerId, createdAt);
+        jdbc.update("INSERT INTO orders VALUES ('cancelled', ?, 'CANCELLED', 'PAID', 200.00, 0.00, ?, '{\"gstAmount\":30.00}')", customerId, createdAt);
         jdbc.update("INSERT INTO return_refund_transactions VALUES ('PROCESSED', 20.00, ?)", createdAt);
         jdbc.update("INSERT INTO return_refund_transactions VALUES ('FAILED', 30.00, ?)", createdAt);
         jdbc.update("INSERT INTO return_requests VALUES ('APPROVED', ?)", createdAt);
@@ -61,7 +62,9 @@ class AdminReportsRepositoryTest {
 
         assertEquals(new BigDecimal("150.00"), reports.paidRevenue(today, today));
         assertEquals(new BigDecimal("20.00"), reports.processedRefunds(today, today));
-        assertEquals(4L, ((Number) reports.orderSummary(today, today).get("total")).longValue());
+        var summary = reports.orderSummary(today, today);
+        assertEquals(4L, ((Number) summary.get("total")).longValue());
+        assertEquals(new BigDecimal("15.00"), summary.get("gst_collected"));
         assertEquals(1L, reports.totalCustomers());
         assertEquals(1L, reports.newCustomers(today, today));
         assertEquals(1L, reports.repeatCustomers(today, today));

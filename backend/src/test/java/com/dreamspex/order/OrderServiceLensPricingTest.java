@@ -242,6 +242,11 @@ class OrderServiceLensPricingTest {
 
     @Test
     void checkoutQuoteIncludesConfiguredLensPrice() {
+        Store store = store("Telangana");
+        availableDelivery(store);
+        when(gstConfigurations.findFirstByActiveTrueOrderByUpdatedAtDesc())
+                .thenReturn(Optional.of(configuration()));
+
         var quote = service.quote(new UsernamePasswordAuthenticationToken("customer", null),
                 new CheckoutRequest("address", null));
 

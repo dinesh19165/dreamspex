@@ -9,8 +9,14 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
+import java.util.Collection;
+import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, String>, JpaSpecificationExecutor<Product> {
+    Optional<Product> findBySku(String sku);
+    Optional<Product> findBySlug(String slug);
+    List<Product> findAllBySkuIn(Collection<String> skus);
+    List<Product> findAllBySlugIn(Collection<String> slugs);
     Optional<Product> findByIdAndStatusAndDeletedAtIsNull(String id, String status);
     java.util.List<Product> findByStatusAndDeletedAtIsNullOrderByCreatedAtDesc(String status);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

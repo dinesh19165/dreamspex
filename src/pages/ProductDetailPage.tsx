@@ -149,16 +149,16 @@ export default function ProductDetailPage() {
   const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
   const colorOptions = [...new Set(catalogProduct.variants.map((variant) => variant.color).filter((color): color is string => Boolean(color)))];
   const sizeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.size).filter((size): size is string => Boolean(size)))];
+  const lensTypeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.lensType).filter((lensType): lensType is string => Boolean(lensType)))];
   const isAvailableVariant = (variant: typeof selectedVariant) => Boolean(
     variant && variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0,
   );
-  const selectVariantOption = (key: 'color' | 'size', value: string) => {
+  const selectVariantOption = (key: 'color' | 'size' | 'lensType', value: string) => {
     const currentVariant = selectedVariant;
-    const otherKey = key === 'color' ? 'size' : 'color';
     const candidates = catalogProduct.variants.filter((variant) => variant[key] === value && isAvailableVariant(variant));
-    const nextVariant = candidates.find((variant) => variant[otherKey] === currentVariant?.[otherKey]
-      && variant.lensType === currentVariant?.lensType)
-      ?? candidates.find((variant) => variant[otherKey] === currentVariant?.[otherKey])
+    const optionKeys = ['color', 'size', 'lensType'] as const;
+    const nextVariant = candidates.find((variant) => optionKeys.every((optionKey) =>
+      optionKey === key || variant[optionKey] === currentVariant?.[optionKey]))
       ?? candidates[0];
     if (nextVariant) setSelectedVariantId(nextVariant.id);
   };
@@ -325,6 +325,20 @@ export default function ProductDetailPage() {
                         onClick={() => selectVariantOption('size', size)}
                         className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${selected ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/15 font-semibold text-[var(--brand-green-dark)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'} ${optionAvailable ? 'hover:border-[var(--brand-green)]/70' : 'cursor-not-allowed opacity-50'}`}>
                         {size}{optionAvailable ? null : <span className="ml-1">· Unavailable</span>}
+                      </button>;
+                    })}
+                  </div>
+                </div> : null}
+                {lensTypeOptions.length ? <div>
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">Lens type</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {lensTypeOptions.map((lensType) => {
+                      const optionAvailable = catalogProduct.variants.some((variant) => variant.lensType === lensType && isAvailableVariant(variant));
+                      const selected = selectedVariant?.lensType === lensType;
+                      return <button key={lensType} type="button" aria-pressed={selected} disabled={!optionAvailable}
+                        onClick={() => selectVariantOption('lensType', lensType)}
+                        className={`max-w-full break-words rounded-full border px-2.5 py-1 text-xs transition-colors ${selected ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/15 font-semibold text-[var(--brand-green-dark)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'} ${optionAvailable ? 'hover:border-[var(--brand-green)]/70' : 'cursor-not-allowed opacity-50'}`}>
+                        {lensType}{optionAvailable ? null : <span className="ml-1">· Unavailable</span>}
                       </button>;
                     })}
                   </div>

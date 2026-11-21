@@ -164,6 +164,30 @@ class CatalogServiceTest {
         assertNull(service.publicProduct("p1").tryOnImageUrl());
     }
 
+    @Test
+    void publicProductReturnsAllVariantsWithInventoryAvailability() {
+        CatalogService service = service();
+        Product product = product("PUBLISHED");
+        for (int index = 1; index <= 4; index++) {
+            ProductVariant variant = variant(product, "VARIANT-" + index);
+            variant.setColor("Color " + index);
+            variant.setSize("Size " + index);
+            variant.setLensType("Lens " + index);
+            variant.setQuantity(10);
+            variant.setReservedQuantity(index);
+            product.getVariants().add(variant);
+        }
+        when(products.findByIdAndStatusAndDeletedAtIsNull(product.getId(), "PUBLISHED"))
+                .thenReturn(Optional.of(product));
+
+        ProductResponse response = service.publicProduct(product.getId());
+
+        assertEquals(4, response.variants().size());
+        assertEquals(4, response.variants().get(3).reservedQuantity());
+        assertEquals(6, response.variants().get(3).availableQuantity());
+        assertEquals("Lens 4", response.variants().get(3).lensType());
+    }
+
     private Product product(String status) {
         Product product = new Product();
         product.setSku("SKU-" + status);
@@ -242,6 +266,7 @@ class CatalogServiceTest {
         existing.setTryOnImageUrl("/try-on/frame.webp");
         ProductVariant variant = variant(existing, "DS-EYE-002-BLK");
         variant.setQuantity(5);
+        variant.setReservedQuantity(2);
         existing.getVariants().add(variant);
         ProductImage image = new ProductImage();
         image.setProduct(existing);
@@ -252,7 +277,8 @@ class CatalogServiceTest {
         when(products.save(existing)).thenReturn(existing);
 
         ProductResponse response = service.saveProduct(existing.getId(), request(
-                List.of(variantRequest(variant.getId(), "DS-EYE-002-BLK", 12)), null, null));
+                List.of(new VariantRequest(variant.getId(), "DS-EYE-002-BLK", "Black", null, null,
+                        BigDecimal.ZERO, 12, 2, "ACTIVE")), null, null));
 
         assertEquals(1, existing.getVariants().size());
         assertSame(variant, existing.getVariants().get(0));
@@ -260,6 +286,29 @@ class CatalogServiceTest {
         assertEquals("/images/frame.webp", response.images().get(0).imageUrl());
         assertEquals("/try-on/frame.webp", response.tryOnImageUrl());
         assertEquals(variant.getId(), response.variants().get(0).id());
+        assertEquals(2, response.variants().get(0).reservedQuantity());
+    }
+
+    @Test
+    void savingProductDeactivatesVariantsOmittedFromTheAdminVariantList() {
+        CatalogService service = service();
+        Product existing = product("DRAFT");
+        ProductVariant retained = variant(existing, "KEEP-VARIANT");
+        ProductVariant removed = variant(existing, "REMOVE-VARIANT");
+        existing.getVariants().addAll(List.of(retained, removed));
+        when(products.findWithLockById(existing.getId())).thenReturn(Optional.of(existing));
+        when(variants.findBySku("KEEP-VARIANT")).thenReturn(Optional.of(retained));
+        when(products.save(existing)).thenReturn(existing);
+
+        ProductResponse response = service.saveProduct(existing.getId(), request(
+                List.of(variantRequest(retained.getId(), "KEEP-VARIANT", 4)), null, null));
+
+        assertEquals(2, existing.getVariants().size());
+        assertSame(retained, existing.getVariants().get(0));
+        assertEquals("ACTIVE", retained.getStatus());
+        assertEquals("INACTIVE", removed.getStatus());
+        assertEquals("INACTIVE", response.variants().stream()
+                .filter(item -> "REMOVE-VARIANT".equals(item.sku())).findFirst().orElseThrow().status());
     }
 
     @Test

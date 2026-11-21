@@ -265,7 +265,7 @@ public class AuthService {
     public ResendOtpResponse resendOtp(ResendOtpRequest request) {
         var storedChallenge = challenges.findById(request.challengeId());
         if (storedChallenge.isEmpty()) {
-            return new ResendOtpResponse(false, null);
+            return new ResendOtpResponse(true, null);
         }
         OtpChallenge challenge = storedChallenge.get();
         if (isWidgetRegistration(challenge)) {
@@ -279,7 +279,7 @@ public class AuthService {
         if (challenge.getVerifiedAt() != null || challenge.getResendCount() >= 5
                 || (challenge.getLastSentAt() != null
                 && challenge.getLastSentAt().plusSeconds(30).isAfter(now))) {
-            return new ResendOtpResponse(false, challenge.getId());
+            return new ResendOtpResponse(true, null);
         }
         requireLatestChallenge(challenge, now);
         String otp = Integer.toString(100000 + random.nextInt(900000));

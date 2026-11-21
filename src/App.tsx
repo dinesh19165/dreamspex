@@ -50,6 +50,7 @@ import {
   SuperAdminUsersPage,
   ReportsPage,
   SuperAdminProductsPage,
+  SuperAdminProductEditorPage,
   SuperAdminSettingsPage,
   SuperAdminGstSettingsPage,
   DeliveryFeeManagementPage,
@@ -199,6 +200,8 @@ function App() {
             <Route path="/admin/returns" element={<SuperAdminRoute><AdminReturnsPage /></SuperAdminRoute>} />
             <Route path="/admin/lenses" element={<SuperAdminRoute><AdminLensManagementPage /></SuperAdminRoute>} />
             <Route path="/admin/products" element={<SuperAdminRoute><SuperAdminProductsPage /></SuperAdminRoute>} />
+            <Route path="/admin/products/new" element={<SuperAdminRoute><SuperAdminProductEditorPage create /></SuperAdminRoute>} />
+            <Route path="/admin/products/:productId/edit" element={<SuperAdminRoute><SuperAdminProductEditorPage /></SuperAdminRoute>} />
             <Route path="/admin/categories" element={<SuperAdminRoute><MainCategoryManagementPage /></SuperAdminRoute>} />
             <Route path="/admin/customers" element={<SuperAdminRoute><AdminCustomersPage /></SuperAdminRoute>} />
             <Route path="/admin/offers" element={<SuperAdminRoute><AdminOffersPage /></SuperAdminRoute>} />

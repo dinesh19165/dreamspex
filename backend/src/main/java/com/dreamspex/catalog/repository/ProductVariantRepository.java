@@ -7,8 +7,10 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, String> {
+    List<ProductVariant> findAllBySkuIn(Collection<String> skus);
     long countByQuantityLessThanEqualAndStatus(int quantity, String status);
     Optional<ProductVariant> findBySku(String sku);
     List<ProductVariant> findByProductIdAndStatusOrderBySku(String productId, String status);

@@ -22,8 +22,8 @@ export type AdminProductVariant = {
   lensType: string | null;
   additionalPrice: number;
   quantity: number;
-  availableQuantity?: number;
   reservedQuantity?: number;
+  availableQuantity?: number;
   status: string;
 };
 
@@ -119,6 +119,42 @@ export type AdminProductReturnability = {
   returnable: boolean;
 };
 
+export type ProductBulkRowError = {
+  sheet: string;
+  row: number;
+  sku: string;
+  field: string;
+  message: string;
+};
+
+export type ProductBulkSummary = {
+  jobId: string;
+  mode: 'CREATE' | 'UPDATE';
+  inventoryMode: 'SET' | 'ADD';
+  status: 'PREVIEWED' | 'COMPLETED';
+  totalRows: number;
+  newProducts: number;
+  existingProducts: number;
+  newVariants: number;
+  updatedVariants: number;
+  validRecords: number;
+  invalidRecords: number;
+  missingImages: number;
+  duplicateSkus: number;
+  invalidCategories: number;
+  invalidPrices: number;
+  invalidVariants: number;
+  importedRecords: number;
+  errors: ProductBulkRowError[];
+};
+
+export type ProductBulkHistory = Omit<ProductBulkSummary, 'errors' | 'missingImages' | 'duplicateSkus'
+  | 'invalidCategories' | 'invalidPrices' | 'invalidVariants' | 'newVariants' | 'updatedVariants'> & {
+    workbookName: string;
+    createdAt: string;
+    completedAt: string | null;
+  };
+
 type ProblemResponse = { message?: string; fieldErrors?: Array<{ field: string; message: string }> };
 
 function token() {
@@ -149,6 +185,23 @@ async function request<T>(path: string, init: RequestInit = {}) {
   return response.json() as Promise<T>;
 }
 
+async function bulkRequest(path: string, init: RequestInit = {}) {
+  const accessToken = token();
+  const response = await fetch(`${apiBaseUrl}/api/v1/admin/products/bulk${path}`, {
+    ...init,
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...init.headers,
+    },
+  });
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => ({}))) as ProblemResponse;
+    const fieldMessage = problem.fieldErrors?.map((error) => `${error.field}: ${error.message}`).join(', ');
+    throw new Error(fieldMessage || problem.message || `Request failed (${response.status})`);
+  }
+  return response;
+}
+
 export const adminProductService = {
   list: () => request<AdminProduct[]>('/api/v1/admin/products'),
   categories: () => request<AdminCategory[]>('/api/v1/categories'),
@@ -177,6 +230,53 @@ export const adminProductService = {
       method: 'PUT',
       body: JSON.stringify({ returnable }),
     }),
+  async downloadBulkTemplate() {
+    const response = await bulkRequest('/template');
+    return response.blob();
+  },
+  async exportBulkProducts(options: {
+    productIds?: string[];
+    categoryId?: string;
+    status?: string;
+    archive?: boolean;
+  } = {}) {
+    const params = new URLSearchParams();
+    options.productIds?.forEach((id) => params.append('productIds', id));
+    if (options.categoryId) params.set('categoryId', options.categoryId);
+    if (options.status) params.set('status', options.status);
+    if (options.archive) params.set('archive', 'true');
+    const query = params.toString();
+    const response = await bulkRequest(`/export${query ? `?${query}` : ''}`);
+    return response.blob();
+  },
+  async previewBulkImport(workbook: File, imagesZip: File | null, mode: 'CREATE' | 'UPDATE',
+    inventoryMode: 'SET' | 'ADD') {
+    const form = new FormData();
+    form.set('workbook', workbook);
+    if (imagesZip) form.set('imagesZip', imagesZip);
+    form.set('mode', mode);
+    form.set('inventoryMode', inventoryMode);
+    const response = await bulkRequest('/preview', { method: 'POST', body: form });
+    return response.json() as Promise<ProductBulkSummary>;
+  },
+  async importBulkProducts(jobId: string, workbook: File, imagesZip: File | null) {
+    const form = new FormData();
+    form.set('workbook', workbook);
+    if (imagesZip) form.set('imagesZip', imagesZip);
+    const response = await bulkRequest(`/${encodeURIComponent(jobId)}/import`, {
+      method: 'POST',
+      body: form,
+    });
+    return response.json() as Promise<ProductBulkSummary>;
+  },
+  async bulkImportHistory() {
+    const response = await bulkRequest('/history');
+    return response.json() as Promise<ProductBulkHistory[]>;
+  },
+  async downloadBulkErrorReport(jobId: string) {
+    const response = await bulkRequest(`/history/${encodeURIComponent(jobId)}/errors`);
+    return response.blob();
+  },
 };
 
 export async function adminLogin(identifier: string, password: string) {

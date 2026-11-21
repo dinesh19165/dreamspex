@@ -24,9 +24,9 @@ class FranchiseInvitationServiceTest {
         FranchiseUserRepository users = mock(FranchiseUserRepository.class);
         DynamicSmtpMailService mail = mock(DynamicSmtpMailService.class);
         Environment environment = mock(Environment.class);
-        when(environment.getProperty("dreamspex.frontend-base-url", "https://store.example/"))
+        when(environment.getProperty("FRONTEND_BASE_URL", "https://www.dreamspex.in"))
                 .thenReturn("https://store.example/");
-        when(environment.getProperty("FRONTEND_BASE_URL", "http://localhost:5173"))
+        when(environment.getProperty("dreamspex.frontend-base-url", "https://store.example/"))
                 .thenReturn("https://store.example/");
         FranchiseInvitationService service = new FranchiseInvitationService(users, mail, environment);
         User user = new User();

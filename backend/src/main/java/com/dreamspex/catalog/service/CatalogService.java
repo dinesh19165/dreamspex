@@ -194,6 +194,7 @@ public class CatalogService {
         if (request.variants() != null) {
             Set<String> requestedSkus = new HashSet<>();
             Set<String> requestedVariantIds = new HashSet<>();
+            Set<ProductVariant> retainedVariants = new HashSet<>();
             for (VariantRequest item : request.variants()) {
                 String sku = item.sku().trim();
                 if (!requestedSkus.add(sku.toLowerCase(Locale.ROOT))) {
@@ -232,7 +233,10 @@ public class CatalogService {
                 variant.setQuantity(item.quantity());
                 variant.setReservedQuantity(item.reservedQuantity());
                 variant.setStatus(item.status() == null ? "ACTIVE" : item.status());
+                retainedVariants.add(variant);
             }
+            value.getVariants().stream().filter(variant -> !retainedVariants.contains(variant))
+                    .forEach(variant -> variant.setStatus("INACTIVE"));
         }
         if (request.images() != null) {
             value.getImages().clear();
@@ -326,7 +330,7 @@ public class CatalogService {
                 v.getVariants().stream().map(x -> {
                     FranchiseInventory stock = stockByVariant.get(x.getId());
                     return new VariantResponse(x.getId(), x.getSku(), x.getColor(), x.getSize(), x.getLensType(),
-                            x.getAdditionalPrice(), franchiseId == null ? x.getQuantity() : stock == null ? 0 : stock.getQuantity(),
+                            x.getAdditionalPrice(), x.getQuantity(), x.getReservedQuantity(),
                             franchiseId == null ? x.getAvailableQuantity() : stock == null ? 0 : stock.getAvailableQuantity(),
                             x.getStatus());
                 }).toList(),

@@ -29,7 +29,8 @@ public final class CatalogDtos {
                                  String badge, @Size(max=1000) String tryOnImageUrl, String status, Set<String> categoryIds,
                                  @Valid List<VariantRequest> variants, @Valid List<ImageRequest> images) {}
     public record VariantResponse(String id, String sku, String color, String size, String lensType,
-                                  BigDecimal additionalPrice, int quantity, int availableQuantity, String status) {}
+                                  BigDecimal additionalPrice, int quantity, int reservedQuantity,
+                                  int availableQuantity, String status) {}
     public record ImageResponse(String id, String imageUrl, String storageKey, String altText, int sortOrder,
                                 boolean primaryImage) {}
     public record ProductResponse(String id, String sku, String name, String slug, String brand, String description,

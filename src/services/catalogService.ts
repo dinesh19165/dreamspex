@@ -23,6 +23,7 @@ export type CatalogVariant = {
   lensType: string | null;
   additionalPrice: number;
   quantity: number;
+  reservedQuantity: number;
   availableQuantity: number;
   status: string;
 };

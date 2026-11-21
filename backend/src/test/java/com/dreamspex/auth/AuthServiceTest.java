@@ -43,6 +43,7 @@ import javax.crypto.spec.SecretKeySpec;import static org.junit.jupiter.api.Asse
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import org.mockito.ArgumentCaptor;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
@@ -593,7 +594,8 @@ class AuthServiceTest {
 
         AuthDtos.ResendOtpResponse response = service.resendOtp(new AuthDtos.ResendOtpRequest("challenge"));
 
-        assertEquals(false, response.accepted());
+        assertTrue(response.accepted());
+        assertNull(response.challengeId());
         verify(otpDelivery, never()).send(anyString(), anyString(), anyString(), anyString(), anyString());
     }
 
@@ -603,7 +605,8 @@ class AuthServiceTest {
 
         AuthDtos.ResendOtpResponse response = service.resendOtp(new AuthDtos.ResendOtpRequest("unknown"));
 
-        assertEquals(false, response.accepted());
+        assertTrue(response.accepted());
+        assertNull(response.challengeId());
         verify(otpDelivery, never()).send(anyString(), anyString(), anyString(), anyString(), anyString());
     }
 

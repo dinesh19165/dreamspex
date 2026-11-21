@@ -778,6 +778,71 @@ export default function HomePage() {
             </div>
           </section></CmsSectionGate>
 
+          <section hidden={cmsHidden(homepageSectionSlugs.promos, sections)} aria-label="Brand promotions" className="mx-auto max-w-[1600px] px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Brand promos</p>
+              <Link to="/shop" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#689f24]">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
+            </div>
+
+            {activePromotion ? <div
+              className="home-brand-promo-carousel"
+              onFocusCapture={() => setPromotionCarouselPaused(true)}
+              onBlurCapture={(event) => {
+                if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setPromotionCarouselPaused(false);
+              }}
+            >
+              <div
+                className="home-brand-promo__stage"
+                onPointerEnter={(event) => {
+                  if (event.pointerType === 'mouse') setPromotionCarouselPaused(true);
+                }}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === 'mouse') setPromotionCarouselPaused(false);
+                }}
+                onTouchStart={handlePromotionTouchStart}
+                onTouchEnd={handlePromotionTouchEnd}
+                onClickCapture={handlePromotionClickCapture}
+              >
+                <AnimatePresence initial={false} mode="sync">
+                  <motion.div
+                    key={activePromotion.card.id}
+                    className="home-brand-promo__slide"
+                    initial={{ opacity: 0, x: 28 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -28 }}
+                    transition={{ duration: reducedMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <Link
+                      to={homepageCardHref(activePromotion.card)}
+                      aria-label={`Shop ${activePromotion.card.title}`}
+                      className="home-brand-promo"
+                    >
+                      <span className="home-brand-promo__copy">
+                        <span className="home-brand-promo__eyebrow">Premium eyewear</span>
+                        <h2 className="home-brand-promo__title">{activePromotion.card.title}</h2>
+                        <p className="home-brand-promo__description">Discover Your Signature Style. Crafted for clarity. Designed for confidence.</p>
+                      </span>
+                      <span className="home-brand-promo__visual" aria-hidden="true">
+                        <img src={activePromotion.image} alt="" loading="lazy" />
+                      </span>
+                    </Link>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              {promotionalImageCards.length > 1 ? <div className="home-brand-promo__pagination" role="group" aria-label="Choose a promotion">
+                {promotionalImageCards.map(({ card }, index) => <button
+                  key={card.id}
+                  type="button"
+                  aria-label={`Show promotion: ${card.title}`}
+                  aria-current={index === activePromotionIndex ? 'true' : undefined}
+                  onClick={() => setActivePromotionSlide(index)}
+                />)}
+              </div> : null}
+            </div> : <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>
+              {cmsError ? 'Promotions could not be loaded.' : 'No active promotions are available right now.'}
+            </p>}
+          </section>
+
           <CmsSectionGate slug={homepageSectionSlugs.brands} sections={sections}><section aria-label="shop by brand" className="border-y border-black/10 bg-white py-12">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -868,70 +933,6 @@ export default function HomePage() {
 
           <section hidden={cmsHidden(homepageSectionSlugs.stores, sections)} className="bg-[#dfe9d8] py-16"><div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]"><MapPin className="h-4 w-4" /> Visit Dream Spex</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">Your vision deserves expert care.</h2></div><div><Link to="/stores" className="inline-flex items-center gap-2 rounded-full border border-[#a9bba2] px-5 py-3 text-sm font-semibold text-[#182116]">Find a store <ArrowRight className="h-4 w-4" /></Link></div></div></section>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.promos, sections)} aria-label="Brand promotions" className="mx-auto max-w-[1600px] px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
-            <div className="mb-3 flex items-center justify-between gap-4">
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Brand promos</p>
-              <Link to="/shop" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#689f24]">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
-            </div>
-
-            {activePromotion ? <div
-              className="home-brand-promo-carousel"
-              onFocusCapture={() => setPromotionCarouselPaused(true)}
-              onBlurCapture={(event) => {
-                if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setPromotionCarouselPaused(false);
-              }}
-            >
-              <div
-                className="home-brand-promo__stage"
-                onPointerEnter={(event) => {
-                  if (event.pointerType === 'mouse') setPromotionCarouselPaused(true);
-                }}
-                onPointerLeave={(event) => {
-                  if (event.pointerType === 'mouse') setPromotionCarouselPaused(false);
-                }}
-                onTouchStart={handlePromotionTouchStart}
-                onTouchEnd={handlePromotionTouchEnd}
-                onClickCapture={handlePromotionClickCapture}
-              >
-                <AnimatePresence initial={false} mode="sync">
-                  <motion.div
-                    key={activePromotion.card.id}
-                    className="home-brand-promo__slide"
-                    initial={{ opacity: 0, x: 28 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -28 }}
-                    transition={{ duration: reducedMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <Link
-                      to={homepageCardHref(activePromotion.card)}
-                      aria-label={`Shop ${activePromotion.card.title}`}
-                      className="home-brand-promo"
-                    >
-                      <span className="home-brand-promo__copy">
-                        <span className="home-brand-promo__eyebrow">Premium eyewear</span>
-                        <h2 className="home-brand-promo__title">{activePromotion.card.title}</h2>
-                        <p className="home-brand-promo__description">Discover Your Signature Style. Crafted for clarity. Designed for confidence.</p>
-                      </span>
-                      <span className="home-brand-promo__visual" aria-hidden="true">
-                        <img src={activePromotion.image} alt="" loading="lazy" />
-                      </span>
-                    </Link>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-              {promotionalImageCards.length > 1 ? <div className="home-brand-promo__pagination" role="group" aria-label="Choose a promotion">
-                {promotionalImageCards.map(({ card }, index) => <button
-                  key={card.id}
-                  type="button"
-                  aria-label={`Show promotion: ${card.title}`}
-                  aria-current={index === activePromotionIndex ? 'true' : undefined}
-                  onClick={() => setActivePromotionSlide(index)}
-                />)}
-              </div> : null}
-            </div> : <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>
-              {cmsError ? 'Promotions could not be loaded.' : 'No active promotions are available right now.'}
-            </p>}
-          </section>
         </div>
       </main>
       <Footer />

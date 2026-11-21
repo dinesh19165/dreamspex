@@ -10,7 +10,7 @@ import { formatINR } from '../utils/currency';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { productGstInformation } from '../utils/gst';
 import { getDiscountPercentage } from '../utils/pricing';
-import { getVariantGalleryImages, getSwipeGalleryIndex } from '../utils/productGallery';
+import { getPrimaryGalleryImageIndex, getProductGalleryImages, getSwipeGalleryIndex } from '../utils/productGallery';
 import { useAuth } from '../context/useAuth';
 import { readPendingProductAction, savePendingProductAction, takePendingProductAction } from '../utils/pendingProductAction';
 import { reviewService, type ProductReviewFeed } from '../services/reviewService';
@@ -61,7 +61,7 @@ export default function ProductDetailPage() {
     catalogService.get(id, selectedLocationId || undefined).then((value) => {
       setCatalogProduct(value);
       setQuantity(1);
-      setSelectedImageIndex(0);
+      setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(value.images, value.imageUrl ?? '')));
       const pendingAction = readPendingProductAction();
       const pendingVariant = pendingAction?.productId === value.id
         ? value.variants.find((variant) => variant.id === pendingAction.variantId
@@ -142,14 +142,7 @@ export default function ProductDetailPage() {
 
   const ratingSummary = reviewFeed?.summary ?? catalogProduct.ratingSummary;
   const supportsPrescription = product.category !== 'Contact Lenses';
-  const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
-  const colorOptions = [...new Set(catalogProduct.variants.map((variant) => variant.color).filter((color): color is string => Boolean(color)))];
-  const hasMultipleActiveColors = new Set(catalogProduct.variants
-    .filter((variant) => variant.status.toUpperCase() === 'ACTIVE')
-    .map((variant) => variant.color)
-    .filter((color): color is string => Boolean(color))).size > 1;
-  const galleryImages = getVariantGalleryImages(catalogProduct.images, product.image, selectedVariant, !hasMultipleActiveColors);
-  const hasSelectedVariantImages = galleryImages.some((image) => image.variantId === selectedVariant?.id);
+  const galleryImages = getProductGalleryImages(catalogProduct.images, product.image);
   const selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0];
   const changeImage = (index: number) => {
     if (!galleryImages.length) return;
@@ -165,6 +158,8 @@ export default function ProductDetailPage() {
     changeImage(getSwipeGalleryIndex(selectedImageIndex, galleryImages.length, deltaX));
   };
   const isWishlisted = isInWishlist(product.id);
+  const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
+  const colorOptions = [...new Set(catalogProduct.variants.map((variant) => variant.color).filter((color): color is string => Boolean(color)))];
   const sizeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.size).filter((size): size is string => Boolean(size)))];
   const lensTypeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.lensType).filter((lensType): lensType is string => Boolean(lensType)))];
   const isAvailableVariant = (variant: typeof selectedVariant) => Boolean(
@@ -180,7 +175,6 @@ export default function ProductDetailPage() {
     if (nextVariant) {
       setSelectedVariantId(nextVariant.id);
       setQuantity(1);
-      setSelectedImageIndex(0);
     }
   };
   const unavailable = !selectedVariant
@@ -273,10 +267,7 @@ export default function ProductDetailPage() {
               onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
               {selectedImage ? <img src={selectedImage.imageUrl} alt={selectedImage.altText || product.name} fetchPriority="high"
                 className="h-full w-full cursor-zoom-in object-contain transition-transform duration-500 hover:scale-[1.025]"
-                onClick={() => setImageZoomOpen(true)} />
-                : hasMultipleActiveColors ? <p className="max-w-xs px-6 text-center text-sm leading-6 text-[var(--text-secondary)]" role="status">
-                  Product images are not linked to the selected frame colour yet.
-                </p> : null}
+                onClick={() => setImageZoomOpen(true)} /> : null}
               {galleryImages.length > 1 ? <>
                 <button type="button" aria-label="Previous product image" onClick={() => changeImage(selectedImageIndex - 1)}
                   className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full border border-[var(--border-subtle)] bg-white/95 p-2.5 text-[var(--text-primary)] shadow-sm transition hover:bg-white">
@@ -300,11 +291,7 @@ export default function ProductDetailPage() {
                 <img src={image.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
               </button>)}
             </div> : null}
-            {hasMultipleActiveColors && !hasSelectedVariantImages
-              ? <p className="mt-3 text-center text-xs leading-5 text-[var(--text-secondary)]" role="status">
-                Colour-specific images are not available for this product. The API does not associate its images with frame colours.
-              </p>
-              : <p className="mt-3 text-center text-xs text-[var(--text-secondary)]">Swipe or use the arrows to view product images</p>}
+            <p className="mt-3 text-center text-xs text-[var(--text-secondary)]">Swipe or use the arrows to view product images</p>
             <div className="mt-5 grid items-start gap-x-6 gap-y-4 border-t border-[var(--border-subtle)] pt-5 sm:grid-cols-2">
               <article aria-labelledby="product-specifications">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">At a glance</p>

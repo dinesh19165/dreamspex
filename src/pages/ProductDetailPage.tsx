@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, ChevronRight, Glasses, Heart, ShieldCheck, Star, Truck, X, ZoomIn } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight, Glasses, Heart, Minus, Plus, ShieldCheck, Star, Truck, X, ZoomIn } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import Button from '../components/ui/Button';
@@ -38,6 +38,7 @@ export default function ProductDetailPage() {
   const [selectedVariantId, setSelectedVariantId] = useState('');
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [imageZoomOpen, setImageZoomOpen] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const cartTimerRef = useRef<number | null>(null);
   const touchStartX = useRef<number | null>(null);
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function ProductDetailPage() {
     setCatalogError('');
     catalogService.get(id, selectedLocationId || undefined).then((value) => {
       setCatalogProduct(value);
+      setQuantity(1);
       setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(value.images, value.imageUrl ?? '')));
       const pendingAction = readPendingProductAction();
       const pendingVariant = pendingAction?.productId === value.id
@@ -170,7 +172,10 @@ export default function ProductDetailPage() {
     const nextVariant = candidates.find((variant) => optionKeys.every((optionKey) =>
       optionKey === key || variant[optionKey] === currentVariant?.[optionKey]))
       ?? candidates[0];
-    if (nextVariant) setSelectedVariantId(nextVariant.id);
+    if (nextVariant) {
+      setSelectedVariantId(nextVariant.id);
+      setQuantity(1);
+    }
   };
   const unavailable = !selectedVariant
     || selectedVariant.status.toUpperCase() !== 'ACTIVE'
@@ -188,7 +193,7 @@ export default function ProductDetailPage() {
         productId: catalogProduct.id,
         variantId: selectedVariant.id,
         action,
-        quantity: 1,
+        quantity,
         returnPath: location.pathname,
       });
     }
@@ -204,7 +209,7 @@ export default function ProductDetailPage() {
       setCartLoading(true);
       setCartError('');
       try {
-        await addToCart(productForCart);
+        await addToCart(productForCart, quantity);
       } catch (reason) {
         setCartError(reason instanceof Error ? reason.message : 'Unable to add this product to your cart.');
         setCartLoading(false);
@@ -222,7 +227,7 @@ export default function ProductDetailPage() {
     setCartLoading(true);
     setCartError('');
     try {
-      await addToCart(productForCart);
+      await addToCart(productForCart, quantity);
     } catch (reason) {
       setCartError(reason instanceof Error ? reason.message : 'Unable to add this product to your cart.');
       setCartLoading(false);
@@ -287,22 +292,22 @@ export default function ProductDetailPage() {
               </button>)}
             </div> : null}
             <p className="mt-3 text-center text-xs text-[var(--text-secondary)]">Swipe or use the arrows to view product images</p>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6" aria-labelledby="product-specifications">
+            <div className="mt-6 grid gap-6 border-t border-[var(--border-subtle)] pt-6 sm:grid-cols-2">
+              <article aria-labelledby="product-specifications">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">At a glance</p>
                 <h2 id="product-specifications" className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Specifications</h2>
                 <dl className="mt-4 grid grid-cols-2 gap-3">
-                  {productDetails.map((detail) => <div key={detail.label} className="rounded-2xl bg-[var(--bg-secondary)] p-3">
+                  {productDetails.map((detail) => <div key={detail.label} className="border-t border-[var(--border-subtle)] py-3">
                     <dt className="text-xs text-[var(--text-secondary)]">{detail.label}</dt>
                     <dd className="mt-1 break-words text-sm font-semibold text-[var(--text-primary)]">{detail.value}</dd>
                   </div>)}
                 </dl>
               </article>
-              <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6">
+              <article className="sm:border-l sm:border-[var(--border-subtle)] sm:pl-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">Fit &amp; finish</p>
                 <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Frame information</h2>
                 {frameDetails.length ? <dl className="mt-4 grid grid-cols-2 gap-3">
-                  {frameDetails.map((detail) => <div key={detail.label} className="rounded-2xl bg-[var(--bg-secondary)] p-3">
+                  {frameDetails.map((detail) => <div key={detail.label} className="border-t border-[var(--border-subtle)] py-3">
                     <dt className="text-xs text-[var(--text-secondary)]">{detail.label}</dt>
                     <dd className="mt-1 break-words text-sm font-semibold text-[var(--text-primary)]">{detail.value}</dd>
                   </div>)}
@@ -313,8 +318,8 @@ export default function ProductDetailPage() {
           </motion.section>
 
           <motion.aside initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-            className="min-w-0 space-y-4 lg:sticky lg:top-28">
-            <section className="rounded-[26px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 shadow-[0_18px_50px_-40px_rgba(23,35,28,0.35)] sm:p-7">
+            className="min-w-0 lg:sticky lg:top-28">
+            <section>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--brand-green-dark)]">{product.brand}</p>
                 <span className="text-[var(--border-subtle)]" aria-hidden="true">/</span>
@@ -330,7 +335,7 @@ export default function ProductDetailPage() {
               </a>
             </section>
 
-            <section className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6" aria-label="Pricing">
+            <section className="mt-5 border-t border-[var(--border-subtle)] pt-5" aria-label="Pricing">
               <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
                 <p className="text-3xl font-semibold tracking-tight text-[var(--text-primary)]">{formatINR(selectedVariantPrice)}</p>
                 {selectedVariantOldPrice != null ? <p className="pb-1 text-base text-[var(--text-secondary)] line-through">{formatINR(selectedVariantOldPrice)}</p> : null}
@@ -343,7 +348,7 @@ export default function ProductDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6">
+            <section className="mt-5 border-t border-[var(--border-subtle)] pt-5">
               <h2 className="text-base font-semibold text-[var(--text-primary)]">Choose your frame</h2>
               {colorOptions.length ? <div className="mt-4">
                 <div className="flex items-center justify-between gap-3">
@@ -399,12 +404,29 @@ export default function ProductDetailPage() {
               <p className="mt-4 text-xs text-[var(--text-secondary)]">SKU: {selectedVariant?.sku || catalogProduct.sku}</p>
             </section>
 
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-              <Button type="button" className={`${actionButtonBase} w-full min-w-0 bg-[var(--brand-green)] text-[var(--text-primary)] shadow-sm hover:bg-[var(--brand-green-light)]`}
+            <div className="mt-5 flex items-center justify-between border-t border-[var(--border-subtle)] pt-5">
+              <p className="text-sm font-medium text-[var(--text-primary)]">Quantity</p>
+              <div className="flex h-11 items-center rounded-full border border-[var(--border-subtle)] bg-white">
+                <button type="button" aria-label="Decrease quantity" disabled={quantity <= 1}
+                  onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                  className="flex h-full w-11 items-center justify-center text-[var(--text-primary)] disabled:opacity-40">
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="min-w-8 text-center text-sm font-semibold" aria-live="polite">{quantity}</span>
+                <button type="button" aria-label="Increase quantity" disabled={Boolean(selectedVariant && quantity >= selectedVariant.availableQuantity)}
+                  onClick={() => setQuantity((current) => Math.min(selectedVariant?.availableQuantity ?? 1, current + 1))}
+                  className="flex h-full w-11 items-center justify-center text-[var(--text-primary)] disabled:opacity-40">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
+              <Button type="button" className={`${actionButtonBase} w-full min-w-0 rounded-full bg-[var(--brand-green)] text-[var(--text-primary)] hover:bg-[var(--brand-green-light)]`}
                 onClick={handleAddToCart} disabled={unavailable || cartLoading || sharedCartLoading}>
                 {unavailable ? 'Out of stock' : cartLoading ? 'Adding...' : addedToCart ? 'Added to Cart' : 'Add to Cart'}
               </Button>
-              <Button type="button" className={`${actionButtonBase} w-full min-w-0 bg-[var(--brand-black)] text-white shadow-sm hover:bg-[var(--brand-charcoal)]`}
+              <Button type="button" className={`${actionButtonBase} w-full min-w-0 rounded-full bg-[var(--brand-black)] text-white hover:bg-[var(--brand-charcoal)]`}
                 onClick={handleBuyNow} disabled={unavailable || cartLoading || sharedCartLoading}>Buy Now</Button>
               <Button type="button" variant="ghost"
                 className={`${actionButtonBase} col-span-2 w-full border border-[var(--border-subtle)] ${isWishlisted ? 'border-[var(--brand-green)]/60 bg-[var(--brand-green)]/10 text-[var(--brand-green-dark)]' : ''}`}
@@ -429,29 +451,29 @@ export default function ProductDetailPage() {
             {addedToCart ? <p role="status" className="text-sm font-medium text-[var(--brand-green-dark)]">{product.name} was added to your cart.</p> : null}
             {cartError ? <p role="alert" className="text-sm font-medium text-red-600">{cartError}</p> : null}
 
-            <div className="grid gap-3 min-[480px]:grid-cols-2">
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+            <div className="mt-5 grid gap-4 border-t border-[var(--border-subtle)] pt-5 min-[480px]:grid-cols-2">
+              <div>
                 <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]"><ShieldCheck className="h-4 w-4 text-[var(--brand-green-dark)]" /> Product availability</div>
                 <p className="mt-1 text-xs text-[var(--text-secondary)]">{unavailable ? 'Unavailable' : `${selectedVariant?.availableQuantity ?? 0} available`}</p>
               </div>
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+              <div>
                 <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]"><Truck className="h-4 w-4 text-[var(--brand-green-dark)]" /> Delivery details</div>
                 <p className="mt-1 text-xs text-[var(--text-secondary)]">Options are confirmed during checkout.</p>
               </div>
             </div>
-            <p className="rounded-2xl bg-[var(--bg-secondary)] p-4 text-xs leading-5 text-[var(--text-secondary)]">
+            <p className="mt-4 border-t border-[var(--border-subtle)] pt-4 text-xs leading-5 text-[var(--text-secondary)]">
               Delivery availability is calculated at checkout from your saved map location and the nearest configured store. PIN codes are not used to estimate delivery distance.
             </p>
           </motion.aside>
         </div>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-2" aria-label="Product information">
-          <article id="product-details" className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-7">
+        <section className="mt-10 grid gap-8 border-t border-[var(--border-subtle)] pt-8 md:grid-cols-2" aria-label="Product information">
+          <article id="product-details" className="md:border-r md:border-[var(--border-subtle)] md:pr-8">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">About this frame</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Product details</h2>
             {product.description ? <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[var(--text-secondary)]">{product.description}</p> : null}
           </article>
-          <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-7">
+          <article>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">Personalise your vision</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Lens information</h2>
             {lensTypeOptions.length ? <>
@@ -467,7 +489,7 @@ export default function ProductDetailPage() {
           </article>
         </section>
 
-        <section id="customer-reviews" className="mt-12 rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-8" aria-labelledby="customer-reviews-heading">
+        <section id="customer-reviews" className="mt-12 border-t border-[var(--border-subtle)] pt-8" aria-labelledby="customer-reviews-heading">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--brand-green-dark)]">Verified purchases</p>
@@ -478,7 +500,7 @@ export default function ProductDetailPage() {
           {reviewError ? <p className="mt-5 text-sm text-red-600" role="alert">{reviewError}</p>
             : !reviewFeed ? <p className="mt-5 text-sm text-[var(--text-secondary)]">Loading verified reviews...</p>
               : <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(220px,.7fr)_1.3fr]">
-                <aside className="rounded-2xl bg-[var(--bg-secondary)] p-5">
+                <aside className="border-b border-[var(--border-subtle)] pb-6 lg:border-b-0 lg:border-r lg:pr-6">
                   <p className="text-4xl font-semibold text-[var(--text-primary)]">{ratingSummary.averageRating.toFixed(1)}<span className="ml-1 text-lg text-[var(--text-secondary)]">/ 5</span></p>
                   <p className="mt-2 text-sm text-[var(--text-secondary)]">Based on {ratingSummary.totalReviews} verified purchase{ratingSummary.totalReviews === 1 ? '' : 's'}</p>
                   <div className="mt-5 space-y-2">{[5, 4, 3, 2, 1].map((stars) => {
@@ -491,7 +513,7 @@ export default function ProductDetailPage() {
                 </aside>
                 <div className="space-y-4">
                   {reviewFeed.reviews.length ? reviewFeed.reviews.map((review) => <article key={review.id}
-                    className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-5">
+                    className="border-b border-[var(--border-subtle)] pb-6 last:border-b-0">
                     <p className="flex items-center gap-1 text-amber-400" aria-label={`${review.rating} out of 5 stars`}>
                       {Array.from({ length: 5 }, (_, index) => <Star key={index}
                         className={`h-4 w-4 ${index < review.rating ? 'fill-current' : 'text-[var(--text-secondary)]'}`} />)}

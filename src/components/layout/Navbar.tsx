@@ -360,7 +360,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
             <BrandLogo compact />
 
             <div className={`hidden min-w-0 flex-1 items-center gap-3 lg:flex ${homepageOverlay ? 'navbar-home-overlay__search' : ''}`}>
-              <button onClick={openSearch} className="flex h-10 min-w-0 flex-1 items-center justify-between gap-3 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-sm leading-none text-[var(--text-secondary)] shadow-inner shadow-black/10">
+              <button onClick={openSearch} className="search-border-glow flex h-10 min-w-0 flex-1 items-center justify-between gap-3 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-sm leading-none text-[var(--text-secondary)] shadow-inner shadow-black/10">
                 <span className="flex min-w-0 items-center gap-2 whitespace-nowrap"><Search className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" /><span className="truncate">Search frames, styles, offers</span></span>
                 <span className="shrink-0 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-[var(--text-secondary)]">Ctrl / ⌘ K</span>
               </button>
@@ -385,7 +385,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
           </div>
 
           <div className={`flex min-w-0 items-center gap-2 pb-2.5 lg:hidden ${homepageOverlay ? 'navbar-home-overlay__search' : ''}`}>
-            <button onClick={openSearch} className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-left text-sm text-[var(--text-secondary)] shadow-inner shadow-black/10" aria-label="Search frames, styles, and offers">
+            <button onClick={openSearch} className="search-border-glow flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 text-left text-sm text-[var(--text-secondary)] shadow-inner shadow-black/10" aria-label="Search frames, styles, and offers">
               <Search className="h-4 w-4 shrink-0" />
               <span className="truncate">Search frames, styles, offers</span>
             </button>

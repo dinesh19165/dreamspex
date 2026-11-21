@@ -10,7 +10,7 @@ import { formatINR } from '../utils/currency';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { productGstInformation } from '../utils/gst';
 import { getDiscountPercentage } from '../utils/pricing';
-import { getPrimaryGalleryImageIndex, getProductGalleryImages, getSwipeGalleryIndex } from '../utils/productGallery';
+import { getVariantGalleryImages, getSwipeGalleryIndex } from '../utils/productGallery';
 import { useAuth } from '../context/useAuth';
 import { readPendingProductAction, savePendingProductAction, takePendingProductAction } from '../utils/pendingProductAction';
 import { reviewService, type ProductReviewFeed } from '../services/reviewService';
@@ -61,7 +61,7 @@ export default function ProductDetailPage() {
     catalogService.get(id, selectedLocationId || undefined).then((value) => {
       setCatalogProduct(value);
       setQuantity(1);
-      setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(value.images, value.imageUrl ?? '')));
+      setSelectedImageIndex(0);
       const pendingAction = readPendingProductAction();
       const pendingVariant = pendingAction?.productId === value.id
         ? value.variants.find((variant) => variant.id === pendingAction.variantId
@@ -142,7 +142,8 @@ export default function ProductDetailPage() {
 
   const ratingSummary = reviewFeed?.summary ?? catalogProduct.ratingSummary;
   const supportsPrescription = product.category !== 'Contact Lenses';
-  const galleryImages = getProductGalleryImages(catalogProduct.images, product.image);
+  const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
+  const galleryImages = getVariantGalleryImages(catalogProduct.images, product.image, selectedVariant);
   const selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0];
   const changeImage = (index: number) => {
     if (!galleryImages.length) return;
@@ -158,7 +159,6 @@ export default function ProductDetailPage() {
     changeImage(getSwipeGalleryIndex(selectedImageIndex, galleryImages.length, deltaX));
   };
   const isWishlisted = isInWishlist(product.id);
-  const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
   const colorOptions = [...new Set(catalogProduct.variants.map((variant) => variant.color).filter((color): color is string => Boolean(color)))];
   const sizeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.size).filter((size): size is string => Boolean(size)))];
   const lensTypeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.lensType).filter((lensType): lensType is string => Boolean(lensType)))];
@@ -175,6 +175,7 @@ export default function ProductDetailPage() {
     if (nextVariant) {
       setSelectedVariantId(nextVariant.id);
       setQuantity(1);
+      setSelectedImageIndex(0);
     }
   };
   const unavailable = !selectedVariant

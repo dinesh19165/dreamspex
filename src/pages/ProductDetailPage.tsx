@@ -251,12 +251,12 @@ export default function ProductDetailPage() {
     { label: 'Shape', value: product.frameShape },
     { label: 'Frame type', value: product.frameType },
   ].filter((detail) => Boolean(detail.value));
-  const actionButtonBase = 'h-auto min-h-10 rounded-full px-2 py-2 text-xs font-semibold leading-tight transition-all duration-200 sm:min-h-11 sm:px-3 sm:text-sm';
+  const actionButtonBase = 'h-auto rounded-full px-3 py-2.5 text-xs font-semibold leading-tight transition-all duration-200 sm:px-4 sm:text-sm';
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+      <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
         <Link to="/shop" className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] transition hover:text-[var(--brand-green-dark)]">
           <ChevronLeft className="h-4 w-4" /> Back to eyewear
         </Link>
@@ -292,12 +292,12 @@ export default function ProductDetailPage() {
               </button>)}
             </div> : null}
             <p className="mt-3 text-center text-xs text-[var(--text-secondary)]">Swipe or use the arrows to view product images</p>
-            <div className="mt-6 grid gap-6 border-t border-[var(--border-subtle)] pt-6 sm:grid-cols-2">
+            <div className="mt-5 grid items-start gap-x-6 gap-y-4 border-t border-[var(--border-subtle)] pt-5 sm:grid-cols-2">
               <article aria-labelledby="product-specifications">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">At a glance</p>
                 <h2 id="product-specifications" className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Specifications</h2>
-                <dl className="mt-4 grid grid-cols-2 gap-3">
-                  {productDetails.map((detail) => <div key={detail.label} className="border-t border-[var(--border-subtle)] py-3">
+                <dl className="mt-3 grid grid-cols-2 gap-x-4">
+                  {productDetails.map((detail) => <div key={detail.label} className="border-t border-[var(--border-subtle)] py-2">
                     <dt className="text-xs text-[var(--text-secondary)]">{detail.label}</dt>
                     <dd className="mt-1 break-words text-sm font-semibold text-[var(--text-primary)]">{detail.value}</dd>
                   </div>)}
@@ -306,13 +306,13 @@ export default function ProductDetailPage() {
               <article className="sm:border-l sm:border-[var(--border-subtle)] sm:pl-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">Fit &amp; finish</p>
                 <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Frame information</h2>
-                {frameDetails.length ? <dl className="mt-4 grid grid-cols-2 gap-3">
-                  {frameDetails.map((detail) => <div key={detail.label} className="border-t border-[var(--border-subtle)] py-3">
+                {frameDetails.length ? <dl className="mt-3 grid grid-cols-2 gap-x-4">
+                  {frameDetails.map((detail) => <div key={detail.label} className="border-t border-[var(--border-subtle)] py-2">
                     <dt className="text-xs text-[var(--text-secondary)]">{detail.label}</dt>
                     <dd className="mt-1 break-words text-sm font-semibold text-[var(--text-primary)]">{detail.value}</dd>
                   </div>)}
                 </dl> : null}
-                {selectedVariant?.size ? <p className="mt-3 text-sm text-[var(--text-secondary)]">Selected frame size: <strong className="text-[var(--text-primary)]">{selectedVariant.size}</strong></p> : null}
+                {selectedVariant?.size ? <p className="mt-2 text-sm text-[var(--text-secondary)]">Selected frame size: <strong className="text-[var(--text-primary)]">{selectedVariant.size}</strong></p> : null}
               </article>
             </div>
           </motion.section>
@@ -348,9 +348,9 @@ export default function ProductDetailPage() {
               </div>
             </section>
 
-            <section className="mt-5 border-t border-[var(--border-subtle)] pt-5">
+            <section className="mt-4 border-t border-[var(--border-subtle)] pt-4">
               <h2 className="text-base font-semibold text-[var(--text-primary)]">Choose your frame</h2>
-              {colorOptions.length ? <div className="mt-4">
+              {colorOptions.length ? <div className="mt-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-[var(--text-primary)]">Frame colour</p>
                   {selectedVariant?.color ? <p className="text-xs text-[var(--text-secondary)]">{selectedVariant.color}</p> : null}
@@ -370,7 +370,7 @@ export default function ProductDetailPage() {
                   })}
                 </div>
               </div> : null}
-              {sizeOptions.length ? <div className="mt-5">
+              {sizeOptions.length ? <div className="mt-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-[var(--text-primary)]">Frame size</p>
                   {selectedVariant?.size ? <p className="text-xs text-[var(--text-secondary)]">{selectedVariant.size}</p> : null}
@@ -387,7 +387,7 @@ export default function ProductDetailPage() {
                   })}
                 </div>
               </div> : null}
-              {lensTypeOptions.length ? <div className="mt-5 border-t border-[var(--border-subtle)] pt-4">
+              {lensTypeOptions.length ? <div className="mt-3 border-t border-[var(--border-subtle)] pt-3">
                 <p className="text-sm font-medium text-[var(--text-primary)]">Lens type</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {lensTypeOptions.map((lensType) => {
@@ -404,9 +404,9 @@ export default function ProductDetailPage() {
               <p className="mt-4 text-xs text-[var(--text-secondary)]">SKU: {selectedVariant?.sku || catalogProduct.sku}</p>
             </section>
 
-            <div className="mt-5 flex items-center justify-between border-t border-[var(--border-subtle)] pt-5">
+            <div className="mt-4 flex items-center justify-between border-t border-[var(--border-subtle)] pt-4">
               <p className="text-sm font-medium text-[var(--text-primary)]">Quantity</p>
-              <div className="flex h-11 items-center rounded-full border border-[var(--border-subtle)] bg-white">
+              <div className="flex h-10 items-center rounded-full border border-[var(--border-subtle)] bg-white">
                 <button type="button" aria-label="Decrease quantity" disabled={quantity <= 1}
                   onClick={() => setQuantity((current) => Math.max(1, current - 1))}
                   className="flex h-full w-11 items-center justify-center text-[var(--text-primary)] disabled:opacity-40">
@@ -421,7 +421,7 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3">
               <Button type="button" className={`${actionButtonBase} w-full min-w-0 rounded-full bg-[var(--brand-green)] text-[var(--text-primary)] hover:bg-[var(--brand-green-light)]`}
                 onClick={handleAddToCart} disabled={unavailable || cartLoading || sharedCartLoading}>
                 {unavailable ? 'Out of stock' : cartLoading ? 'Adding...' : addedToCart ? 'Added to Cart' : 'Add to Cart'}
@@ -451,7 +451,7 @@ export default function ProductDetailPage() {
             {addedToCart ? <p role="status" className="text-sm font-medium text-[var(--brand-green-dark)]">{product.name} was added to your cart.</p> : null}
             {cartError ? <p role="alert" className="text-sm font-medium text-red-600">{cartError}</p> : null}
 
-            <div className="mt-5 grid gap-4 border-t border-[var(--border-subtle)] pt-5 min-[480px]:grid-cols-2">
+            <div className="mt-4 grid gap-3 border-t border-[var(--border-subtle)] pt-4 min-[480px]:grid-cols-2">
               <div>
                 <div className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]"><ShieldCheck className="h-4 w-4 text-[var(--brand-green-dark)]" /> Product availability</div>
                 <p className="mt-1 text-xs text-[var(--text-secondary)]">{unavailable ? 'Unavailable' : `${selectedVariant?.availableQuantity ?? 0} available`}</p>
@@ -461,19 +461,19 @@ export default function ProductDetailPage() {
                 <p className="mt-1 text-xs text-[var(--text-secondary)]">Options are confirmed during checkout.</p>
               </div>
             </div>
-            <p className="mt-4 border-t border-[var(--border-subtle)] pt-4 text-xs leading-5 text-[var(--text-secondary)]">
+            <p className="mt-3 border-t border-[var(--border-subtle)] pt-3 text-xs leading-5 text-[var(--text-secondary)]">
               Delivery availability is calculated at checkout from your saved map location and the nearest configured store. PIN codes are not used to estimate delivery distance.
             </p>
           </motion.aside>
         </div>
 
-        <section className="mt-4 grid gap-8 border-t border-[var(--border-subtle)] pt-6 md:grid-cols-2" aria-label="Product information">
-          <article id="product-details" className="md:border-r md:border-[var(--border-subtle)] md:pr-8">
+        <section className="mt-4 grid items-start gap-6 border-t border-[var(--border-subtle)] pt-5 md:grid-cols-[minmax(0,1.25fr)_minmax(260px,.75fr)]" aria-label="Product information">
+          <article id="product-details" className="h-auto md:border-r md:border-[var(--border-subtle)] md:pr-8">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">About this frame</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Product details</h2>
             {product.description ? <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[var(--text-secondary)]">{product.description}</p> : null}
           </article>
-          <article>
+          <article className="h-auto">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">Personalise your vision</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Lens information</h2>
             {lensTypeOptions.length ? <>
@@ -489,7 +489,7 @@ export default function ProductDetailPage() {
           </article>
         </section>
 
-        <section id="customer-reviews" className="mt-12 border-t border-[var(--border-subtle)] pt-8" aria-labelledby="customer-reviews-heading">
+        <section id="customer-reviews" className="mt-8 border-t border-[var(--border-subtle)] pt-6" aria-labelledby="customer-reviews-heading">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--brand-green-dark)]">Verified purchases</p>
@@ -499,7 +499,7 @@ export default function ProductDetailPage() {
           </div>
           {reviewError ? <p className="mt-5 text-sm text-red-600" role="alert">{reviewError}</p>
             : !reviewFeed ? <p className="mt-5 text-sm text-[var(--text-secondary)]">Loading verified reviews...</p>
-              : <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(220px,.7fr)_1.3fr]">
+              : <div className="mt-5 grid items-start gap-6 lg:grid-cols-[minmax(220px,.7fr)_1.3fr]">
                 <aside className="border-b border-[var(--border-subtle)] pb-6 lg:border-b-0 lg:border-r lg:pr-6">
                   <p className="text-4xl font-semibold text-[var(--text-primary)]">{ratingSummary.averageRating.toFixed(1)}<span className="ml-1 text-lg text-[var(--text-secondary)]">/ 5</span></p>
                   <p className="mt-2 text-sm text-[var(--text-secondary)]">Based on {ratingSummary.totalReviews} verified purchase{ratingSummary.totalReviews === 1 ? '' : 's'}</p>
@@ -527,7 +527,7 @@ export default function ProductDetailPage() {
                       <span className="inline-flex items-center gap-1 text-[var(--brand-green-dark)]"><ShieldCheck className="h-3.5 w-3.5" />Verified Purchase</span>
                       <time dateTime={review.submittedAt}>{new Date(review.submittedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</time>
                     </p>
-                  </article>) : <div className="rounded-2xl border border-dashed border-[var(--border-subtle)] p-8 text-center">
+                  </article>)                   : <div className="border-y border-[var(--border-subtle)] py-6 text-center">
                     <p className="font-semibold text-[var(--text-primary)]">No public reviews yet</p>
                     <p className="mt-2 text-sm text-[var(--text-secondary)]">Approved verified reviews will appear here.</p>
                   </div>}
@@ -535,7 +535,7 @@ export default function ProductDetailPage() {
               </div>}
         </section>
 
-        <section className="mt-12" aria-labelledby="related-products-heading">
+        <section className="mt-8 border-t border-[var(--border-subtle)] pt-6" aria-labelledby="related-products-heading">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">More to explore</p>

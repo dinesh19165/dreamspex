@@ -50,17 +50,43 @@ describe('product image gallery', () => {
       .toEqual(['brown-front']);
   });
 
-  it('matches existing image alt text and retains the gallery when a colour is unmapped', () => {
+  it('does not infer colour mappings from alt text and only uses unassigned images for single-colour products', () => {
     const images = [
       { ...image('black-front', 0), altText: 'Glossy black frame' },
       { ...image('red-front', 1), altText: 'Black and red dual colour frame' },
     ];
 
-    expect(getVariantGalleryImages(images, 'fallback.jpg', { id: 'black', color: 'Black' }).map((item) => item.id))
-      .toEqual(['black-front']);
-    expect(getVariantGalleryImages(images, 'fallback.jpg', { id: 'red', color: 'Red' }).map((item) => item.id))
-      .toEqual(['red-front']);
-    expect(getVariantGalleryImages(images, 'fallback.jpg', { id: 'yellow', color: 'Yellow' }).map((item) => item.id))
+    expect(getVariantGalleryImages(images, 'fallback.jpg', { id: 'black', color: 'Black' })).toEqual([]);
+    expect(getVariantGalleryImages(images, 'fallback.jpg', { id: 'red', color: 'Red' })).toEqual([]);
+    expect(getVariantGalleryImages(images, 'fallback.jpg', { id: 'yellow', color: 'Yellow' })).toEqual([]);
+    expect(getVariantGalleryImages(images, 'fallback.jpg', { id: 'single', color: 'Black' }, true).map((item) => item.id))
       .toEqual(['black-front', 'red-front']);
+  });
+
+  it('does not show images mapped to a different variant when the selected variant has no mapping', () => {
+    const images = [
+      { ...image('blue-front', 0), variantId: 'blue-variant' },
+      { ...image('yellow-front', 1), variantId: 'yellow-variant' },
+    ];
+
+    expect(getVariantGalleryImages(images, 'fallback.jpg', { id: 'red-variant', color: 'Red' })).toEqual([]);
+  });
+
+  it('fails closed for each D-Lite colour when the API images have no variant mapping', () => {
+    const apiImages = [
+      { ...image('api-image-0', 0), imageUrl: '/api/v1/cms/images/243ea9ad-6497-4ee8-83cc-7d772f189957.webp' },
+      { ...image('api-image-1', 1), imageUrl: '/api/v1/cms/images/02aec7fc-187c-4d08-8b9c-2a5351d62290.webp' },
+      { ...image('api-image-2', 2), imageUrl: '/api/v1/cms/images/2e36f89b-fd6d-4eb8-8f0e-65f01a0a0f2a.webp' },
+    ];
+    const apiVariants = [
+      { id: '3ef6bfdc-a377-42c2-b14f-9fd9f32cb59c', color: 'Blue' },
+      { id: 'b6052b84-197a-4bfe-897b-037b72c62b5f', color: 'Yellow' },
+      { id: 'be48c719-be3b-4d45-91a2-be714e38945f', color: 'Black' },
+      { id: 'cb666e0f-1104-4576-bada-92012761ce55', color: 'Red' },
+    ];
+
+    for (const variant of apiVariants) {
+      expect(getVariantGalleryImages(apiImages, 'fallback.jpg', variant)).toEqual([]);
+    }
   });
 });

@@ -36,7 +36,6 @@ export type CatalogImage = {
   sortOrder: number;
   primaryImage: boolean;
   variantId?: string | null;
-  variantColor?: string | null;
 };
 
 export type CatalogProduct = {

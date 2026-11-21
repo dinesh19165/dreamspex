@@ -26,45 +26,21 @@ export function getSwipeGalleryIndex(currentIndex: number, imageCount: number, d
   return (currentIndex + (deltaX < 0 ? 1 : imageCount - 1)) % imageCount;
 }
 
-function normalizeColour(value: string | null | undefined) {
-  return (value ?? '')
-    .toLowerCase()
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 export function getVariantGalleryImages(
   images: CatalogImage[] | null | undefined,
   fallbackImage: string,
   variant: { id: string; color: string | null } | null | undefined,
+  allowUnassignedImages = false,
 ): CatalogImage[] {
   const allImages = getProductGalleryImages(images, fallbackImage);
-  if (!variant || allImages.length < 2) return allImages;
+  if (!variant) return allImages;
 
-  const selectedColour = normalizeColour(variant.color);
-  if (!selectedColour) return allImages;
+  const mappedImages = allImages.filter((image) => image.variantId === variant.id);
+  if (mappedImages.length) return [...mappedImages].sort((first, second) => first.sortOrder - second.sortOrder);
 
-  const directlyMapped = allImages.filter((image) =>
-    normalizeColour(image.variantId) === normalizeColour(variant.id)
-    || normalizeColour(image.variantColor) === selectedColour);
-  if (directlyMapped.length) {
-    return [...directlyMapped].sort((first, second) => first.sortOrder - second.sortOrder);
-  }
+  return allowUnassignedImages ? allImages.filter((image) => !image.variantId) : [];
+}
 
-  const matchingImages = allImages.filter((image) => {
-    const searchableText = normalizeColour([image.variantColor, image.altText, image.storageKey, image.imageUrl].filter(Boolean).join(' '));
-    if (selectedColour.includes('/')) {
-      return selectedColour.split('/').map(normalizeColour).some((part) => part && searchableText.includes(part));
-    }
-    if (!searchableText.includes(selectedColour)) return false;
-    if (selectedColour === 'black') {
-      return !searchableText.includes(' and red')
-        && !searchableText.includes('/red')
-        && !searchableText.includes(' dual');
-    }
-    return true;
-  });
-
-  return matchingImages.length ? [...matchingImages].sort((first, second) => first.sortOrder - second.sortOrder) : allImages;
+export function hasVariantGalleryImages(images: CatalogImage[] | null | undefined, variant: { id: string } | null | undefined) {
+  return Boolean(variant && images?.some((image) => image.variantId === variant.id && Boolean(image.imageUrl)));
 }

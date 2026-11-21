@@ -307,7 +307,6 @@ export default function ProductDetailPage() {
                 <strong className="text-[var(--text-primary)]">{ratingSummary.averageRating.toFixed(1)}</strong>
                 <span>{ratingSummary.totalReviews} verified reviews</span>
               </a>
-              {product.description ? <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">{product.description}</p> : null}
             </section>
 
             <section className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6" aria-label="Pricing">
@@ -425,7 +424,7 @@ export default function ProductDetailPage() {
           </motion.aside>
         </div>
 
-        <section className="mt-12 grid gap-4 md:grid-cols-2" aria-label="Product information">
+        <section className="mt-8 grid gap-4 md:grid-cols-2" aria-label="Product information">
           <article id="product-details" className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-7">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">About this frame</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Product details</h2>

@@ -258,36 +258,34 @@ export default function ProductDetailPage() {
 
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-10">
           <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} aria-label="Product image gallery">
-            <div className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 shadow-[0_18px_50px_-40px_rgba(23,35,28,0.35)] sm:p-5">
-              <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-[22px] bg-[var(--bg-secondary)] p-4 sm:p-8 lg:aspect-[4/3]"
-                onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-                {selectedImage ? <img src={selectedImage.imageUrl} alt={selectedImage.altText || product.name} fetchPriority="high"
-                  className="h-full w-full cursor-zoom-in object-contain transition-transform duration-500 hover:scale-[1.025]"
-                  onClick={() => setImageZoomOpen(true)} /> : null}
-                {galleryImages.length > 1 ? <>
-                  <button type="button" aria-label="Previous product image" onClick={() => changeImage(selectedImageIndex - 1)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full border border-white/70 bg-white/90 p-2.5 text-[var(--text-primary)] shadow-md transition hover:bg-white">
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button type="button" aria-label="Next product image" onClick={() => changeImage(selectedImageIndex + 1)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-white/70 bg-white/90 p-2.5 text-[var(--text-primary)] shadow-md transition hover:bg-white">
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                </> : null}
-                {selectedImage ? <button type="button" aria-label="Zoom product image" onClick={() => setImageZoomOpen(true)}
-                  className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-white/95 px-3 py-2 text-xs font-semibold text-[var(--text-primary)] shadow-sm transition hover:bg-white">
-                  <ZoomIn className="h-4 w-4" /> View larger
-                </button> : null}
-              </div>
-              {galleryImages.length > 1 ? <div className="mt-4 flex gap-3 overflow-x-auto pb-1" aria-label="Product images">
-                {galleryImages.map((image, index) => <button key={image.id} type="button"
-                  aria-label={`View product image ${index + 1}`} aria-pressed={index === selectedImageIndex}
-                  onClick={() => changeImage(index)}
-                  className={`h-[76px] w-[76px] shrink-0 overflow-hidden rounded-2xl border-2 bg-[var(--bg-secondary)] p-1.5 transition ${index === selectedImageIndex ? 'border-[var(--brand-green)] shadow-[0_0_0_3px_rgba(120,190,32,0.12)]' : 'border-transparent hover:border-[var(--border-subtle)]'}`}>
-                  <img src={image.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
-                </button>)}
-              </div> : null}
+            <div className="relative flex aspect-[5/4] items-center justify-center overflow-hidden bg-white p-1 sm:p-3 lg:aspect-[5/4]"
+              onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+              {selectedImage ? <img src={selectedImage.imageUrl} alt={selectedImage.altText || product.name} fetchPriority="high"
+                className="h-full w-full cursor-zoom-in object-contain transition-transform duration-500 hover:scale-[1.025]"
+                onClick={() => setImageZoomOpen(true)} /> : null}
+              {galleryImages.length > 1 ? <>
+                <button type="button" aria-label="Previous product image" onClick={() => changeImage(selectedImageIndex - 1)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full border border-[var(--border-subtle)] bg-white/95 p-2.5 text-[var(--text-primary)] shadow-sm transition hover:bg-white">
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <button type="button" aria-label="Next product image" onClick={() => changeImage(selectedImageIndex + 1)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-[var(--border-subtle)] bg-white/95 p-2.5 text-[var(--text-primary)] shadow-sm transition hover:bg-white">
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </> : null}
+              {selectedImage ? <button type="button" aria-label="Zoom product image" onClick={() => setImageZoomOpen(true)}
+                className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-white/95 px-3 py-2 text-xs font-semibold text-[var(--text-primary)] shadow-sm transition hover:bg-white">
+                <ZoomIn className="h-4 w-4" /> View larger
+              </button> : null}
             </div>
+            {galleryImages.length > 1 ? <div className="mt-4 flex justify-center gap-3 overflow-x-auto pb-1" aria-label="Product images">
+              {galleryImages.map((image, index) => <button key={image.id} type="button"
+                aria-label={`View product image ${index + 1}`} aria-pressed={index === selectedImageIndex}
+                onClick={() => changeImage(index)}
+                className={`h-[76px] w-[76px] shrink-0 overflow-hidden rounded-xl border-2 bg-white p-1.5 transition ${index === selectedImageIndex ? 'border-[var(--brand-green)] shadow-[0_0_0_3px_rgba(120,190,32,0.12)]' : 'border-[var(--border-subtle)] hover:border-[var(--brand-green)]'}`}>
+                <img src={image.imageUrl} alt="" loading="lazy" className="h-full w-full object-contain" />
+              </button>)}
+            </div> : null}
             <p className="mt-3 text-center text-xs text-[var(--text-secondary)]">Swipe or use the arrows to view product images</p>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <article className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 sm:p-6" aria-labelledby="product-specifications">

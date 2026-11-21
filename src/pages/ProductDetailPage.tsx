@@ -467,7 +467,7 @@ export default function ProductDetailPage() {
           </motion.aside>
         </div>
 
-        <section className="mt-10 grid gap-8 border-t border-[var(--border-subtle)] pt-8 md:grid-cols-2" aria-label="Product information">
+        <section className="mt-4 grid gap-8 border-t border-[var(--border-subtle)] pt-6 md:grid-cols-2" aria-label="Product information">
           <article id="product-details" className="md:border-r md:border-[var(--border-subtle)] md:pr-8">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--brand-green-dark)]">About this frame</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Product details</h2>

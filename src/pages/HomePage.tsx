@@ -541,6 +541,7 @@ export default function HomePage() {
     const image = card.imageUrl ?? card.product?.imageUrl ?? card.category?.imageUrl;
     return image ? [{ card, image }] : [];
   });
+  const leadPromotion = promotionalImageCards[0];
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -826,33 +827,28 @@ export default function HomePage() {
 
           <section hidden={cmsHidden(homepageSectionSlugs.stores, sections)} className="bg-[#dfe9d8] py-16"><div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]"><MapPin className="h-4 w-4" /> Visit Dream Spex</p><h2 className="mt-3 font-serif text-4xl text-[#182116]">Your vision deserves expert care.</h2></div><div><Link to="/stores" className="inline-flex items-center gap-2 rounded-full border border-[#a9bba2] px-5 py-3 text-sm font-semibold text-[#182116]">Find a store <ArrowRight className="h-4 w-4" /></Link></div></div></section>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.promos, sections)} aria-label="Brand promotions" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Brand promos</p>
-                <h2 className="mt-2 font-serif text-3xl text-[var(--text-primary)]">Premium picks for every day</h2>
-              </div>
-              <Link to="/shop" className="inline-flex w-fit shrink-0 items-center gap-1 self-end text-sm font-semibold text-[#689f24]">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
+          <section hidden={cmsHidden(homepageSectionSlugs.promos, sections)} aria-label="Brand promotions" className="mx-auto max-w-[1600px] px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Brand promos</p>
+              <Link to="/shop" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#689f24]">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-3">
-              {promotionalImageCards.map(({ card, image }, index) => (
-                  <Link
-                    key={card.id}
-                    to={homepageCardHref(card)}
-                    aria-label={`Shop ${card.title}`}
-                    className={`block overflow-hidden rounded-xl bg-[var(--bg-secondary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#689f24] ${index === 0 ? promotionalImageCards.length > 1 ? 'lg:col-span-2' : 'lg:col-span-3' : ''}`}
-                  >
-                    <img
-                      src={image}
-                      alt={card.title}
-                      loading="lazy"
-                      className="block h-[200px] w-full object-contain sm:h-[240px] lg:h-[300px]"
-                    />
-                  </Link>
-              ))}
-              {!promotionalImageCards.length ? <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>{cmsError ? 'Promotions could not be loaded.' : 'No promotions are available right now.'}</p> : null}
-            </div>
+            {leadPromotion ? <Link
+              to={homepageCardHref(leadPromotion.card)}
+              aria-label={`Shop ${leadPromotion.card.title}`}
+              className="home-brand-promo"
+            >
+              <span className="home-brand-promo__copy">
+                <span className="home-brand-promo__eyebrow">Premium eyewear</span>
+                <h2 className="home-brand-promo__title">Discover Your Signature Style</h2>
+                <p className="home-brand-promo__description">Crafted for clarity. Designed for confidence.</p>
+              </span>
+              <span className="home-brand-promo__visual" aria-hidden="true">
+                <img src={leadPromotion.image} alt="" loading="lazy" />
+              </span>
+            </Link> : <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>
+              {cmsError ? 'Promotions could not be loaded.' : 'No promotions are available right now.'}
+            </p>}
           </section>
         </div>
       </main>

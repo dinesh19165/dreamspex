@@ -439,7 +439,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
                             const imageUrl = getProductImage(product);
                             return imageUrl ? [{ id: product.id, title: product.name, color: getProductCardColor(product), imageUrl, href: `/product/${encodeURIComponent(product.id)}` }] : [];
                           }).slice(0, 2)
-                        : selectedProductCards).map((card) => <Link key={card.id} to={card.href} onClick={() => setMegaMenuOpen(null)} className="customer-mega-menu__card">
+                        : selectedProductCards).map((card) => <Link key={card.id} to={card.href} onClick={() => setMegaMenuOpen(null)} className="customer-mega-menu__card customer-mega-menu__card--product">
                         <img src={card.imageUrl} alt={card.title} loading="lazy" />
                         <span className="customer-mega-menu__card-copy">
                           <span className="customer-mega-menu__card-title">{card.title}</span>

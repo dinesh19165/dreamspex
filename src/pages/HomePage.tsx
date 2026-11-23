@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Camera, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
-import Button from '../components/ui/Button';
 import type { Product } from '../types';
 import { HERO_IMAGE_URL, HERO_MOBILE_IMAGE_URL } from '../config/siteMedia';
 import { fetchHomepage, type HomepageCard, type HomepageProduct, type HomepageResponse, type HomepageSection } from '../services/homepageService';

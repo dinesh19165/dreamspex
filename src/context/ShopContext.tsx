@@ -4,6 +4,7 @@ import type { LensSelection, Product } from '../types';
 import { couponService, type CouponResult } from '../services/couponService';
 import { getCartItemKey, withoutCartItem } from '../utils/cart';
 import { cartService, type CartResponse } from '../services/cartService';
+import { resolveCmsMediaUrl } from '../config/api';
 import { useAuth } from './useAuth';
 import { useFranchiseLocation } from './FranchiseLocationContext';
 
@@ -51,7 +52,7 @@ function mapCart(response: CartResponse): CartItem[] {
     name: item.productName,
     category: 'Cart item',
     price: item.unitPrice - item.lensAdditionalPrice,
-    image: item.imageUrl ?? '',
+    image: resolveCmsMediaUrl(item.imageUrl) ?? item.imageUrl ?? '',
     rating: 0,
     reviews: 0,
     stock: item.availableQuantity > 0 ? 'In Stock' : 'Out of Stock',

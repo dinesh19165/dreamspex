@@ -531,7 +531,15 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
                 {item.label}<ChevronDown className={`h-4 w-4 transition-transform ${mobileMenuOpen === item.label ? 'rotate-180 text-cyan-300' : ''}`} />
               </button>
               {mobileMenuOpen === item.label ? <div className="border-t border-[var(--border-subtle)] px-2 py-2">
-                {(megaMenus.find((menu) => menu.label === item.label)?.groups ?? []).flatMap((group) => group.items).map((menuItem) => <Link key={menuItem.label} to={menuItem.path} onClick={() => { setOpen(false); setMobileMenuOpen(null); }} className="block rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] hover:text-cyan-300">{menuItem.label}</Link>)}
+                {(megaMenus.find((menu) => menu.label === item.label)?.groups ?? []).map((group) => group.items.length ? <section key={group.title} className="py-2">
+                  <h3 className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-secondary)]">{group.title}</h3>
+                  <div className="space-y-0.5">
+                    {group.items.map((menuItem) => <Link key={`${group.title}-${menuItem.label}`} to={menuItem.path} onClick={() => { setOpen(false); setMobileMenuOpen(null); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--bg-secondary)] hover:text-cyan-300">
+                      {group.kind === 'colors' ? <ColorSwatch color={menuItem.label} className="customer-mega-menu__swatch" /> : null}
+                      {menuItem.label}
+                    </Link>)}
+                  </div>
+                </section> : null)}
                 {item.label === 'Offers' ? membershipLoading
                   ? <p className="px-3 py-2 text-xs text-[var(--text-secondary)]" role="status">Loading membership plans...</p>
                   : membershipError

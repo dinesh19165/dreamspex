@@ -105,7 +105,7 @@ export default function CartPage() {
               {cart.map((item) => (
                 <div key={getCartItemKey(item)} className="rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 backdrop-blur-xl">
                   <div className="flex flex-wrap items-center gap-4">
-                    {item.image ? <img src={item.image} alt={item.name} className="h-24 w-24 rounded-[20px] object-cover" /> : <div className="flex h-24 w-24 items-center justify-center rounded-[20px] bg-[var(--bg-secondary)]"><ShoppingCart className="h-6 w-6 text-[var(--text-secondary)]" /></div>}
+                    {item.image ? <img src={item.image} alt={item.name} className="h-24 w-24 rounded-[20px] bg-white object-contain p-1" /> : <div className="flex h-24 w-24 items-center justify-center rounded-[20px] bg-[var(--bg-secondary)]"><ShoppingCart className="h-6 w-6 text-[var(--text-secondary)]" /></div>}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{item.category}</p>
                       <h3 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{item.name}</h3>

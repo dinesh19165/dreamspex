@@ -4,13 +4,17 @@ import { apiBaseUrl } from '../config/api';
 export type FranchiseApplicationSubmission = {
   fullName: string;
   mobileNumber: string;
-  email: string;
+  email?: string | null;
   preferredCity: string;
   state: string;
-  fullAddress: string;
-  investmentBudget: number;
-  preferredStoreFormat: string;
-  additionalMessage: string;
+  fullAddress?: string | null;
+  investmentBudget?: number | null;
+  preferredStoreFormat?: string | null;
+  currentOccupation?: string | null;
+  availableInvestmentRange?: string | null;
+  preferredStoreLocation?: string | null;
+  ownsCommercialProperty?: boolean | null;
+  additionalMessage?: string | null;
 };
 
 export type FranchiseApplicationStatus =
@@ -26,7 +30,15 @@ export type FranchiseApplicationCreated = {
   createdAt: string;
 };
 
-export type AdminFranchiseApplication = Omit<FranchiseApplicationSubmission, 'additionalMessage'> & {
+export type AdminFranchiseApplication = Omit<FranchiseApplicationSubmission, 'email' | 'fullAddress' | 'investmentBudget' | 'preferredStoreFormat' | 'currentOccupation' | 'availableInvestmentRange' | 'preferredStoreLocation' | 'ownsCommercialProperty' | 'additionalMessage'> & {
+  email: string | null;
+  fullAddress: string | null;
+  investmentBudget: number | null;
+  preferredStoreFormat: string | null;
+  currentOccupation: string | null;
+  availableInvestmentRange: string | null;
+  preferredStoreLocation: string | null;
+  ownsCommercialProperty: boolean | null;
   additionalMessage: string | null;
   id: string;
   referenceId: string;

@@ -21,7 +21,8 @@ public class ProductVariant {
     @Version @Column(nullable = false) private long version;
     @Column(name = "created_at", nullable = false) private Instant createdAt = Instant.now();
     @Column(name = "updated_at", nullable = false) private Instant updatedAt = Instant.now();
-    public String getId() { return id; } public Product getProduct() { return product; } public void setProduct(Product v) { product = v; }
+    public String getId() { return id; } public void setId(String v) { id = v; }
+    public Product getProduct() { return product; } public void setProduct(Product v) { product = v; }
     public String getSku() { return sku; } public void setSku(String v) { sku = v; } public String getColor() { return color; } public void setColor(String v) { color = v; }
     public String getSize() { return size; } public void setSize(String v) { size = v; } public String getLensType() { return lensType; } public void setLensType(String v) { lensType = v; }
     public BigDecimal getAdditionalPrice() { return additionalPrice; } public void setAdditionalPrice(BigDecimal v) { additionalPrice = v; }

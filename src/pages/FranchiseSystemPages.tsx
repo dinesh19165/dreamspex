@@ -2326,17 +2326,19 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
         altText: '',
         sortOrder: 0,
         primaryImage: false,
+        variantId: null,
         file,
         previewUrl,
       };
     });
     setProductImages((current) => {
       const next = [...current, ...additions];
-      const needsPrimary = !next.some((image) => image.primaryImage);
+      const needsPrimary = !next.some((image) => image.variantId === null && image.primaryImage);
+      const firstSharedImage = next.findIndex((image) => image.variantId === null);
       return next.map((image, index) => ({
         ...image,
         sortOrder: index,
-        primaryImage: image.primaryImage || (needsPrimary && index === 0),
+        primaryImage: image.primaryImage || (needsPrimary && index === firstSharedImage),
       }));
     });
   };
@@ -2349,11 +2351,15 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
     }
     setProductImages((current) => {
       const next = current.filter((_, itemIndex) => itemIndex !== index);
-      const needsPrimary = removed?.primaryImage && next.length > 0;
+      const needsPrimary = Boolean(removed?.primaryImage)
+        && !next.some((image) => image.variantId === removed?.variantId && image.primaryImage);
+      const nextPrimaryIndex = needsPrimary
+        ? next.findIndex((image) => image.variantId === removed?.variantId)
+        : -1;
       return next.map((image, itemIndex) => ({
         ...image,
         sortOrder: itemIndex,
-        primaryImage: image.primaryImage || (needsPrimary && itemIndex === 0),
+        primaryImage: image.primaryImage || itemIndex === nextPrimaryIndex,
       }));
     });
   };
@@ -2365,6 +2371,29 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
       const next = [...current];
       [next[index], next[destination]] = [next[destination], next[index]];
       return next.map((image, itemIndex) => ({ ...image, sortOrder: itemIndex }));
+    });
+  };
+
+  const assignProductImageVariant = (index: number, requestedVariantId: string) => {
+    const variantId = requestedVariantId || null;
+    setProductImages((current) => {
+      const previous = current[index];
+      if (!previous || previous.variantId === variantId) return current;
+
+      const next = current.map((image, itemIndex) => itemIndex === index
+        ? { ...image, variantId, primaryImage: false }
+        : image);
+      const previousGroupHasPrimary = next.some((image) =>
+        image.variantId === previous.variantId && image.primaryImage);
+      if (previous.primaryImage && !previousGroupHasPrimary) {
+        const previousGroupFirst = next.findIndex((image) => image.variantId === previous.variantId);
+        if (previousGroupFirst >= 0) next[previousGroupFirst] = { ...next[previousGroupFirst], primaryImage: true };
+      }
+
+      if (!next.some((image) => image.variantId === variantId && image.primaryImage)) {
+        next[index] = { ...next[index], primaryImage: true };
+      }
+      return next;
     });
   };
 
@@ -2608,18 +2637,36 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                     <Button type="button" variant="ghost" onClick={() => removeProductImage(index)}>Remove</Button>
                   </div>
                 </div>
-                <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <div className="mt-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
                   <ProductInput
                     label="Alt text"
                     value={image.altText ?? ''}
                     onChange={(value) => setProductImages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, altText: value || null } : item))}
                   />
+                  <label className="block text-sm text-[var(--text-secondary)]">
+                    <span>Assigned variant</span>
+                    <select
+                      className={inputClass}
+                      value={image.variantId ?? ''}
+                      onChange={(event) => assignProductImageVariant(index, event.target.value)}
+                    >
+                      <option value="">Shared product image</option>
+                      {form.variants.map((variant, variantIndex) => (
+                        <option key={variant.id ?? (variant.sku || variantIndex)} value={variant.id ?? ''} disabled={!variant.id}>
+                          {[variant.color, variant.size, variant.sku].filter(Boolean).join(' · ') || `Variant ${variantIndex + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="flex items-center gap-2 pb-3 text-xs text-[var(--text-secondary)]">
                     <input
                       type="radio"
-                      name="primary-product-image"
+                      name={`primary-product-image-${image.variantId ?? 'shared'}`}
                       checked={image.primaryImage}
-                      onChange={() => setProductImages((current) => current.map((item, itemIndex) => ({ ...item, primaryImage: itemIndex === index })))}
+                      onChange={() => setProductImages((current) => current.map((item, itemIndex) =>
+                        item.variantId === image.variantId
+                          ? { ...item, primaryImage: itemIndex === index }
+                          : item))}
                     />
                     Primary image
                   </label>
@@ -2697,7 +2744,7 @@ function EditorHeading({ title, action }: { title: string; action: React.ReactNo
 }
 
 function emptyVariant() {
-  return { sku: '', color: null, size: null, lensType: null, additionalPrice: 0, quantity: 0, reservedQuantity: 0, status: 'ACTIVE' };
+  return { id: crypto.randomUUID(), sku: '', color: null, size: null, lensType: null, additionalPrice: 0, quantity: 0, reservedQuantity: 0, status: 'ACTIVE' };
 }
 
 function productRequest(product: AdminProduct | null): AdminProductRequest {
@@ -2721,7 +2768,9 @@ function productRequest(product: AdminProduct | null): AdminProductRequest {
     status: product.status,
     categoryIds: product.categories.map((category) => category.id),
     variants: product.variants.map(({ id, sku, color, size, lensType, additionalPrice, quantity, reservedQuantity, status }) => ({ id, sku, color, size, lensType, additionalPrice, quantity, reservedQuantity: reservedQuantity ?? 0, status })),
-    images: product.images.map(({ imageUrl, storageKey, altText, sortOrder, primaryImage }) => ({ imageUrl, storageKey, altText, sortOrder, primaryImage }))
+    images: product.images.map(({ imageUrl, storageKey, altText, sortOrder, primaryImage, variantId }) => ({
+      imageUrl, storageKey, altText, sortOrder, primaryImage, variantId: variantId ?? null,
+    }))
       .sort((first, second) => first.sortOrder - second.sortOrder),
   };
 }

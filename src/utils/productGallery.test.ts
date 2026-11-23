@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import type { CatalogImage } from '../services/catalogService';
 import { getPrimaryGalleryImageIndex, getProductGalleryImages, getSwipeGalleryIndex } from './productGallery';
 
-const image = (id: string, sortOrder: number, primaryImage = false): CatalogImage => ({
+const image = (id: string, sortOrder: number, primaryImage = false, variantId: string | null = null): CatalogImage => ({
   id,
   imageUrl: `https://images.example/${id}.jpg`,
   storageKey: null,
   altText: null,
   sortOrder,
   primaryImage,
+  variantId,
 });
 
 describe('product image gallery', () => {
@@ -27,6 +28,32 @@ describe('product image gallery', () => {
     expect(getProductGalleryImages(undefined, 'legacy-primary.jpg')).toMatchObject([
       { id: 'primary-fallback', imageUrl: 'legacy-primary.jpg', primaryImage: true },
     ]);
+  });
+
+  it('shows only images assigned to the selected variant', () => {
+    const images = getProductGalleryImages([
+      image('red-later', 3, false, 'red'),
+      image('blue', 2, true, 'blue'),
+      image('red-primary', 1, true, 'red'),
+      image('shared', 0),
+    ], 'legacy.jpg', 'red');
+
+    expect(images.map((item) => item.id)).toEqual(['red-primary', 'red-later']);
+  });
+
+  it('falls back to shared images without exposing another variant gallery', () => {
+    const images = [
+      image('red', 0, true, 'red'),
+      image('shared', 1),
+    ];
+
+    expect(getProductGalleryImages(images, 'legacy.jpg', 'blue').map((item) => item.id)).toEqual(['shared']);
+    expect(getProductGalleryImages([images[0]], 'legacy.jpg', 'blue')).toEqual([]);
+  });
+
+  it('keeps the legacy product gallery when no images are variant-linked', () => {
+    expect(getProductGalleryImages([image('first', 0), image('second', 1)], '', 'red')
+      .map((item) => item.id)).toEqual(['first', 'second']);
   });
 
   it('keeps an empty gallery empty and ignores short swipes', () => {

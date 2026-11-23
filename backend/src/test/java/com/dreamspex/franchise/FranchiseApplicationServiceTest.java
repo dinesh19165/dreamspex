@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -72,6 +73,27 @@ class FranchiseApplicationServiceTest {
     }
 
     @Test
+    void enquiryWithoutEmailPersistsAdditionalEnquiryDetails() {
+        when(applications.save(any(FranchiseApplication.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        var request = new FranchiseApplicationDtos.CreateRequest(
+                "Asha Rao", "9876543210", null, "Hyderabad", "Telangana", null,
+                null, null, "Designer", "Discuss after proposal", "Banjara Hills", true, null);
+
+        service.submit(request);
+
+        ArgumentCaptor<FranchiseApplication> saved = ArgumentCaptor.forClass(FranchiseApplication.class);
+        verify(applications).save(saved.capture());
+        verify(applications, never()).existsByEmailIgnoreCaseAndPreferredCityIgnoreCaseAndStatusIn(
+                any(), any(), any());
+        assertNull(saved.getValue().getEmail());
+        assertEquals("Designer", saved.getValue().getCurrentOccupation());
+        assertEquals("Discuss after proposal", saved.getValue().getAvailableInvestmentRange());
+        assertEquals("Banjara Hills", saved.getValue().getPreferredStoreLocation());
+        assertEquals(true, saved.getValue().getOwnsCommercialProperty());
+    }
+
+    @Test
     void adminUpdatesStatusAndAppendsInternalNoteWithoutChangingApplicationData() {
         FranchiseApplication application = new FranchiseApplication();
         application.setReferenceId("FA-20261112-AB12CD34");
@@ -100,6 +122,7 @@ class FranchiseApplicationServiceTest {
     private static FranchiseApplicationDtos.CreateRequest request(String mobile, String email, String city) {
         return new FranchiseApplicationDtos.CreateRequest(
                 "Asha Rao", mobile, email, city, "Telangana", "12 Main Road, Hyderabad",
-                new BigDecimal("750000"), "BOUTIQUE", "Interested in a boutique location");
+                new BigDecimal("750000"), "BOUTIQUE", null, null, null, null,
+                "Interested in a boutique location");
     }
 }

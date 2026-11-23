@@ -1,9 +1,25 @@
 import type { CatalogImage } from '../services/catalogService';
 
-export function getProductGalleryImages(images: CatalogImage[] | null | undefined, fallbackImage: string): CatalogImage[] {
+export function getProductGalleryImages(
+  images: CatalogImage[] | null | undefined,
+  fallbackImage: string,
+  variantId?: string,
+): CatalogImage[] {
   const availableImages = (images ?? []).filter((image) => Boolean(image.imageUrl));
+  const sortByOrder = (gallery: CatalogImage[]) =>
+    [...gallery].sort((first, second) => first.sortOrder - second.sortOrder);
+
+  if (variantId) {
+    const variantImages = availableImages.filter((image) => image.variantId === variantId);
+    if (variantImages.length) return sortByOrder(variantImages);
+
+    const sharedImages = availableImages.filter((image) => !image.variantId);
+    if (sharedImages.length) return sortByOrder(sharedImages);
+    if (availableImages.some((image) => image.variantId)) return [];
+  }
+
   if (availableImages.length) {
-    return [...availableImages].sort((first, second) => first.sortOrder - second.sortOrder);
+    return sortByOrder(availableImages);
   }
   if (!fallbackImage) return [];
   return [{
@@ -13,6 +29,7 @@ export function getProductGalleryImages(images: CatalogImage[] | null | undefine
     altText: null,
     sortOrder: 0,
     primaryImage: true,
+    variantId: null,
   }];
 }
 

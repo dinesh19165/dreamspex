@@ -75,6 +75,10 @@ html {
   scroll-behavior: smooth;
 }
 
+.franchise-scroll-target {
+  scroll-margin-top: 4.5rem;
+}
+
 body {
   margin: 0;
   min-width: 320px;

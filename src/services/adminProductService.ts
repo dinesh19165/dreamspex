@@ -34,6 +34,7 @@ export type AdminProductImage = {
   altText: string | null;
   sortOrder: number;
   primaryImage: boolean;
+  variantId?: string | null;
 };
 
 export type AdminProduct = {
@@ -108,6 +109,7 @@ export type AdminProductRequest = {
     altText: string | null;
     sortOrder: number;
     primaryImage: boolean;
+    variantId: string | null;
   }>;
 };
 

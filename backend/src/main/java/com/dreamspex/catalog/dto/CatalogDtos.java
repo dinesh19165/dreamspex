@@ -20,7 +20,12 @@ public final class CatalogDtos {
                                  @NotNull @DecimalMin("0.00") BigDecimal additionalPrice,
                                  @Min(0) int quantity, @Min(0) int reservedQuantity, String status) {}
     public record ImageRequest(@NotBlank @Size(max=1000) String imageUrl, @Size(max=500) String storageKey,
-                               @Size(max=255) String altText, @Min(0) int sortOrder, boolean primaryImage) {}
+                               @Size(max=255) String altText, @Min(0) int sortOrder, boolean primaryImage,
+                               String variantId) {
+        public ImageRequest(String imageUrl, String storageKey, String altText, int sortOrder, boolean primaryImage) {
+            this(imageUrl, storageKey, altText, sortOrder, primaryImage, null);
+        }
+    }
     public record ProductRequest(@NotBlank @Size(max=80) String sku, @NotBlank @Size(max=180) String name,
                                  @NotBlank @Size(max=220) String slug, @NotBlank @Size(max=120) String brand,
                                  @NotBlank String description, @Size(max=80) String material, @Size(max=40) String gender,
@@ -32,7 +37,7 @@ public final class CatalogDtos {
                                   BigDecimal additionalPrice, int quantity, int reservedQuantity,
                                   int availableQuantity, String status) {}
     public record ImageResponse(String id, String imageUrl, String storageKey, String altText, int sortOrder,
-                                boolean primaryImage) {}
+                                boolean primaryImage, String variantId) {}
     public record ProductResponse(String id, String sku, String name, String slug, String brand, String description,
                                   String material, String gender, String frameShape, String frameType,
                                   BigDecimal basePrice, BigDecimal compareAtPrice, String badge, String tryOnImageUrl,

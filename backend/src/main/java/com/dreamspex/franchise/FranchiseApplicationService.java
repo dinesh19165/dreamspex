@@ -38,9 +38,13 @@ public class FranchiseApplicationService {
                     "Enter a valid mobile number.");
         }
 
-        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        String email = blankToNull(request.email());
+        if (email != null) {
+            email = email.toLowerCase(Locale.ROOT);
+        }
         String city = request.preferredCity().trim();
-        if (applications.existsByEmailIgnoreCaseAndPreferredCityIgnoreCaseAndStatusIn(email, city, ACTIVE_STATUSES)
+        if ((email != null && applications.existsByEmailIgnoreCaseAndPreferredCityIgnoreCaseAndStatusIn(
+                email, city, ACTIVE_STATUSES))
                 || applications.existsByMobileNumberAndPreferredCityIgnoreCaseAndStatusIn(
                         mobileNumber, city, ACTIVE_STATUSES)) {
             throw new ApiException(HttpStatus.CONFLICT, "DUPLICATE_FRANCHISE_APPLICATION",
@@ -54,9 +58,13 @@ public class FranchiseApplicationService {
         application.setEmail(email);
         application.setPreferredCity(city);
         application.setState(request.state().trim());
-        application.setFullAddress(request.fullAddress().trim());
+        application.setFullAddress(blankToNull(request.fullAddress()));
         application.setInvestmentBudget(request.investmentBudget());
-        application.setPreferredStoreFormat(request.preferredStoreFormat().trim());
+        application.setPreferredStoreFormat(blankToNull(request.preferredStoreFormat()));
+        application.setCurrentOccupation(blankToNull(request.currentOccupation()));
+        application.setAvailableInvestmentRange(blankToNull(request.availableInvestmentRange()));
+        application.setPreferredStoreLocation(blankToNull(request.preferredStoreLocation()));
+        application.setOwnsCommercialProperty(request.ownsCommercialProperty());
         application.setAdditionalMessage(blankToNull(request.additionalMessage()));
 
         FranchiseApplication saved = applications.save(application);
@@ -110,7 +118,10 @@ public class FranchiseApplicationService {
         return new AdminResponse(application.getId(), application.getReferenceId(), application.getFullName(),
                 application.getMobileNumber(), application.getEmail(), application.getPreferredCity(),
                 application.getState(), application.getFullAddress(), application.getInvestmentBudget(),
-                application.getPreferredStoreFormat(), application.getAdditionalMessage(), application.getStatus(),
-                application.getInternalNotes(), application.getCreatedAt(), application.getUpdatedAt());
+                application.getPreferredStoreFormat(), application.getCurrentOccupation(),
+                application.getAvailableInvestmentRange(), application.getPreferredStoreLocation(),
+                application.getOwnsCommercialProperty(), application.getAdditionalMessage(),
+                application.getStatus(), application.getInternalNotes(), application.getCreatedAt(),
+                application.getUpdatedAt());
     }
 }

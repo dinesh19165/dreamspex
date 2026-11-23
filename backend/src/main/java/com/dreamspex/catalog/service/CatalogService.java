@@ -191,6 +191,7 @@ public class CatalogService {
             }
             value.getCategories().add(category);
         });
+        Set<String> createdVariantIds = new HashSet<>();
         if (request.variants() != null) {
             Set<String> requestedSkus = new HashSet<>();
             Set<String> requestedVariantIds = new HashSet<>();
@@ -206,9 +207,12 @@ public class CatalogService {
                 }
 
                 ProductVariant variant = item.id() == null ? null : value.getVariants().stream()
-                        .filter(existing -> existing.getId().equals(item.id())).findFirst()
-                        .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "PRODUCT_VARIANT_CONFLICT",
-                                "The specified variant does not belong to this product."));
+                        .filter(existing -> existing.getId().equals(item.id())).findFirst().orElse(null);
+                if (item.id() != null && variant == null
+                        && (variants.existsById(item.id()) || !isUuid(item.id()))) {
+                    throw new ApiException(HttpStatus.CONFLICT, "PRODUCT_VARIANT_CONFLICT",
+                            "The specified variant does not belong to this product.");
+                }
                 Optional<ProductVariant> skuOwner = variants.findBySku(sku);
                 if (skuOwner.isPresent() && (variant == null || !skuOwner.get().getId().equals(variant.getId()))) {
                     ProductVariant owner = skuOwner.get();
@@ -222,8 +226,10 @@ public class CatalogService {
                 }
                 if (variant == null) {
                     variant = new ProductVariant();
+                    if (item.id() != null) variant.setId(item.id());
                     variant.setProduct(value);
                     value.getVariants().add(variant);
+                    createdVariantIds.add(variant.getId());
                 }
                 variant.setSku(sku);
                 variant.setColor(item.color());
@@ -238,20 +244,32 @@ public class CatalogService {
             value.getVariants().stream().filter(variant -> !retainedVariants.contains(variant))
                     .forEach(variant -> variant.setStatus("INACTIVE"));
         }
+        Product imageProduct = value;
+        if (request.images() != null && request.images().stream()
+                .map(item -> blank(item.variantId())).anyMatch(createdVariantIds::contains)) {
+            imageProduct = products.save(value);
+        }
         if (request.images() != null) {
-            value.getImages().clear();
+            imageProduct.getImages().clear();
             for (ImageRequest item : request.images()) {
+                String variantId = blank(item.variantId());
+                ProductVariant imageVariant = variantId == null ? null : imageProduct.getVariants().stream()
+                        .filter(existing -> existing.getId().equals(variantId)).findFirst()
+                        .orElseThrow(() -> new ApiException(HttpStatus.UNPROCESSABLE_ENTITY,
+                                "PRODUCT_IMAGE_VARIANT_NOT_FOUND",
+                                "The specified image variant does not belong to this product."));
                 ProductImage image = new ProductImage();
-                image.setProduct(value);
+                image.setProduct(imageProduct);
+                image.setVariant(imageVariant);
                 image.setImageUrl(item.imageUrl());
                 image.setStorageKey(item.storageKey());
                 image.setAltText(item.altText());
                 image.setSortOrder(item.sortOrder());
                 image.setPrimaryImage(item.primaryImage());
-                value.getImages().add(image);
+                imageProduct.getImages().add(image);
             }
         }
-        Product saved = products.save(value);
+        Product saved = products.save(imageProduct);
         if (franchises != null) franchises.syncPublishedProductInventory(saved);
         return product(saved, reviews.ratingSummary(List.of(saved.getId())));
     }
@@ -335,7 +353,12 @@ public class CatalogService {
                             x.getStatus());
                 }).toList(),
                 v.getImages().stream().map(x -> new ImageResponse(x.getId(), x.getImageUrl(),
-                        x.getStorageKey(), x.getAltText(), x.getSortOrder(), x.isPrimaryImage())).toList(),
+                        x.getStorageKey(), x.getAltText(), x.getSortOrder(), x.isPrimaryImage(),
+                        x.getVariant() == null ? null : x.getVariant().getId())).toList(),
                 ratingSummary == null ? reviews.ratingSummary(List.of(v.getId())) : ratingSummary);
+    }
+
+    private boolean isUuid(String value) {
+        return value != null && value.matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
     }
 }

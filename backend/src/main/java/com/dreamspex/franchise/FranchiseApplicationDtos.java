@@ -3,8 +3,8 @@ package com.dreamspex.franchise;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -16,12 +16,16 @@ public final class FranchiseApplicationDtos {
     public record CreateRequest(
             @NotBlank @Size(max = 160) String fullName,
             @NotBlank @Size(max = 32) @Pattern(regexp = "^[+0-9\\s().-]+$") String mobileNumber,
-            @NotBlank @Email @Size(max = 255) String email,
+            @Email @Size(max = 255) String email,
             @NotBlank @Size(max = 100) String preferredCity,
             @NotBlank @Size(max = 100) String state,
-            @NotBlank @Size(max = 2000) String fullAddress,
-            @NotNull @DecimalMin(value = "1.00") @Digits(integer = 12, fraction = 2) BigDecimal investmentBudget,
-            @NotBlank @Size(max = 100) String preferredStoreFormat,
+            @Size(max = 2000) String fullAddress,
+            @DecimalMin(value = "1.00") @Digits(integer = 12, fraction = 2) BigDecimal investmentBudget,
+            @Size(max = 100) String preferredStoreFormat,
+            @Size(max = 160) String currentOccupation,
+            @Size(max = 120) String availableInvestmentRange,
+            @Size(max = 255) String preferredStoreLocation,
+            Boolean ownsCommercialProperty,
             @Size(max = 2000) String additionalMessage) {}
 
     public record CreatedResponse(String referenceId, FranchiseApplicationStatus status, Instant createdAt) {}
@@ -37,6 +41,10 @@ public final class FranchiseApplicationDtos {
             String fullAddress,
             BigDecimal investmentBudget,
             String preferredStoreFormat,
+            String currentOccupation,
+            String availableInvestmentRange,
+            String preferredStoreLocation,
+            Boolean ownsCommercialProperty,
             String additionalMessage,
             FranchiseApplicationStatus status,
             String internalNotes,

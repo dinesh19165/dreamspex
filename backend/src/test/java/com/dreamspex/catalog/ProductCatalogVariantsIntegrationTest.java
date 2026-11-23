@@ -6,10 +6,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.dreamspex.catalog.entity.Category;
 import com.dreamspex.catalog.entity.Product;
+import com.dreamspex.catalog.entity.ProductImage;
 import com.dreamspex.catalog.entity.ProductVariant;
 import com.dreamspex.catalog.repository.CategoryRepository;
 import com.dreamspex.catalog.repository.ProductRepository;
+import com.dreamspex.catalog.service.CatalogService;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -17,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -26,6 +32,7 @@ class ProductCatalogVariantsIntegrationTest {
     @Autowired MockMvc mockMvc;
     @Autowired ProductRepository products;
     @Autowired CategoryRepository categories;
+    @Autowired CatalogService catalogService;
 
     @Test
     void publishedProductWithFourActiveVariantsIsListedAndDetailedForCustomers() throws Exception {
@@ -59,6 +66,15 @@ class ProductCatalogVariantsIntegrationTest {
             product.getVariants().add(variant);
         }
         product = products.save(product);
+        ProductImage image = new ProductImage();
+        image.setProduct(product);
+        image.setVariant(product.getVariants().get(0));
+        image.setImageUrl("/images/color-1.webp");
+        image.setStorageKey("color-1.webp");
+        image.setSortOrder(0);
+        image.setPrimaryImage(true);
+        product.getImages().add(image);
+        product = products.save(product);
 
         mockMvc.perform(get("/api/v1/products").param("category", category.getSlug()))
                 .andExpect(status().isOk())
@@ -68,6 +84,36 @@ class ProductCatalogVariantsIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.variants.length()").value(4))
                 .andExpect(jsonPath("$.variants[0].reservedQuantity").value(1))
-                .andExpect(jsonPath("$.variants[0].availableQuantity").value(4));
+                .andExpect(jsonPath("$.variants[0].availableQuantity").value(4))
+                .andExpect(jsonPath("$.images[0].variantId").value(product.getVariants().get(0).getId()));
+    }
+
+    @Test
+    void createsVariantMappedImageInOneCatalogSave() throws Exception {
+        Category category = new Category();
+        category.setName("Mapped image category");
+        category.setSlug("mapped-image-category");
+        category.setCategoryType("CATALOG");
+        category.setStatus("ACTIVE");
+        category = categories.save(category);
+
+        String variantId = UUID.randomUUID().toString();
+        var request = new com.dreamspex.catalog.dto.CatalogDtos.ProductRequest(
+                "TEST-MAPPED-IMAGE", "Mapped frame", "mapped-frame", "Dream Spex", "Mapped test frame",
+                "Metal", "Unisex", "Round", "Full Rim", BigDecimal.valueOf(100), null, null, null,
+                "PUBLISHED", Set.of(category.getId()),
+                List.of(new com.dreamspex.catalog.dto.CatalogDtos.VariantRequest(variantId,
+                        "TEST-MAPPED-IMAGE-YELLOW", "Yellow", "50", "Clear", BigDecimal.ZERO,
+                        5, 0, "ACTIVE")),
+                List.of(new com.dreamspex.catalog.dto.CatalogDtos.ImageRequest("/images/yellow.webp",
+                        "yellow.webp", "Mapped frame", 0, true, variantId)));
+
+        var created = catalogService.saveProduct(null, request);
+
+        assertEquals(variantId, created.images().get(0).variantId());
+        mockMvc.perform(get("/api/v1/products/" + created.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.variants[0].id").value(variantId))
+                .andExpect(jsonPath("$.images[0].variantId").value(variantId));
     }
 }

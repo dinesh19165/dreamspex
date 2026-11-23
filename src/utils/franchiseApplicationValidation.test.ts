@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { validateFranchiseApplication, type FranchiseApplicationDraft } from './franchiseApplicationValidation';
+import {
+  validateFranchiseApplication,
+  validateFranchiseEnquiry,
+  type FranchiseApplicationDraft,
+  type FranchiseEnquiryDraft,
+} from './franchiseApplicationValidation';
 
 const validDraft: FranchiseApplicationDraft = {
   fullName: 'Asha Rao',
@@ -10,6 +15,19 @@ const validDraft: FranchiseApplicationDraft = {
   fullAddress: '12 Main Road, Hyderabad',
   investmentBudget: '750000',
   preferredStoreFormat: 'BOUTIQUE',
+  additionalMessage: '',
+};
+
+const validEnquiry: FranchiseEnquiryDraft = {
+  fullName: 'Asha Rao',
+  mobileNumber: '+91 98765 43210',
+  email: '',
+  preferredCity: 'Hyderabad',
+  state: 'Telangana',
+  currentOccupation: '',
+  availableInvestmentRange: '',
+  preferredStoreLocation: '',
+  ownsCommercialProperty: '',
   additionalMessage: '',
 };
 
@@ -46,5 +64,28 @@ describe('franchise application validation', () => {
     expect(errors.email).toBeDefined();
     expect(errors.mobileNumber).toBeDefined();
     expect(errors.investmentBudget).toBeDefined();
+  });
+});
+
+describe('franchise enquiry validation', () => {
+  it('accepts optional email and optional enquiry details', () => {
+    expect(validateFranchiseEnquiry(validEnquiry)).toEqual({});
+  });
+
+  it('requires contact and preferred location fields and validates supplied email and mobile', () => {
+    const errors = validateFranchiseEnquiry({
+      ...validEnquiry,
+      fullName: '',
+      mobileNumber: '123',
+      email: 'not-an-email',
+      preferredCity: '',
+      state: '',
+    });
+
+    expect(errors.fullName).toBeDefined();
+    expect(errors.mobileNumber).toBeDefined();
+    expect(errors.email).toBeDefined();
+    expect(errors.preferredCity).toBeDefined();
+    expect(errors.state).toBeDefined();
   });
 });

@@ -22,6 +22,11 @@ function formatApplicationDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatApplicationBudget(application: AdminFranchiseApplication) {
+  return application.availableInvestmentRange?.trim()
+    || (application.investmentBudget === null ? 'Not provided' : formatINR(application.investmentBudget));
+}
+
 function statusStyle(status: FranchiseApplicationStatus) {
   if (status === 'APPROVED') return 'bg-emerald-50 text-emerald-800';
   if (status === 'REJECTED') return 'bg-rose-50 text-rose-800';
@@ -92,12 +97,15 @@ function ApplicationDetailsDialog({
 
         <div className="mt-6 grid gap-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] p-4 sm:grid-cols-2">
           <p><span className="block text-xs text-[var(--text-secondary)]">Mobile number</span><a className="mt-1 inline-flex items-center gap-2 font-medium text-[var(--brand-green-dark)] hover:underline" href={`tel:${application.mobileNumber}`}><Phone className="h-4 w-4" />{application.mobileNumber}</a></p>
-          <p><span className="block text-xs text-[var(--text-secondary)]">Email address</span><a className="mt-1 inline-flex items-center gap-2 break-all font-medium text-[var(--brand-green-dark)] hover:underline" href={`mailto:${application.email}`}><Mail className="h-4 w-4 shrink-0" />{application.email}</a></p>
+          <p><span className="block text-xs text-[var(--text-secondary)]">Email address</span>{application.email ? <a className="mt-1 inline-flex items-center gap-2 break-all font-medium text-[var(--brand-green-dark)] hover:underline" href={`mailto:${application.email}`}><Mail className="h-4 w-4 shrink-0" />{application.email}</a> : <span className="mt-1 block font-medium">Not provided</span>}</p>
           <p><span className="block text-xs text-[var(--text-secondary)]">Preferred location</span><span className="mt-1 block font-medium">{application.preferredCity}, {application.state}</span></p>
-          <p><span className="block text-xs text-[var(--text-secondary)]">Investment budget</span><span className="mt-1 block font-medium">{formatINR(application.investmentBudget)}</span></p>
-          <p><span className="block text-xs text-[var(--text-secondary)]">Preferred store format</span><span className="mt-1 block font-medium">{application.preferredStoreFormat.replaceAll('_', ' ')}</span></p>
+          <p><span className="block text-xs text-[var(--text-secondary)]">Preferred store location</span><span className="mt-1 block font-medium">{application.preferredStoreLocation || 'Not provided'}</span></p>
+          <p><span className="block text-xs text-[var(--text-secondary)]">Available investment range</span><span className="mt-1 block font-medium">{formatApplicationBudget(application)}</span></p>
+          <p><span className="block text-xs text-[var(--text-secondary)]">Current occupation</span><span className="mt-1 block font-medium">{application.currentOccupation || 'Not provided'}</span></p>
+          <p><span className="block text-xs text-[var(--text-secondary)]">Commercial property</span><span className="mt-1 block font-medium">{application.ownsCommercialProperty === null ? 'Not specified' : application.ownsCommercialProperty ? 'Yes' : 'No'}</span></p>
+          <p><span className="block text-xs text-[var(--text-secondary)]">Preferred store format</span><span className="mt-1 block font-medium">{application.preferredStoreFormat?.replaceAll('_', ' ') || 'Not provided'}</span></p>
           <p><span className="block text-xs text-[var(--text-secondary)]">Application date</span><span className="mt-1 block font-medium">{formatApplicationDate(application.createdAt)}</span></p>
-          <p className="sm:col-span-2"><span className="block text-xs text-[var(--text-secondary)]">Full address</span><span className="mt-1 block whitespace-pre-wrap font-medium">{application.fullAddress}</span></p>
+          {application.fullAddress ? <p className="sm:col-span-2"><span className="block text-xs text-[var(--text-secondary)]">Full address</span><span className="mt-1 block whitespace-pre-wrap font-medium">{application.fullAddress}</span></p> : null}
           <p className="sm:col-span-2"><span className="block text-xs text-[var(--text-secondary)]">Additional message</span><span className="mt-1 block whitespace-pre-wrap">{application.additionalMessage?.trim() || 'No additional message provided.'}</span></p>
         </div>
 
@@ -174,9 +182,9 @@ export default function AdminFranchiseApplicationsPage() {
       <p className="mt-3 text-sm text-[var(--text-secondary)]">{application.preferredCity}, {application.state}</p>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
         <a href={`tel:${application.mobileNumber}`} className="inline-flex items-center gap-1.5 text-[var(--brand-green-dark)] hover:underline"><Phone className="h-3.5 w-3.5" />{application.mobileNumber}</a>
-        <a href={`mailto:${application.email}`} className="inline-flex items-center gap-1.5 break-all text-[var(--brand-green-dark)] hover:underline"><Mail className="h-3.5 w-3.5" />{application.email}</a>
+        {application.email ? <a href={`mailto:${application.email}`} className="inline-flex items-center gap-1.5 break-all text-[var(--brand-green-dark)] hover:underline"><Mail className="h-3.5 w-3.5" />{application.email}</a> : <span className="text-[var(--text-secondary)]">Email not provided</span>}
       </div>
-      <p className="mt-3 text-sm"><span className="text-[var(--text-secondary)]">Budget:</span> {formatINR(application.investmentBudget)}</p>
+      <p className="mt-3 text-sm"><span className="text-[var(--text-secondary)]">Available investment range:</span> {formatApplicationBudget(application)}</p>
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-3">
         <span className="text-xs text-[var(--text-secondary)]">{formatApplicationDate(application.createdAt)}</span>
         <button type="button" onClick={() => setSelected(application)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold hover:bg-[var(--bg-secondary)]"><Eye className="h-3.5 w-3.5" />View details</button>
@@ -200,16 +208,16 @@ export default function AdminFranchiseApplicationsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1050px] border-collapse text-left text-sm">
                   <thead><tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)] text-xs uppercase tracking-wide text-[var(--text-secondary)]">
-                    <th className="px-4 py-3">Application ID</th><th className="px-4 py-3">Applicant</th><th className="px-4 py-3">Mobile</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">City / State</th><th className="px-4 py-3">Budget</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Actions</th>
+                    <th className="px-4 py-3">Application ID</th><th className="px-4 py-3">Applicant</th><th className="px-4 py-3">Mobile</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">City / State</th><th className="px-4 py-3">Investment range</th><th className="px-4 py-3">Date</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Actions</th>
                   </tr></thead>
                   <tbody>{applications.map((application) => (
                     <tr key={application.id} className="border-b border-[var(--border-subtle)] last:border-0">
                       <td className="px-4 py-3 font-semibold">{application.referenceId}</td>
                       <td className="px-4 py-3">{application.fullName}</td>
                       <td className="px-4 py-3"><a href={`tel:${application.mobileNumber}`} className="hover:underline">{application.mobileNumber}</a></td>
-                      <td className="px-4 py-3"><a href={`mailto:${application.email}`} className="hover:underline">{application.email}</a></td>
+                      <td className="px-4 py-3">{application.email ? <a href={`mailto:${application.email}`} className="hover:underline">{application.email}</a> : '—'}</td>
                       <td className="px-4 py-3">{application.preferredCity}, {application.state}</td>
-                      <td className="px-4 py-3">{formatINR(application.investmentBudget)}</td>
+                      <td className="px-4 py-3">{formatApplicationBudget(application)}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{formatApplicationDate(application.createdAt)}</td>
                       <td className="px-4 py-3"><ApplicationStatus status={application.status} /></td>
                       <td className="px-4 py-3"><button type="button" onClick={() => setSelected(application)} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] px-3 py-2 text-xs font-semibold hover:bg-[var(--bg-secondary)]"><Eye className="h-3.5 w-3.5" />View details</button></td>

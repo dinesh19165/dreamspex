@@ -25,7 +25,7 @@ public class FranchiseApplication {
     @Column(name = "mobile_number", nullable = false, length = 32)
     private String mobileNumber;
 
-    @Column(nullable = false, length = 255)
+    @Column(length = 255)
     private String email;
 
     @Column(name = "preferred_city", nullable = false, length = 100)
@@ -34,14 +34,26 @@ public class FranchiseApplication {
     @Column(nullable = false, length = 100)
     private String state;
 
-    @Column(name = "full_address", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "full_address", columnDefinition = "TEXT")
     private String fullAddress;
 
-    @Column(name = "investment_budget", nullable = false, precision = 14, scale = 2)
+    @Column(name = "investment_budget", precision = 14, scale = 2)
     private BigDecimal investmentBudget;
 
-    @Column(name = "preferred_store_format", nullable = false, length = 100)
+    @Column(name = "preferred_store_format", length = 100)
     private String preferredStoreFormat;
+
+    @Column(name = "current_occupation", length = 160)
+    private String currentOccupation;
+
+    @Column(name = "available_investment_range", length = 120)
+    private String availableInvestmentRange;
+
+    @Column(name = "preferred_store_location", length = 255)
+    private String preferredStoreLocation;
+
+    @Column(name = "owns_commercial_property")
+    private Boolean ownsCommercialProperty;
 
     @Column(name = "additional_message", columnDefinition = "TEXT")
     private String additionalMessage;
@@ -78,6 +90,14 @@ public class FranchiseApplication {
     public void setInvestmentBudget(BigDecimal value) { investmentBudget = value; }
     public String getPreferredStoreFormat() { return preferredStoreFormat; }
     public void setPreferredStoreFormat(String value) { preferredStoreFormat = value; }
+    public String getCurrentOccupation() { return currentOccupation; }
+    public void setCurrentOccupation(String value) { currentOccupation = value; }
+    public String getAvailableInvestmentRange() { return availableInvestmentRange; }
+    public void setAvailableInvestmentRange(String value) { availableInvestmentRange = value; }
+    public String getPreferredStoreLocation() { return preferredStoreLocation; }
+    public void setPreferredStoreLocation(String value) { preferredStoreLocation = value; }
+    public Boolean getOwnsCommercialProperty() { return ownsCommercialProperty; }
+    public void setOwnsCommercialProperty(Boolean value) { ownsCommercialProperty = value; }
     public String getAdditionalMessage() { return additionalMessage; }
     public void setAdditionalMessage(String value) { additionalMessage = value; }
     public FranchiseApplicationStatus getStatus() { return status; }

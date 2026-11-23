@@ -344,6 +344,57 @@ class CatalogServiceTest {
     }
 
     @Test
+    void savesAndReturnsImageVariantAssociation() {
+        CatalogService service = service();
+        Product existing = product("DRAFT");
+        ProductVariant red = variant(existing, "DS-EYE-005-RED");
+        red.setColor("Red");
+        existing.getVariants().add(red);
+        when(products.findWithLockById(existing.getId())).thenReturn(Optional.of(existing));
+        when(variants.findBySku(red.getSku())).thenReturn(Optional.of(red));
+        when(products.save(existing)).thenReturn(existing);
+        ImageRequest image = new ImageRequest("/images/red.webp", "red-key", "Frame", 0, true, red.getId());
+
+        ProductResponse response = service.saveProduct(existing.getId(), request(
+                List.of(new VariantRequest(red.getId(), red.getSku(), red.getColor(), null, null,
+                        BigDecimal.ZERO, 1, 0, "ACTIVE")), List.of(image), null));
+
+        assertSame(red, existing.getImages().get(0).getVariant());
+        assertEquals(red.getId(), response.images().get(0).variantId());
+    }
+
+    @Test
+    void createsVariantAndMapsItsImageUsingItsPersistedId() {
+        CatalogService service = service();
+        String variantId = java.util.UUID.randomUUID().toString();
+        when(variants.findBySku("DS-EYE-006-YELLOW")).thenReturn(Optional.empty());
+        when(products.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        VariantRequest variant = new VariantRequest(variantId, "DS-EYE-006-YELLOW", "Yellow", null, null,
+                BigDecimal.ZERO, 3, 0, "ACTIVE");
+        ImageRequest image = new ImageRequest("/images/yellow.webp", "yellow-key", "Frame", 0, true, variantId);
+
+        ProductResponse response = service.saveProduct(null, request(List.of(variant), List.of(image), null));
+
+        assertEquals(variantId, response.variants().get(0).id());
+        assertEquals(variantId, response.images().get(0).variantId());
+    }
+
+    @Test
+    void rejectsImageVariantIdsThatDoNotBelongToTheProduct() {
+        CatalogService service = service();
+        Product existing = product("DRAFT");
+        when(products.findWithLockById(existing.getId())).thenReturn(Optional.of(existing));
+        ImageRequest image = new ImageRequest("/images/red.webp", "red-key", "Frame", 0, true,
+                java.util.UUID.randomUUID().toString());
+
+        ApiException error = assertThrows(ApiException.class, () -> service.saveProduct(existing.getId(),
+                request(List.of(), List.of(image), null)));
+
+        assertEquals("PRODUCT_IMAGE_VARIANT_NOT_FOUND", error.code());
+        verify(products, never()).save(any(Product.class));
+    }
+
+    @Test
     void repeatedProductSaveUpdatesVariantInsteadOfAddingDuplicate() {
         CatalogService service = service();
         Product existing = product("DRAFT");

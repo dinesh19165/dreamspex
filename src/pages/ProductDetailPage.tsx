@@ -61,17 +61,22 @@ export default function ProductDetailPage() {
     catalogService.get(id, selectedLocationId || undefined).then((value) => {
       setCatalogProduct(value);
       setQuantity(1);
-      setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(value.images, value.imageUrl ?? '')));
       const pendingAction = readPendingProductAction();
       const pendingVariant = pendingAction?.productId === value.id
         ? value.variants.find((variant) => variant.id === pendingAction.variantId
           && variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)
         : undefined;
-      setSelectedVariantId(pendingVariant?.id
+      const initialVariantId = pendingVariant?.id
         ?? value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE' && variant.availableQuantity > 0)?.id
         ?? value.variants.find((variant) => variant.status.toUpperCase() === 'ACTIVE')?.id
         ?? value.variants[0]?.id
-        ?? '');
+        ?? '';
+      setSelectedVariantId(initialVariantId);
+      setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(
+        value.images,
+        toProduct(value).image,
+        initialVariantId || undefined,
+      )));
     }).catch((reason) => setCatalogError(reason instanceof Error ? reason.message : 'Unable to load this product.'));
   }, [id, selectedLocationId]);
 
@@ -142,7 +147,8 @@ export default function ProductDetailPage() {
 
   const ratingSummary = reviewFeed?.summary ?? catalogProduct.ratingSummary;
   const supportsPrescription = product.category !== 'Contact Lenses';
-  const galleryImages = getProductGalleryImages(catalogProduct.images, product.image);
+  const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
+  const galleryImages = getProductGalleryImages(catalogProduct.images, product.image, selectedVariant?.id);
   const selectedImage = galleryImages[selectedImageIndex] ?? galleryImages[0];
   const changeImage = (index: number) => {
     if (!galleryImages.length) return;
@@ -158,7 +164,6 @@ export default function ProductDetailPage() {
     changeImage(getSwipeGalleryIndex(selectedImageIndex, galleryImages.length, deltaX));
   };
   const isWishlisted = isInWishlist(product.id);
-  const selectedVariant = catalogProduct.variants.find((variant) => variant.id === selectedVariantId);
   const colorOptions = [...new Set(catalogProduct.variants.map((variant) => variant.color).filter((color): color is string => Boolean(color)))];
   const sizeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.size).filter((size): size is string => Boolean(size)))];
   const lensTypeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.lensType).filter((lensType): lensType is string => Boolean(lensType)))];
@@ -173,6 +178,11 @@ export default function ProductDetailPage() {
       optionKey === key || variant[optionKey] === currentVariant?.[optionKey]))
       ?? candidates[0];
     if (nextVariant) {
+      setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(
+        catalogProduct.images,
+        product.image,
+        nextVariant.id,
+      )));
       setSelectedVariantId(nextVariant.id);
       setQuantity(1);
     }

@@ -463,7 +463,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
                         </Link>)}
                       </div> : null}
                     {selectedMegaGroup?.kind === 'offers' || selectedMegaGroup?.kind === 'offer-categories' ? selectedOffers.length
-                      ? selectedOffers.slice(0, 4).map((offer) => <Link key={offer.id} to={offer.linkUrl || '/offers'} onClick={() => setMegaMenuOpen(null)} className="customer-mega-menu__card">
+                      ? selectedOffers.slice(0, 4).map((offer) => <Link key={offer.id} to={offer.linkUrl || '/offers'} onClick={() => setMegaMenuOpen(null)} className="customer-mega-menu__card customer-mega-menu__card--offer">
                         {offer.imageUrl ? <img src={offer.imageUrl} alt={offer.title} loading="lazy" /> : null}
                         <span>{offer.title}</span>
                       </Link>)

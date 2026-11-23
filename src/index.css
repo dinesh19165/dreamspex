@@ -754,6 +754,15 @@ img {
   transform: scale(1.06);
 }
 
+.customer-mega-menu__card--offer img {
+  object-fit: contain;
+}
+
+.customer-mega-menu__card--offer:hover img,
+.customer-mega-menu__card--offer:focus-visible img {
+  transform: none;
+}
+
 .customer-mega-menu__card > span {
   position: absolute;
   inset: auto 0.8rem 0.7rem;

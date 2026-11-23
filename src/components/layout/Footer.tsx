@@ -1,22 +1,42 @@
+import { useEffect, useState } from 'react';
 import { ArrowRight, MessageCircle, Send, Globe2, MapPin, CreditCard, Truck, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { fetchHomepage } from '../../services/homepageService';
 
 export default function Footer() {
+  const [homepageSubtitle, setHomepageSubtitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    let activeRequest: AbortController | null = null;
+    const loadSubtitle = () => {
+      activeRequest?.abort();
+      const request = new AbortController();
+      activeRequest = request;
+      void fetchHomepage(request.signal).then((homepage) => {
+        const subtitle = homepage.banners.find((banner) => banner.subtitle?.trim())?.subtitle?.trim() ?? null;
+        setHomepageSubtitle(subtitle);
+      }).catch((error: unknown) => {
+        if (!request.signal.aborted) console.error('[Footer] Homepage subtitle could not be loaded.', error);
+      });
+    };
+
+    loadSubtitle();
+    window.addEventListener('focus', loadSubtitle);
+    return () => {
+      window.removeEventListener('focus', loadSubtitle);
+      activeRequest?.abort();
+    };
+  }, []);
+
   return (
     <footer className="border-t border-[#16416f] bg-gradient-to-br from-[#061B3A] to-[#0B3470] text-[#B9CCE5]">
       <div className="mx-auto grid max-w-7xl gap-x-8 gap-y-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.35fr_0.85fr_0.85fr_1fr] lg:px-8 lg:py-16">
-        <div className="pr-0 lg:border-r lg:border-[#2A5688]/70 lg:pr-8">
-          <Link to="/" onClick={() => window.scrollTo(0, 0)} className="inline-flex" aria-label="Dream Spex Solutions Pvt Ltd home">
-            <img
-              src="/assets/images/dream-spex-logo00.png"
-              alt="Dream Spex Solutions Pvt Ltd"
-              className="h-[74px] w-[185px] max-w-full object-contain"
-            />
-          </Link>
-          <p className="mt-5 max-w-sm text-sm leading-7 text-[#B9CCE5]">Crafted for modern connoisseurs who value clarity, craftsmanship, and cinematic luxury.</p>
-          <Link to="/stores" className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#66A4E5] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:border-[#93C5FD] hover:bg-[#174D82] hover:shadow-[0_10px_25px_rgba(8,47,94,0.35)]">
+        <div className="flex min-w-0 flex-col items-center justify-center pr-0 text-center lg:border-r lg:border-[#2A5688]/70 lg:pr-8">
+          {homepageSubtitle ? <p className="max-w-[13ch] font-serif text-4xl italic leading-[1.05] tracking-tight text-[#F2F7FF] sm:text-6xl">{homepageSubtitle}</p> : null}
+          {/* <p className={`${homepageSubtitle ? 'mt-4' : ''} max-w-sm text-sm leading-7 text-[#B9CCE5]`}>Crafted for modern connoisseurs who value clarity, craftsmanship, and cinematic luxury.</p> */}
+          {/* <Link to="/stores" className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#66A4E5] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:border-[#93C5FD] hover:bg-[#174D82] hover:shadow-[0_10px_25px_rgba(8,47,94,0.35)]">
             <MapPin className="h-4 w-4 text-[#93C5FD]" /> Find a Dream Spex Store
-          </Link>
+          </Link> */}
         </div>
         <div className="lg:border-r lg:border-[#2A5688]/70 lg:px-8">
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-white">Customer Care</h3>
@@ -60,6 +80,9 @@ export default function Footer() {
           <div className="mt-6 text-sm font-medium">
             <Link to="/offers" className="group inline-flex items-center gap-2 font-semibold text-white transition duration-200 hover:text-[#93C5FD]">Explore Current Offers <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
           </div>
+          <Link to="/stores" className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#66A4E5] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:border-[#93C5FD] hover:bg-[#174D82] hover:shadow-[0_10px_25px_rgba(8,47,94,0.35)]">
+          <MapPin className="h-4 w-4 text-[#93C5FD]" /> Find a Dream Spex Store
+          </Link>
         </div>
       </div>
       <div className="border-t border-[#315D91] bg-[#09284F]/80 px-4 py-5 text-center text-sm text-[#B9CCE5] lg:px-8">

@@ -14,7 +14,11 @@ import { resolveCmsMediaUrl } from '../config/api';
 import { fetchOffers, type Offer } from '../services/offerService';
 import { fetchMembershipPlans, type MembershipPlan } from '../services/membershipService';
 import { formatINR } from '../utils/currency';
-import { getColorSwatch } from '../utils/colorSwatches';
+import { uniqueColorComponents } from '../utils/colorSwatches';
+import ColorSwatch from '../components/ui/ColorSwatch';
+import { WEARER_IMAGE_FALLBACK } from '../config/wearerImages';
+import { FACE_SHAPE_IMAGES } from '../config/faceShapeImages';
+import { deduplicateWearerCards, formatWearerTitle, uniqueWearerValues, wearerLifestyleImage } from '../utils/wearerCategories';
 import {
   isDisplayableMembershipCopy,
   membershipDiscountLabel,
@@ -51,7 +55,7 @@ function formatFilterLabel(value: string) {
 }
 
 function uniqueColorFilterOptions(colors: string[]) {
-  return [...new Set(colors)].map((value) => ({ value, label: formatFilterLabel(value) }));
+  return uniqueColorComponents(colors).map((value) => ({ value, label: formatFilterLabel(value) }));
 }
 
 const homeServiceLinks = [
@@ -72,6 +76,82 @@ function FaceShapeIllustration({ shape }: { shape: string }) {
   };
 
   return <svg viewBox="0 0 100 110" aria-hidden="true" className="h-24 w-20 text-[#689f24]/75 transition duration-300 group-hover:text-[#3f7000] sm:h-28 sm:w-24"><path d={paths[shape]} fill="none" stroke="currentColor" strokeWidth="2.2" /><path d="M36 48h10M54 48h10M46 69h8" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.6" opacity=".65" /></svg>;
+}
+
+const faceShapeNames = ['Round', 'Oval', 'Square', 'Heart', 'Diamond', 'Long'] as const;
+const FRAME_SHAPE_SCROLL_DISTANCE = 304;
+
+function FaceShapeCarousel({ reducedMotion }: { reducedMotion: boolean }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const activeShape = faceShapeNames[activeIndex];
+  const isPaused = isHovered || isFocused;
+
+  useEffect(() => {
+    if (reducedMotion || isPaused) return undefined;
+    const timer = window.setInterval(() => {
+      setActiveIndex((index) => (index + 1) % faceShapeNames.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [activeIndex, isPaused, reducedMotion]);
+
+  const moveSlide = (offset: number) => {
+    setActiveIndex((index) => (index + offset + faceShapeNames.length) % faceShapeNames.length);
+  };
+
+  return <div
+    role="region"
+    aria-label="Face shape examples"
+    aria-roledescription="carousel"
+    data-active-shape={activeShape}
+    onMouseEnter={() => setIsHovered(true)}
+    onMouseLeave={() => setIsHovered(false)}
+    onFocusCapture={() => setIsFocused(true)}
+    onBlurCapture={(event) => {
+      if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setIsFocused(false);
+    }}
+    className="group relative aspect-[4/3] overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] md:aspect-[2/1]"
+  >
+    <div aria-hidden="true" className="absolute inset-0 grid place-items-center">
+      <FaceShapeIllustration shape={activeShape} />
+    </div>
+    <img
+      key={activeShape}
+      src={FACE_SHAPE_IMAGES[activeShape]}
+      alt={`Person wearing glasses for a ${activeShape.toLowerCase()} face shape`}
+      loading="lazy"
+      onError={(event) => {
+        event.currentTarget.style.display = 'none';
+      }}
+      className="absolute inset-0 z-10 h-full w-full object-cover object-center"
+    />
+    <div aria-hidden="true" className="absolute inset-0 z-10 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+    <div className="absolute right-5 top-5 z-20 flex gap-1.5" role="group" aria-label="Choose a face shape">
+      {faceShapeNames.map((shape, index) => <button
+        key={shape}
+        type="button"
+        aria-label={`Show ${shape} face shape`}
+        aria-current={index === activeIndex ? 'true' : undefined}
+        onClick={() => setActiveIndex(index)}
+        className={`h-2.5 rounded-full transition-all ${index === activeIndex ? 'w-6 bg-white' : 'w-2.5 bg-white/60 hover:bg-white'}`}
+      />)}
+    </div>
+    <div className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-4 p-5 text-white sm:p-6">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/80">Face shape</p>
+        <h3 className="mt-1 font-serif text-3xl font-semibold drop-shadow">{activeShape}</h3>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <button type="button" aria-label="Previous face shape" onClick={() => moveSlide(-1)} className="grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#172015] shadow transition hover:bg-white">
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label="Next face shape" onClick={() => moveSlide(1)} className="grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#172015] shadow transition hover:bg-white">
+          <ArrowRight aria-hidden="true" className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  </div>;
 }
 
 type HomeProduct = Omit<Product, 'id'> & { id: number | string };
@@ -174,7 +254,7 @@ function homepageCardHref(card: Pick<HomepageCard, 'destinationType' | 'destinat
     case 'CATEGORY': return `/shop?category=${value}`;
     case 'PRODUCT': return `/product/${value}`;
     case 'BRAND': return `/shop?brand=${value}`;
-    case 'GENDER': return `/shop?gender=${value}`;
+    case 'GENDER': return `/shop?gender=${encodeURIComponent(card.destinationValue.trim())}`;
     case 'SHAPE': return `/shop?shape=${value}`;
     case 'PAGE': return card.destinationValue;
   }
@@ -307,13 +387,19 @@ function CmsHero({ banners, isMobile, reducedMotion, onImageError }: { banners: 
   </section>;
 }
 
-export default function HomePage() {
+type HomePageProps = {
+  onInitialDataReady: () => void;
+  onTaglineChange: (tagline: string | null) => void;
+};
+
+export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePageProps) {
   const [cms, setCms] = useState<HomepageResponse | null>(null);
   const [catalog, setCatalog] = useState<{ products: CatalogProduct[]; categories: CatalogCategory[] } | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
   const [offersLoading, setOffersLoading] = useState(true);
   const [membershipLoading, setMembershipLoading] = useState(true);
+  const [cmsLoading, setCmsLoading] = useState(true);
   const [offersError, setOffersError] = useState('');
   const [membershipError, setMembershipError] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -327,6 +413,8 @@ export default function HomePage() {
   const [categoryCarouselPaused, setCategoryCarouselPaused] = useState(false);
   const categoryTouchStartX = useRef<number | null>(null);
   const categorySwipeTriggered = useRef(false);
+  const frameShapeCarouselRef = useRef<HTMLDivElement | null>(null);
+  const [frameShapeCarouselPaused, setFrameShapeCarouselPaused] = useState(false);
   const [activePromotionSlide, setActivePromotionSlide] = useState(0);
   const [promotionCarouselPaused, setPromotionCarouselPaused] = useState(false);
   const promotionTouchStartX = useRef<number | null>(null);
@@ -343,6 +431,7 @@ export default function HomePage() {
     const controller = new AbortController();
     void fetchHomepage(controller.signal).then((homepage) => {
       setCms(homepage);
+      onTaglineChange(homepage.banners.find((banner) => banner.subtitle?.trim())?.subtitle?.trim() ?? null);
       if (import.meta.env.DEV && homepage.banners.length === 0) {
         console.info('[CMS homepage] No published banner returned; using the original Dream Spex hero', {
           endpoint: '/api/v1/homepage',
@@ -358,6 +447,8 @@ export default function HomePage() {
           });
         }
       }
+    }).finally(() => {
+      if (!controller.signal.aborted) setCmsLoading(false);
     });
     const params = new URLSearchParams({ page: '0', pageSize: '100', sort: 'newest' });
     void Promise.all([catalogService.search(params), catalogService.categories()])
@@ -383,7 +474,11 @@ export default function HomePage() {
       })
       .finally(() => { if (!controller.signal.aborted) setMembershipLoading(false); });
     return () => controller.abort();
-  }, []);
+  }, [onTaglineChange]);
+
+  useEffect(() => {
+    if (!cmsLoading && !catalogLoading) onInitialDataReady();
+  }, [catalogLoading, cmsLoading, onInitialDataReady]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setBannerClock(Date.now()), 30_000);
@@ -437,12 +532,12 @@ export default function HomePage() {
     const canonicalName = type === 'eyeglasses' ? 'eyeglasses' : 'sunglasses';
     const category = matchingCategories.find((item) => normalizedCategory(item.slug) === canonicalName
       || normalizedCategory(item.name) === canonicalName) ?? matchingCategories[0];
-    const colors = [...new Set(products
+    const colors = uniqueColorComponents(products
       .filter((product) => product.categories.some((item) => categoryMatchesEyewearType(item, type)))
       .flatMap((product) => product.variants
         .filter((variant) => variant.status.toUpperCase() === 'ACTIVE')
         .map((variant) => variant.color)
-        .filter((color): color is string => Boolean(color))))];
+        .filter((color): color is string => Boolean(color))));
     return {
       type,
       label: type === 'eyeglasses' ? 'Eyeglasses' : 'Sunglasses',
@@ -519,6 +614,9 @@ export default function HomePage() {
     event.stopPropagation();
     categorySwipeTriggered.current = false;
   };
+  const scrollFrameShapeCarousel = (direction: -1 | 1) => {
+    frameShapeCarouselRef.current?.scrollBy({ left: direction * FRAME_SHAPE_SCROLL_DISTANCE, behavior: reducedMotion ? 'auto' : 'smooth' });
+  };
   const heroCategory = catalog?.categories.find((category) => category.slug === 'eyeglasses')
     ?? catalog?.categories[0];
   const cmsCollectionProducts = cmsSelectedProducts(sections, homepageSectionSlugs.collections, catalogHomeProducts);
@@ -534,12 +632,25 @@ export default function HomePage() {
   const availableBrands = [...new Set((catalog?.products ?? []).map((product) => product.brand).filter(Boolean))];
   const brandCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'EXPLORE_BY_BRAND');
   const visibleBrandCards: HomeCard[] = brandCards.length ? brandCards : availableBrands.map((brand, index) => ({ id: brand, title: brand, subtitle: null, description: null, imageUrl: null, buttonText: 'Shop frames', destinationType: 'BRAND', destinationValue: brand, displayOrder: index }));
-  const availableWearers = [...new Set((catalog?.products ?? []).map((product) => product.gender).filter((gender): gender is string => Boolean(gender)))];
-  const wearerCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'SHOP_BY_WEARER');
+  const availableWearers = uniqueWearerValues((catalog?.products ?? []).map((product) => product.gender));
+  const wearerCards = deduplicateWearerCards((cms?.cards ?? []).filter((card) => card.sectionKey === 'SHOP_BY_WEARER'));
   const visibleWearerCards: HomeCard[] = wearerCards.length ? wearerCards : availableWearers.map((gender, index) => ({ id: gender, title: gender, subtitle: null, description: null, imageUrl: null, buttonText: 'Shop styles', destinationType: 'GENDER', destinationValue: gender, displayOrder: index }));
   const availableShapes = [...new Set((catalog?.products ?? []).map((product) => product.frameShape).filter((shape): shape is string => Boolean(shape)))];
   const shapeCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'FRAME_SHAPE');
   const visibleShapeCards: HomeCard[] = shapeCards.length ? shapeCards : availableShapes.map((shape, index) => ({ id: shape, title: shape, subtitle: null, description: null, imageUrl: null, buttonText: null, destinationType: 'SHAPE', destinationValue: shape, displayOrder: index }));
+  useEffect(() => {
+    if (reducedMotion || frameShapeCarouselPaused || visibleShapeCards.length < 2) return undefined;
+    const timer = window.setInterval(() => {
+      const carousel = frameShapeCarouselRef.current;
+      if (!carousel || carousel.scrollWidth <= carousel.clientWidth) return;
+      if (carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth - 8) {
+        carousel.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        carousel.scrollBy({ left: FRAME_SHAPE_SCROLL_DISTANCE, behavior: 'smooth' });
+      }
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [frameShapeCarouselPaused, reducedMotion, visibleShapeCards.length]);
   const promotionalCards = (cms?.cards ?? [])
     .filter((card) => card.sectionKey === 'PROMOTIONAL' && card.status.toUpperCase() === 'PUBLISHED' && card.enabled)
     .sort((first, second) => first.displayOrder - second.displayOrder);
@@ -675,7 +786,7 @@ export default function HomePage() {
                             to={`/shop?category=${encodeURIComponent(categorySlug)}&color=${encodeURIComponent(value)}`}
                             className="home-filter-chip home-filter-chip--colour"
                           >
-                            <span aria-hidden="true" className="home-filter-chip__swatch" style={{ background: getColorSwatch(value) }} />
+                            <ColorSwatch color={value} className="home-filter-chip__swatch" />
                             {colorLabel}
                           </Link>)}
                         </div>
@@ -768,11 +879,18 @@ export default function HomePage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Shop by wearer</p><h2 id="wearer-title" className="mt-2 font-serif text-3xl text-[var(--text-primary)]">{cmsText(sections, homepageSectionSlugs.wearer, 'title', 'Find styles for your needs')}</h2></div><p className="max-w-md text-sm leading-6 text-[var(--text-secondary)]">{cmsText(sections, homepageSectionSlugs.wearer, 'subtitle', 'Explore styles available in the current catalogue.')}</p></div>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {visibleWearerCards.map((card) => {
-                const product = catalog?.products.find((item) => item.gender?.toLowerCase() === card.destinationValue.toLowerCase());
-                const productImage = product ? catalogHomeProduct(product).image : '';
-                const image = card.imageUrl ?? productImage;
-                if (!image) return null;
-                return <Link key={card.id} to={homepageCardHref(card)} className="group flex items-center gap-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 transition hover:-translate-y-1 hover:shadow-md"><span className="grid h-20 w-20 flex-none aspect-square place-items-center overflow-hidden rounded-xl"><img src={image} alt="" loading="lazy" className="h-full w-full object-contain object-center" /></span><span><span className="block text-lg font-semibold text-[var(--text-primary)]">{card.title}</span><span className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-[#689f24]">{card.buttonText ?? 'Shop styles'} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span></span></Link>;
+                const image = wearerLifestyleImage(card.destinationValue);
+                return <Link key={card.id} to={homepageCardHref(card)} className="group relative isolate aspect-[4/3] overflow-hidden rounded-3xl bg-[var(--bg-secondary)] shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none sm:aspect-[4/5]">
+                  <img src={image} alt="" loading="lazy" onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = WEARER_IMAGE_FALLBACK;
+                  }} className="absolute inset-0 h-full w-full object-cover object-center transition duration-700 group-hover:scale-105 motion-reduce:transition-none" />
+                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+                  <span className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
+                    <span className="block text-2xl font-bold tracking-tight drop-shadow sm:text-3xl">{formatWearerTitle(card.title)}</span>
+                    <span className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-white/95 drop-shadow">{card.buttonText ?? 'Shop styles'} <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
+                  </span>
+                </Link>;
               })}
               {!visibleWearerCards.length ? <p className="col-span-full py-8 text-center text-sm text-[var(--text-secondary)]" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading catalogue...' : catalogError ? 'Wearer cards could not be loaded.' : 'No wearer collections are available right now.'}</p> : null}
             </div>
@@ -865,9 +983,58 @@ export default function HomePage() {
             </div>
           </section> : null}
 
-          <section hidden={cmsHidden(homepageSectionSlugs.shapes, sections)} className="border-y border-[var(--border-subtle)] bg-[var(--bg-secondary)] py-20"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]"></p><h2 className="mt-3 font-serif text-4xl text-[var(--text-primary)]">Shop by frame shape</h2><p className="mt-3 max-w-xl text-sm text-[var(--text-secondary)]">Browse shapes represented in the current catalogue. Shape labels do not guarantee fit.</p></div><Link to="/shop" className="hidden items-center gap-1 text-sm font-semibold text-[#4b781a] sm:flex">Browse all styles <ChevronRight className="h-4 w-4" /></Link></div><div className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">{visibleShapeCards.map((card) => { const product = catalog?.products.find((item) => item.frameShape?.toLowerCase() === card.destinationValue.toLowerCase()); const image = card.imageUrl ?? (product ? catalogHomeProduct(product).image : ''); return image ? <Link key={card.id} to={homepageCardHref(card)} aria-label={`Shop ${card.title} frames`} className="group relative aspect-square overflow-hidden rounded-2xl bg-white"><img src={image} alt={`${card.title} eyewear`} loading="lazy" className="absolute inset-0 h-full w-full object-contain object-center transition duration-700" /><div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/65 to-transparent px-4 pb-4 pt-10 text-[#ffffff]"><span className="font-semibold drop-shadow">{card.title}</span><span className="rounded-full bg-white/90 p-2 text-[#172015] shadow-sm"><ArrowRight className="h-4 w-4" /></span></div></Link> : null; })}{!visibleShapeCards.length ? <p className="col-span-full py-8 text-center text-sm text-[var(--text-secondary)]" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading frame shapes...' : catalogError ? 'Frame shape cards could not be loaded.' : 'No frame shapes are available right now.'}</p> : null}</div></div></section>
+          <section hidden={cmsHidden(homepageSectionSlugs.shapes, sections)} className="border-y border-[var(--border-subtle)] bg-[var(--bg-secondary)] py-12 sm:py-16">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <h2 className="font-serif text-4xl text-[var(--text-primary)]">Shop by frame shape</h2>
+                  <p className="mt-3 max-w-xl text-sm text-[var(--text-secondary)]">Browse shapes represented in the current catalogue. Shape labels do not guarantee fit.</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {visibleShapeCards.length > 1 ? <>
+                    <button type="button" aria-label="Previous frame shapes" aria-controls="home-frame-shape-carousel" onClick={() => scrollFrameShapeCarousel(-1)} className="grid h-10 w-10 place-items-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-[#689f24] hover:text-[#4b781a]">
+                      <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                    <button type="button" aria-label="Next frame shapes" aria-controls="home-frame-shape-carousel" onClick={() => scrollFrameShapeCarousel(1)} className="grid h-10 w-10 place-items-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-primary)] transition hover:border-[#689f24] hover:text-[#4b781a]">
+                      <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </> : null}
+                  <Link to="/shop" className="hidden items-center gap-1 text-sm font-semibold text-[#4b781a] sm:flex">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
+                </div>
+              </div>
+              <div id="home-frame-shape-carousel" ref={frameShapeCarouselRef} role="region" aria-label="Browse frame shapes" aria-roledescription="carousel" tabIndex={0} onMouseEnter={() => setFrameShapeCarouselPaused(true)} onMouseLeave={() => setFrameShapeCarouselPaused(false)} onFocus={() => setFrameShapeCarouselPaused(true)} onBlur={(event) => {
+                if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setFrameShapeCarouselPaused(false);
+              }} className="mt-8 flex min-w-0 max-w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pb-3 motion-safe:scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                {visibleShapeCards.map((card) => {
+                  const shape = card.destinationValue.trim().toLowerCase();
+                  const product = catalog?.products.find((item) => item.frameShape?.trim().toLowerCase() === shape
+                    && Boolean(item.imageUrl || item.images?.some((image) => image.imageUrl)));
+                  const productImage = product ? catalogHomeProduct(product).image : '';
+                  const image = productImage || resolveCmsMediaUrl(card.imageUrl) || '';
+                  return image ? <Link key={card.id} to={homepageCardHref(card)} aria-label={`Shop ${card.title} frames`} className="group relative aspect-[4/3] w-72 flex-none snap-start overflow-hidden rounded-2xl bg-[#f2f3ed] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_30px_-20px_rgba(16,24,16,0.5)]">
+                    <img src={image} alt={`${card.title} eyewear`} loading="lazy" className="absolute inset-0 h-full w-full object-contain object-center mix-blend-multiply" />
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/65 to-transparent px-4 pb-4 pt-10 text-[#ffffff]">
+                      <span className="font-semibold drop-shadow">{card.title}</span>
+                      <span className="rounded-full bg-white/90 p-2 text-[#172015]"><ArrowRight aria-hidden="true" className="h-4 w-4" /></span>
+                    </div>
+                  </Link> : null;
+                })}
+                {!visibleShapeCards.length ? <p className="w-full py-8 text-center text-sm text-[var(--text-secondary)]" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading frame shapes...' : catalogError ? 'Frame shape cards could not be loaded.' : 'No frame shapes are available right now.'}</p> : null}
+              </div>
+            </div>
+          </section>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.faceFit, sections)} className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"><div className="grid gap-8 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-8 md:grid-cols-[.72fr_1.28fr] md:p-10"><div className="flex flex-col justify-center"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Find your fit</p><h2 className="mt-3 font-serif text-4xl">Frames for your face</h2><p className="mt-4 max-w-md text-[var(--text-secondary)]">Explore common face shapes, then preview frames with virtual try-on. The current catalogue does not yet map individual frames to face shapes.</p><Link to="/virtual-try-on" className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-[#7cbf00] px-5 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[#9acd32]">Try frames virtually <ArrowRight className="h-4 w-4" /></Link></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{['Round', 'Oval', 'Square', 'Heart', 'Diamond', 'Long'].map((shape) => <article key={shape} className="group relative flex min-h-32 items-center justify-between overflow-hidden rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-3 text-sm font-semibold text-[var(--text-primary)]"><span className="relative z-10 self-end pb-1">{shape}</span><FaceShapeIllustration shape={shape} /></article>)}</div></div></section>
+          <section hidden={cmsHidden(homepageSectionSlugs.faceFit, sections)} className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+            <div className="grid gap-8 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-8 md:grid-cols-[.72fr_1.28fr] md:p-10">
+              <div className="flex flex-col justify-center">
+                <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Find your fit</p>
+                <h2 className="mt-3 font-serif text-4xl">Frames for your face</h2>
+                <p className="mt-4 max-w-md text-[var(--text-secondary)]">Explore common face shapes, then preview frames with virtual try-on. The current catalogue does not yet map individual frames to face shapes.</p>
+                <Link to="/virtual-try-on" className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-[#7cbf00] px-5 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[#9acd32]">Try frames virtually <ArrowRight className="h-4 w-4" /></Link>
+              </div>
+              <FaceShapeCarousel reducedMotion={reducedMotion} />
+            </div>
+          </section>
 
           <section hidden={cmsHidden(homepageSectionSlugs.collections, sections)} className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -881,7 +1048,7 @@ export default function HomePage() {
             <p className="mt-4 text-xs text-[var(--text-secondary)]">Trending styles from the live product catalogue.</p>
           </section>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.tryOn, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"><div className="grid overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[#e9eee4] lg:grid-cols-[1fr_1.1fr]"><div className="p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]">Try before you choose</p><h2 className="mt-4 font-serif text-4xl leading-tight text-[#182116]">Your next pair is closer than you think.</h2><p className="mt-5 max-w-md leading-7 text-[#5f6c5b]">Upload a photo or use your camera to preview selected frames. Switch styles until the right one feels obvious.</p><Link to="/virtual-try-on" className="mt-8 inline-flex"><Button><Camera className="mr-2 h-4 w-4" /> Start virtual try-on</Button></Link></div><div className="relative min-h-[300px]"><img src="https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=1200&q=90" alt="Person wearing stylish spectacles" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /></div></div></section>
+          {/* <section hidden={cmsHidden(homepageSectionSlugs.tryOn, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"><div className="grid overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[#e9eee4] lg:grid-cols-[1fr_1.1fr]"><div className="p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]">Try before you choose</p><h2 className="mt-4 font-serif text-4xl leading-tight text-[#182116]">Your next pair is closer than you think.</h2><p className="mt-5 max-w-md leading-7 text-[#5f6c5b]">Upload a photo or use your camera to preview selected frames. Switch styles until the right one feels obvious.</p><Link to="/virtual-try-on" className="mt-8 inline-flex"><Button><Camera className="mr-2 h-4 w-4" /> Start virtual try-on</Button></Link></div><div className="relative min-h-[300px]"><img src="https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=1200&q=90" alt="Person wearing stylish spectacles" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /></div></div></section> */}
 
           <section hidden={cmsHidden(homepageSectionSlugs.why, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
             <div className="text-center"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Why Dream Spex</p><h2 className="mt-3 font-serif text-4xl text-[var(--text-primary)]">A clearer way to choose eyewear</h2></div>

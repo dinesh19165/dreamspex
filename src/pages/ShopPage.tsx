@@ -10,6 +10,7 @@ import { useShop } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
 import { formatINR } from '../utils/currency';
 import { useFranchiseLocation } from '../context/FranchiseLocationContext';
+import { formatColorLabel } from '../utils/colorSwatches';
 
 const PAGE_SIZE = 6;
 const normalize = (value: string) => value.trim().toLowerCase().replaceAll('-', ' ').replaceAll('_', ' ');
@@ -217,7 +218,7 @@ export default function ShopPage() {
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Colour
         <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
-          <option value="">All colours</option>{filterOptions.colors.map((color) => <option key={color}>{color}</option>)}
+          <option value="">All colours</option>{filterOptions.colors.map((color) => <option key={color} value={color}>{formatColorLabel(color)}</option>)}
         </select>
       </label>
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Product label
@@ -327,9 +328,9 @@ export default function ShopPage() {
               </div>
             </div>
 
-            <div className={`grid gap-3 md:gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 2xl:grid-cols-4' : 'grid-cols-1'}`}>
+            <div className={`grid auto-rows-fr gap-3 md:gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 2xl:grid-cols-4' : 'grid-cols-1'}`}>
               {pagedProducts.map((product, index) => (
-                <motion.div key={product.id} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.04 }}>
+                <motion.div key={product.id} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.04 }} className="h-full">
                   <ProductCard product={product} layout={viewMode} />
                 </motion.div>
               ))}

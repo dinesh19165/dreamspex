@@ -75,7 +75,9 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
             "and c.categoryType = 'CATALOG' and c.status = 'ACTIVE' and c.deletedAt is null " +
             "and (lower(c.slug) = lower(:category) or lower(c.id) = lower(:category)))) " +
             "and (:color is null or exists (select v.id from ProductVariant v where v.product = p " +
-            "and v.status = 'ACTIVE' and lower(v.color) = lower(:color))) " +
+            "and v.status = 'ACTIVE' and locate(concat('/', " +
+            "replace(replace(replace(replace(replace(replace(replace(lower(coalesce(:color, '')), ' and ', '/'), ' ', ''), ',', '/'), '&', '/'), '+', '/'), '|', '/'), ';', '/'), '/'), " +
+            "concat('/', replace(replace(replace(replace(replace(replace(replace(lower(coalesce(v.color, '')), ' and ', '/'), ' ', ''), ',', '/'), '&', '/'), '+', '/'), '|', '/'), ';', '/'), '/')) > 0)) " +
             "and (:availableOnly = false or (:franchiseId is null and exists (select v.id from ProductVariant v " +
             "where v.product = p and v.status = 'ACTIVE' and v.quantity > v.reservedQuantity)) " +
             "or (:franchiseId is not null and exists (select inventory.id from FranchiseInventory inventory " +

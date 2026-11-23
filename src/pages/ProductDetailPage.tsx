@@ -17,7 +17,8 @@ import { reviewService, type ProductReviewFeed } from '../services/reviewService
 import ProductCard from '../components/ui/ProductCard';
 import type { Product } from '../types';
 import { useFranchiseLocation } from '../context/FranchiseLocationContext';
-import { getColorSwatch } from '../utils/colorSwatches';
+import { formatColorLabel, normalizeColorCombination, uniqueColorCombinations } from '../utils/colorSwatches';
+import ColorSwatch from '../components/ui/ColorSwatch';
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -164,7 +165,7 @@ export default function ProductDetailPage() {
     changeImage(getSwipeGalleryIndex(selectedImageIndex, galleryImages.length, deltaX));
   };
   const isWishlisted = isInWishlist(product.id);
-  const colorOptions = [...new Set(catalogProduct.variants.map((variant) => variant.color).filter((color): color is string => Boolean(color)))];
+  const colorOptions = uniqueColorCombinations(catalogProduct.variants.map((variant) => variant.color));
   const sizeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.size).filter((size): size is string => Boolean(size)))];
   const lensTypeOptions = [...new Set(catalogProduct.variants.map((variant) => variant.lensType).filter((lensType): lensType is string => Boolean(lensType)))];
   const isAvailableVariant = (variant: typeof selectedVariant) => Boolean(
@@ -172,10 +173,16 @@ export default function ProductDetailPage() {
   );
   const selectVariantOption = (key: 'color' | 'size' | 'lensType', value: string) => {
     const currentVariant = selectedVariant;
-    const candidates = catalogProduct.variants.filter((variant) => variant[key] === value && isAvailableVariant(variant));
+    const matchesOption = (variant: typeof selectedVariant) => key === 'color'
+      ? normalizeColorCombination(variant?.color) === normalizeColorCombination(value)
+      : variant?.[key] === value;
+    const candidates = catalogProduct.variants.filter((variant) => matchesOption(variant) && isAvailableVariant(variant));
     const optionKeys = ['color', 'size', 'lensType'] as const;
     const nextVariant = candidates.find((variant) => optionKeys.every((optionKey) =>
-      optionKey === key || variant[optionKey] === currentVariant?.[optionKey]))
+      optionKey === key
+        || (optionKey === 'color'
+          ? normalizeColorCombination(variant.color) === normalizeColorCombination(currentVariant?.color)
+          : variant[optionKey] === currentVariant?.[optionKey])))
       ?? candidates[0];
     if (nextVariant) {
       setSelectedImageIndex(getPrimaryGalleryImageIndex(getProductGalleryImages(
@@ -363,19 +370,20 @@ export default function ProductDetailPage() {
               {colorOptions.length ? <div className="mt-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-[var(--text-primary)]">Frame colour</p>
-                  {selectedVariant?.color ? <p className="text-xs text-[var(--text-secondary)]">{selectedVariant.color}</p> : null}
+                  {selectedVariant?.color ? <p className="text-xs text-[var(--text-secondary)]">{formatColorLabel(selectedVariant.color)}</p> : null}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2.5">
                   {colorOptions.map((color) => {
-                    const optionAvailable = catalogProduct.variants.some((variant) => variant.color === color && isAvailableVariant(variant));
-                    const selected = selectedVariant?.color === color;
-                    return <button key={color} type="button" aria-label={`${color}${optionAvailable ? '' : ', unavailable'}`}
-                      aria-pressed={selected} disabled={!optionAvailable} title={color}
+                    const normalizedColor = normalizeColorCombination(color);
+                    const optionAvailable = catalogProduct.variants.some((variant) => normalizeColorCombination(variant.color) === normalizedColor && isAvailableVariant(variant));
+                    const selected = normalizeColorCombination(selectedVariant?.color) === normalizedColor;
+                    const label = formatColorLabel(color);
+                    return <button key={normalizedColor} type="button" aria-label={`${label}${optionAvailable ? '' : ', unavailable'}`}
+                      aria-pressed={selected} disabled={!optionAvailable} title={label}
                       onClick={() => selectVariantOption('color', color)}
                       className={`group inline-flex max-w-full items-center gap-2 rounded-full border px-2.5 py-1.5 text-xs transition ${selected ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/8 text-[var(--text-primary)]' : 'border-[var(--border-subtle)] text-[var(--text-secondary)]'} ${optionAvailable ? 'hover:border-[var(--brand-green)]' : 'cursor-not-allowed opacity-50'}`}>
-                      <span aria-hidden="true" className="h-4 w-4 shrink-0 rounded-full border border-black/15 shadow-inner"
-                        style={{ backgroundColor: getColorSwatch(color) }} />
-                      <span className="break-words">{color}</span>
+                      <ColorSwatch color={color} className="h-4 w-4 border border-black/15 shadow-inner" />
+                      <span className="break-words">{label}</span>
                     </button>;
                   })}
                 </div>

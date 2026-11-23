@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import { adminService, type CmsCardDestinationType, type CmsCardSection, type CmsHomepageCard, type CmsHomepageCardRequest } from '../services/adminService';
 import type { AdminCategory, AdminProduct } from '../services/adminProductService';
 import { resolveCmsMediaUrl } from '../config/api';
+import { uniqueWearerValues } from '../utils/wearerCategories';
 
 const cardTabs: Array<{ key: CmsCardSection; label: string }> = [
   { key: 'CATEGORY_BANNER', label: 'Category Banner Cards' },
@@ -72,7 +73,8 @@ export default function HomepageCardsManager({ token, products, categories, sect
   const publishedProducts = useMemo(() => products.filter((product) => product.status.toUpperCase() === 'PUBLISHED'), [products]);
   const activeCategories = useMemo(() => categories.filter((category) => category.status.toUpperCase() === 'ACTIVE'), [categories]);
   const brands = useMemo(() => [...new Set(publishedProducts.map((product) => product.brand).filter(Boolean))].sort(), [publishedProducts]);
-  const genders = useMemo(() => [...new Set(publishedProducts.map((product) => product.gender).filter((value): value is string => Boolean(value)))].sort(), [publishedProducts]);
+  const genders = useMemo(() => uniqueWearerValues(publishedProducts.map((product) => product.gender))
+    .sort((first, second) => first.localeCompare(second, undefined, { sensitivity: 'base' })), [publishedProducts]);
   const shapes = useMemo(() => [...new Set(publishedProducts.map((product) => product.frameShape).filter((value): value is string => Boolean(value)))].sort(), [publishedProducts]);
 
   const load = useCallback(async () => {

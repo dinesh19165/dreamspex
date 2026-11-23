@@ -103,10 +103,12 @@ class CatalogServiceTest {
     void publicFilterOptionsAreSortedAndExcludeBlankValues() {
         CatalogService service = service();
         when(products.findPublicBrands()).thenReturn(List.of("Zen", "acme", " "));
+        when(products.findPublicColors()).thenReturn(List.of("RED/BLACK", "red", "Navy Blue & White", " "));
 
         ProductFilterOptions options = service.productFilterOptions();
 
         assertEquals(List.of("acme", "Zen"), options.brands());
+        assertEquals(List.of("BLACK", "Navy Blue", "RED", "White"), options.colors());
         assertEquals(List.of(), options.materials());
     }
 

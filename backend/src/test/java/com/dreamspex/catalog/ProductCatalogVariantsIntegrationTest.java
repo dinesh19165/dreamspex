@@ -3,6 +3,8 @@ package com.dreamspex.catalog;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 
 import com.dreamspex.catalog.entity.Category;
 import com.dreamspex.catalog.entity.Product;
@@ -115,5 +117,49 @@ class ProductCatalogVariantsIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.variants[0].id").value(variantId))
                 .andExpect(jsonPath("$.images[0].variantId").value(variantId));
+    }
+
+    @Test
+    void mixedColourVariantsMatchEachComponentWithoutDuplicatingProducts() throws Exception {
+        Category category = new Category();
+        category.setName("Mixed colour category");
+        category.setSlug("mixed-colour-category-test");
+        category.setCategoryType("CATALOG");
+        category.setStatus("ACTIVE");
+        category = categories.save(category);
+
+        Product product = new Product();
+        product.setSku("TEST-MIXED-COLOUR");
+        product.setName("Mixed colour test frame");
+        product.setSlug("mixed-colour-test-frame");
+        product.setBrand("Dream Spex");
+        product.setDescription("Frame with a mixed colour variant");
+        product.setBasePrice(BigDecimal.valueOf(100));
+        product.setStatus("PUBLISHED");
+        product.getCategories().add(category);
+        for (String color : List.of("RED / BLACK", "RED")) {
+            ProductVariant variant = new ProductVariant();
+            variant.setProduct(product);
+            variant.setSku("TEST-MIXED-COLOUR-" + product.getVariants().size());
+            variant.setColor(color);
+            variant.setStatus("ACTIVE");
+            variant.setQuantity(5);
+            product.getVariants().add(variant);
+        }
+        product = products.save(product);
+
+        mockMvc.perform(get("/api/v1/products").param("category", category.getSlug()).param("color", "red"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(product.getId()));
+        mockMvc.perform(get("/api/v1/products").param("category", category.getSlug()).param("color", "BLACK"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.items[0].id").value(product.getId()));
+        mockMvc.perform(get("/api/v1/products/filters"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.colors", hasItem("RED")))
+                .andExpect(jsonPath("$.colors", hasItem("BLACK")))
+                .andExpect(jsonPath("$.colors", not(hasItem("RED / BLACK"))));
     }
 }

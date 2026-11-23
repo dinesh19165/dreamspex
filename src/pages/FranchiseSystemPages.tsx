@@ -16,6 +16,7 @@ import { downloadReportExcel, downloadReportPdf, printReport, type AdminReportDo
 import { franchiseService, type Franchise, type FranchiseAssignment, type FranchiseDashboard, type FranchiseInventory, type FranchiseOrder, type FranchiseReport, type FranchiseRequest, type FranchiseReturn, type FranchiseUser } from '../services/franchiseService';
 import { isPickupOrder, nextFranchiseOrderStatuses, orderStatusLabel } from '../utils/orderWorkflow';
 import BulkProductManagement from '../components/admin/BulkProductManagement';
+import ColorCombinationInput from '../components/ui/ColorCombinationInput';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('en-IN', {
@@ -2587,7 +2588,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
               </div>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <ProductInput label="Variant SKU" value={variant.sku} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, sku: value } : item))} />
-                <ProductInput label="Color" value={variant.color ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, color: value || null } : item))} />
+                <ColorCombinationInput value={variant.color ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, color: value || null } : item))} />
                 <ProductInput label="Size" value={variant.size ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, size: value || null } : item))} />
                 <ProductInput label="Lens type" value={variant.lensType ?? ''} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, lensType: value || null } : item))} />
                 <ProductInput label="Price adjustment" type="number" min="0" step="0.01" value={String(variant.additionalPrice)} onChange={(value) => update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, additionalPrice: Number(value) } : item))} />

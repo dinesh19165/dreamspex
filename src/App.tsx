@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -68,8 +68,8 @@ import AdminProductReviewsPage from './pages/AdminProductReviewsPage';
 import AdminCustomerSmsPage from './pages/AdminCustomerSmsPage';
 import StoreLocatorPage from './pages/StoreLocatorPage';
 
-function RootEntry() {
-  return <HomePage />;
+function RootEntry({ onReady, onTaglineChange }: { onReady: () => void; onTaglineChange: (tagline: string | null) => void }) {
+  return <HomePage onInitialDataReady={onReady} onTaglineChange={onTaglineChange} />;
 }
 
 function CustomerRoute({ children }: { children: React.ReactNode }) {
@@ -98,12 +98,10 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 1600);
-    return () => window.clearTimeout(timer);
-  }, []);
+  const [loading, setLoading] = useState(() => typeof window !== 'undefined' && window.location.pathname === '/');
+  const [loadingTagline, setLoadingTagline] = useState<string | null>(null);
+  const markReady = useCallback(() => setLoading(false), []);
+  const updateTagline = useCallback((tagline: string | null) => setLoadingTagline(tagline), []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -121,7 +119,7 @@ function App() {
         <AuthExpirationHandler />
         <ScrollToTop />
         <div className="relative">
-          <AnimatePresence>{loading ? <LuxuryLoader /> : null}</AnimatePresence>
+          <AnimatePresence>{loading ? <LuxuryLoader tagline={loadingTagline} /> : null}</AnimatePresence>
           <ScrollProgressBar />
           <AnimatePresence>
             {showBackToTop ? (
@@ -139,7 +137,7 @@ function App() {
           </AnimatePresence>
           <WhatsAppSupport />
           <Routes>
-            <Route path="/" element={<RootEntry />} />
+            <Route path="/" element={<RootEntry onReady={markReady} onTaglineChange={updateTagline} />} />
             <Route path="/shop" element={<ShopPage />} />
             <Route path="/products" element={<ShopPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />

@@ -11,7 +11,8 @@ import { catalogService, type CatalogCategory, type CatalogProduct } from '../..
 import { fetchOffers, type Offer } from '../../services/offerService';
 import { fetchMembershipPlans, type MembershipPlan } from '../../services/membershipService';
 import type { StorefrontFranchise } from '../../services/franchiseStoreService';
-import { getColorSwatch } from '../../utils/colorSwatches';
+import { formatColorLabel, uniqueColorComponents } from '../../utils/colorSwatches';
+import ColorSwatch from '../ui/ColorSwatch';
 import {
   membershipDiscountLabel,
   membershipPlanDescription,
@@ -144,10 +145,10 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
       const shapes = [...new Set(categoryProducts.map((product) => product.frameShape).filter((value): value is string => Boolean(value)))];
       const brands = [...new Set(categoryProducts.map((product) => product.brand).filter(Boolean))];
       const materials = [...new Set(categoryProducts.map((product) => product.material).filter((value): value is string => Boolean(value)))];
-      const colors = [...new Set(categoryProducts.flatMap((product) => product.variants
+      const colors = uniqueColorComponents(categoryProducts.flatMap((product) => product.variants
         .filter((variant) => variant.status.toUpperCase() === 'ACTIVE')
         .map((variant) => variant.color)
-        .filter((value): value is string => Boolean(value))))];
+        .filter((value): value is string => Boolean(value))));
       const featuredBadges = [...new Set(categoryProducts.map((product) => product.badge).filter((value): value is string => Boolean(value)))];
       return {
         label: category.name,
@@ -156,7 +157,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
           ...(shapes.length ? [{ title: 'By Shape', kind: 'shapes' as const, items: shapes.map((shape) => ({ label: shape, path: `/shop?category=${encodeURIComponent(category.slug)}&shape=${encodeURIComponent(shape)}` })) }] : []),
           ...(brands.length ? [{ title: 'By Brand', kind: 'brands' as const, items: brands.map((brand) => ({ label: brand, path: `/shop?category=${encodeURIComponent(category.slug)}&brand=${encodeURIComponent(brand)}` })) }] : []),
           ...(materials.length ? [{ title: 'Shop by Material', kind: 'materials' as const, items: materials.map((material) => ({ label: material, path: `/shop?category=${encodeURIComponent(category.slug)}&material=${encodeURIComponent(material)}` })) }] : []),
-          ...(colors.length ? [{ title: 'Shop by Colour', kind: 'colors' as const, items: colors.map((color) => ({ label: color, path: `/shop?category=${encodeURIComponent(category.slug)}&color=${encodeURIComponent(color)}` })) }] : []),
+          ...(colors.length ? [{ title: 'Shop by Colour', kind: 'colors' as const, items: colors.map((color) => ({ label: formatColorLabel(color), path: `/shop?category=${encodeURIComponent(category.slug)}&color=${encodeURIComponent(color)}` })) }] : []),
           ...(featuredBadges.length ? [{ title: 'Featured', kind: 'featured' as const, items: featuredBadges.map((badge) => ({ label: badge, path: `/shop?category=${encodeURIComponent(category.slug)}&badge=${encodeURIComponent(badge)}` })) }] : []),
         ],
       };
@@ -457,7 +458,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
                     {selectedMegaGroup && ['shapes', 'brands', 'materials', 'colors', 'offer-categories', 'links'].includes(selectedMegaGroup.kind)
                       ? <div className={`customer-mega-menu__options${selectedMegaGroup.kind === 'colors' ? ' customer-mega-menu__options--colors' : ''}`}>
                         {selectedMegaGroup.items.map((item) => <Link key={item.label} to={item.path} onClick={() => setMegaMenuOpen(null)}>
-                          {selectedMegaGroup.kind === 'colors' ? <span className="customer-mega-menu__swatch" style={{ background: getColorSwatch(item.label) }} /> : null}
+                          {selectedMegaGroup.kind === 'colors' ? <ColorSwatch color={item.label} className="customer-mega-menu__swatch" /> : null}
                           {item.label}
                         </Link>)}
                       </div> : null}
@@ -526,7 +527,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
         <div className="mt-8 space-y-3">
           {navItems.map((item) => (
             <div key={item.label} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-              <button type="button" className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-[var(--text-secondary)]" onClick={() => setMobileMenuOpen((current) => current === item.label ? null : item.label)} aria-expanded={mobileMenuOpen === item.label}>
+              <button type="button" className="flex w-full items-center justify-between px-4 py-3 text-left text-[18px] leading-5 font-bold text-[var(--text-secondary)]" onClick={() => setMobileMenuOpen((current) => current === item.label ? null : item.label)} aria-expanded={mobileMenuOpen === item.label}>
                 {item.label}<ChevronDown className={`h-4 w-4 transition-transform ${mobileMenuOpen === item.label ? 'rotate-180 text-cyan-300' : ''}`} />
               </button>
               {mobileMenuOpen === item.label ? <div className="border-t border-[var(--border-subtle)] px-2 py-2">

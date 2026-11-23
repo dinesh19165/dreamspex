@@ -21,11 +21,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.regex.Pattern;
 import static com.dreamspex.catalog.dto.CatalogDtos.*;
 import static com.dreamspex.gst.GstDtos.*;
 
 @Service
 public class CatalogService {
+    private static final Pattern COLOR_COMPONENT_SEPARATOR =
+            Pattern.compile("\\s*(?:/|,|&|\\+|\\||;|\\band\\b)\\s*", Pattern.CASE_INSENSITIVE);
+
     private final CategoryRepository categories;
     private final ProductRepository products;
     private final ProductVariantRepository variants;
@@ -103,7 +107,7 @@ public class CatalogService {
     public ProductFilterOptions productFilterOptions() {
         return new ProductFilterOptions(sorted(products.findPublicBrands()), sorted(products.findPublicMaterials()),
                 sorted(products.findPublicGenders()), sorted(products.findPublicFrameShapes()),
-                sorted(products.findPublicFrameTypes()), sorted(products.findPublicColors()),
+                sorted(products.findPublicFrameTypes()), sortedColorComponents(products.findPublicColors()),
                 sorted(products.findPublicBadges()));
     }
     @Transactional(readOnly = true)
@@ -326,6 +330,14 @@ public class CatalogService {
     private List<String> sorted(List<String> values) {
         return values.stream().map(String::trim).filter(value -> !value.isEmpty())
                 .distinct().sorted(String.CASE_INSENSITIVE_ORDER).toList();
+    }
+    private List<String> sortedColorComponents(List<String> values) {
+        Map<String, String> components = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        values.stream().filter(Objects::nonNull)
+                .flatMap(value -> Arrays.stream(COLOR_COMPONENT_SEPARATOR.split(value)))
+                .map(String::trim).filter(value -> !value.isEmpty())
+                .forEach(value -> components.putIfAbsent(value, value));
+        return List.copyOf(components.values());
     }
     private ProductResponse product(Product v) {
         return product(v, reviews.ratingSummary(List.of(v.getId())));

@@ -505,14 +505,14 @@ img {
 }
 
 .customer-nav-link--primary {
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   letter-spacing: 0.045em;
 }
 
 .customer-nav-link--category {
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: 18px;
+  font-weight: 700;
   letter-spacing: 0.025em;
 }
 

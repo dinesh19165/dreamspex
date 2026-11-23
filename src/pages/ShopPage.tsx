@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight, SlidersHorizontal, X, Home, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -46,7 +46,7 @@ export default function ShopPage() {
   const [sortBy, setSortBy] = useState(sortFilter);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(Number.isInteger(pageFilter) && pageFilter > 0 ? pageFilter : 1);
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [products, setProducts] = useState<import('../types').Product[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [filterOptions, setFilterOptions] = useState({
@@ -182,6 +182,25 @@ export default function ShopPage() {
   const { cart, updateQuantity } = useShop();
   const cartQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const activeFilterCount = [
+    selectedCategory,
+    selectedBrand,
+    selectedGender,
+    selectedFrameShape,
+    selectedFrameType,
+    selectedMaterial,
+    selectedColor,
+    selectedBadge,
+  ].filter(Boolean).length + (minimumPrice || maximumPrice ? 1 : 0) + Number(availableOnly);
+
+  useEffect(() => {
+    if (!filtersOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFiltersOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filtersOpen]);
 
   const filterFields = (
     <div className="space-y-4">
@@ -241,10 +260,6 @@ export default function ShopPage() {
         <input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} className="h-4 w-4 accent-[#7CBF00]" />
         In-stock items only
       </label>
-      <div className="flex gap-2 pt-2">
-        <button type="button" onClick={() => setMobileFiltersOpen(false)} className="flex-1 rounded-full bg-[var(--bg-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-primary)]">Apply</button>
-        <button type="button" onClick={resetFilters} className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[#7CBF00] hover:text-[#17300d]">Clear</button>
-      </div>
     </div>
   );
 
@@ -297,9 +312,6 @@ export default function ShopPage() {
                 <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2.5 ${viewMode === 'grid' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><LayoutGrid className="h-4 w-4" /></button>
                 <button onClick={() => setViewMode('list')} aria-label="List view" aria-pressed={viewMode === 'list'} className={`rounded-full border p-2.5 ${viewMode === 'list' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><List className="h-4 w-4" /></button>
               </div>
-              <button type="button" onClick={() => setMobileFiltersOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2.5 text-sm font-medium text-[#17300d] sm:hidden">
-                <SlidersHorizontal className="h-4 w-4" /> Filter
-              </button>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -310,18 +322,16 @@ export default function ShopPage() {
           <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#17300d]"><FileText className="h-4 w-4 text-[var(--brand-green-dark)]" /> Prescription available on selected eyewear</div>
         </motion.div>
 
-        <div className={`mt-6 grid gap-5 lg:gap-6 ${cartQuantity > 0 ? 'xl:grid-cols-[280px_1fr_320px]' : 'xl:grid-cols-[280px_1fr]'}`}>
-          <motion.aside initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} className="hidden xl:block self-start rounded-[28px] border border-[#dfe7d7] bg-white p-6 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)]">
-            <div className="flex items-center justify-between gap-3 pb-4">
-              <h3 className="flex items-center gap-2 text-lg font-semibold text-[#182116]"><SlidersHorizontal className="h-4 w-4 text-[var(--brand-green-dark)]" /> Refine filters</h3>
-              <span className="rounded-full bg-[#edf7d9] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#17300d]">{catalogTotal}</span>
-            </div>
-            {filterFields}
-          </motion.aside>
-
+        <div className={`mt-6 grid gap-5 lg:gap-6 ${cartQuantity > 0 ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : ''}`}>
           <div>
             <div className="mb-3 flex items-center justify-between gap-3 rounded-[20px] border border-[#dfe7d7] bg-white px-4 py-3 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">
-              <p className="text-sm text-[#536353]">Showing <span className="font-semibold text-[#182116]">{pagedProducts.length}</span> of <span className="font-semibold text-[#182116]">{catalogTotal}</span> frames</p>
+              <div className="flex min-w-0 items-center gap-3">
+                <button type="button" onClick={() => setFiltersOpen(true)} aria-label={`Open filters, ${activeFilterCount} active`} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2 text-sm font-medium text-[#17300d] transition hover:border-[#7CBF00]/50">
+                  <SlidersHorizontal className="h-4 w-4" /> Filter
+                  <span className="rounded-full bg-[#edf7d9] px-2 py-0.5 text-xs font-semibold text-[#17300d]">{activeFilterCount}</span>
+                </button>
+                <p className="truncate text-sm text-[#536353]">Showing <span className="font-semibold text-[#182116]">{pagedProducts.length}</span> of <span className="font-semibold text-[#182116]">{catalogTotal}</span> frames</p>
+              </div>
               <div className="hidden items-center gap-2 sm:flex">
                 <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2 ${viewMode === 'grid' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><LayoutGrid className="h-4 w-4" /></button>
                 <button onClick={() => setViewMode('list')} aria-label="List view" aria-pressed={viewMode === 'list'} className={`rounded-full border p-2 ${viewMode === 'list' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><List className="h-4 w-4" /></button>
@@ -392,22 +402,45 @@ export default function ShopPage() {
         </div>
       </main>
 
-      {mobileFiltersOpen ? (
-        <div className="fixed inset-0 z-50 bg-[var(--bg-primary)]/90 backdrop-blur-[2px] xl:hidden">
-          <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-xl rounded-t-[28px] border-t border-[#dfe7d7] bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--brand-green-dark)]">Filters</p>
-                <h3 className="mt-1 text-xl font-semibold text-[#182116]">Refine your search</h3>
+      <AnimatePresence>
+        {filtersOpen ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-[140] bg-black/40 backdrop-blur-sm"
+            onClick={() => setFiltersOpen(false)}
+          >
+            <motion.aside
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="shop-filter-title"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+              className="fixed inset-y-0 left-0 flex h-dvh w-[min(100vw,28rem)] flex-col border-r border-[#dfe7d7] bg-white shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-[#e7ecdf] px-5 py-5 sm:px-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--brand-green-dark)]">Filters</p>
+                  <h2 id="shop-filter-title" className="mt-1 text-xl font-semibold text-[#182116]">Refine your search</h2>
+                </div>
+                <button type="button" onClick={() => setFiltersOpen(false)} aria-label="Close filters" className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2 text-[#17300d]">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <button type="button" onClick={() => setMobileFiltersOpen(false)} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2 text-[#17300d]">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mt-5 max-h-[58vh] overflow-y-auto pb-4">{filterFields}</div>
-          </div>
-        </div>
-      ) : null}
+              <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">{filterFields}</div>
+              <div className="flex gap-3 border-t border-[#e7ecdf] bg-white px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
+                <button type="button" onClick={resetFilters} className="flex-1 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-[#7CBF00] hover:text-[#17300d]">Clear All</button>
+                <button type="button" onClick={() => setFiltersOpen(false)} className="flex-1 rounded-full bg-[var(--bg-secondary)] px-4 py-3 text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--bg-primary)]">Apply Filters</button>
+              </div>
+            </motion.aside>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <Footer />
     </div>

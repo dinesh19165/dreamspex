@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Glasses, LayoutGrid, LogOut, MapPin, MessageSquareText, PackageOpen, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Printer, RefreshCw, Search, Settings, ShoppingCart, Store, Star, TrendingUp, UserRound, Users, Warehouse, PanelsTopLeft, Tags, RotateCcw, Save, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, Building2, CheckCircle2, ChevronDown, ChevronRight, CircleDollarSign, Download, Glasses, LayoutGrid, LogOut, MapPin, MessageSquareText, PackageOpen, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Printer, RefreshCw, Search, Settings, ShieldCheck, ShoppingCart, Store, Star, TrendingUp, UserRound, Users, Warehouse, PanelsTopLeft, Tags, RotateCcw, Save, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
@@ -84,6 +84,7 @@ function getDefaultNavigationGroups(role: 'SUPER_ADMIN' | 'FRANCHISE_ADMIN' | 'C
         { label: 'Franchise Applications', href: '/admin/franchise-applications', icon: MessageSquareText },
         { label: 'Users', href: '/admin/users', icon: UserRound },
         { label: 'Settings', href: '/admin/settings', icon: Settings },
+        { label: 'Maintenance mode', href: '/admin/maintenance', icon: ShieldCheck },
         { label: 'Delivery Fees', href: '/admin/delivery-fees', icon: CircleDollarSign },
         { label: 'GST Settings', href: '/admin/settings/gst', icon: CircleDollarSign },
       ] },

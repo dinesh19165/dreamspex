@@ -30,14 +30,14 @@ export default function CategoriesPage() {
         <SectionTitle eyebrow="Categories" title="Explore the collection" description="Browse categories represented by products in the current Dream Spex catalogue." />
         <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">Browse the categories currently available in the Dream Spex catalogue.</p>
         {error ? <p className="mt-6 text-sm text-red-600" role="alert">{error}</p> : null}
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
           {supportedCategories.map(({ slug, name, description, imageUrl }) => {
             const resolvedImage = resolveCmsMediaUrl(imageUrl) ?? categoryImages[slug];
-            return <Link key={slug} to={`/shop?category=${encodeURIComponent(slug)}`} className="group overflow-hidden rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm transition hover:-translate-y-1 hover:shadow-lg focus-visible:outline">
-              <div className="aspect-[4/3] overflow-hidden bg-[var(--bg-secondary)]">
-                {resolvedImage ? <img src={resolvedImage} alt={name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : <div className="grid h-full place-items-center px-6 text-center font-serif text-2xl text-[var(--text-secondary)]">{name}</div>}
+            return <Link key={slug} to={`/shop?category=${encodeURIComponent(slug)}`} className="group flex h-full flex-col overflow-hidden rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg focus-visible:outline">
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--bg-card)]">
+                {resolvedImage ? <img src={resolvedImage} alt={name} loading="lazy" className="h-full w-full object-contain p-1 transition duration-500 group-hover:scale-[1.03]" /> : <div className="grid h-full place-items-center px-6 text-center font-serif text-2xl text-[var(--text-secondary)]">{name}</div>}
               </div>
-              <div className="p-6">
+              <div className="px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-semibold">{name}</h2>

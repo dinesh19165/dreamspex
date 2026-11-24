@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, ShoppingCart, ArrowRight, SlidersHorizontal, X, Home, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
@@ -32,7 +32,6 @@ export default function ShopPage() {
   const sortFilter = searchParams.get('sort') ?? 'relevance';
   const pageFilter = Number(searchParams.get('page') ?? '1');
   const [query, setQuery] = useState(searchFilter);
-  const [selectedCategory, setSelectedCategory] = useState(categoryFilter);
   const [selectedBrand, setSelectedBrand] = useState(brandFilter);
   const [selectedMaterial, setSelectedMaterial] = useState(materialFilter);
   const [selectedColor, setSelectedColor] = useState(colorFilter);
@@ -61,10 +60,20 @@ export default function ShopPage() {
   const [catalogTotal, setCatalogTotal] = useState(0);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
+  const [catalogCategoryKey, setCatalogCategoryKey] = useState('');
+  const catalogRequestRef = useRef(0);
+  const selectedCategory = categoryFilter;
+
+  const updateCategory = (value: string) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (value) nextParams.set('category', value);
+    else nextParams.delete('category');
+    nextParams.delete('page');
+    setSearchParams(nextParams, { replace: false });
+  };
 
   useEffect(() => {
     setQuery(searchFilter);
-    setSelectedCategory(categoryFilter);
     setSelectedBrand(brandFilter);
     setSelectedMaterial(materialFilter);
     setSelectedColor(colorFilter);
@@ -80,6 +89,27 @@ export default function ShopPage() {
   }, [searchParams, categoryFilter, searchFilter, brandFilter, materialFilter, colorFilter, badgeFilter, genderFilter, frameShapeFilter, frameTypeFilter, sortFilter, pageFilter]);
 
   useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (query.trim()) params.set('search', query.trim());
+    else params.delete('search');
+    if (selectedBrand) params.set('brand', selectedBrand); else params.delete('brand');
+    if (selectedMaterial) params.set('material', selectedMaterial); else params.delete('material');
+    if (selectedColor) params.set('color', selectedColor); else params.delete('color');
+    if (selectedBadge) params.set('badge', selectedBadge); else params.delete('badge');
+    if (selectedGender) params.set('gender', selectedGender); else params.delete('gender');
+    if (selectedFrameShape) params.set('shape', selectedFrameShape); else params.delete('shape');
+    if (selectedFrameType) params.set('frameType', selectedFrameType); else params.delete('frameType');
+    if (availableOnly) params.set('available', 'true'); else params.delete('available');
+    if (minimumPrice) params.set('minPrice', minimumPrice); else params.delete('minPrice');
+    if (maximumPrice) params.set('maxPrice', maximumPrice); else params.delete('maxPrice');
+    if (sortBy !== 'relevance') params.set('sort', sortBy); else params.delete('sort');
+    if (page > 1) params.set('page', String(page)); else params.delete('page');
+    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
+  }, [query, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender,
+      selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice,
+      sortBy, page, searchParams, setSearchParams]);
+
+  useEffect(() => {
     const controller = new AbortController();
     Promise.all([catalogService.categories('CATALOG', controller.signal), catalogService.filterOptions(controller.signal)])
       .then(([nextCategories, nextFilterOptions]) => {
@@ -91,16 +121,6 @@ export default function ShopPage() {
       });
     return () => controller.abort();
   }, []);
-
-  useEffect(() => {
-    const match = categories.find((category) => category.slug.toLowerCase() === selectedCategory.toLowerCase()
-      || category.id.toLowerCase() === selectedCategory.toLowerCase()
-      || normalize(category.name) === normalize(selectedCategory));
-    const canonical = match ?? (normalize(selectedCategory) === 'frames'
-      ? categories.find((category) => category.slug.toLowerCase() === 'eyeglasses' || normalize(category.name) === 'eyeglasses')
-      : undefined);
-    if (canonical && selectedCategory !== canonical.slug) setSelectedCategory(canonical.slug);
-  }, [categories, selectedCategory]);
 
   useEffect(() => {
     const params = new URLSearchParams({
@@ -122,42 +142,31 @@ export default function ShopPage() {
     if (maximumPrice) params.set('maxPrice', maximumPrice);
     if (selectedLocationId) params.set('franchiseId', selectedLocationId);
     const controller = new AbortController();
+    const requestId = ++catalogRequestRef.current;
     setCatalogLoading(true);
     setCatalogError('');
     catalogService.search(params, controller.signal)
       .then((result) => {
+        if (requestId !== catalogRequestRef.current) return;
         setProducts(result.items.map(toProduct));
         setCatalogTotal(result.total);
+        setCatalogCategoryKey(selectedCategory);
       })
       .catch((reason) => {
-        if (!controller.signal.aborted) setCatalogError(reason instanceof Error ? reason.message : 'Unable to load the catalogue.');
+        if (!controller.signal.aborted && requestId === catalogRequestRef.current) {
+          setCatalogError(reason instanceof Error ? reason.message : 'Unable to load the catalogue.');
+        }
       })
-      .finally(() => { if (!controller.signal.aborted) setCatalogLoading(false); });
-    return () => controller.abort();
+      .finally(() => {
+        if (!controller.signal.aborted && requestId === catalogRequestRef.current) setCatalogLoading(false);
+      });
+    return () => {
+      controller.abort();
+    };
   }, [page, query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy, selectedLocationId]);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (query.trim()) params.set('search', query.trim());
-    if (selectedCategory) params.set('category', selectedCategory);
-    if (selectedBrand) params.set('brand', selectedBrand);
-    if (selectedMaterial) params.set('material', selectedMaterial);
-    if (selectedColor) params.set('color', selectedColor);
-    if (selectedBadge) params.set('badge', selectedBadge);
-    if (selectedGender) params.set('gender', selectedGender);
-    if (selectedFrameShape) params.set('shape', selectedFrameShape);
-    if (selectedFrameType) params.set('frameType', selectedFrameType);
-    if (availableOnly) params.set('available', 'true');
-    if (minimumPrice) params.set('minPrice', minimumPrice);
-    if (maximumPrice) params.set('maxPrice', maximumPrice);
-    if (sortBy !== 'relevance') params.set('sort', sortBy);
-    if (page > 1) params.set('page', String(page));
-    if (params.toString() !== searchParams.toString()) setSearchParams(params, { replace: true });
-  }, [query, selectedCategory, selectedBrand, selectedMaterial, selectedColor, selectedBadge, selectedGender, selectedFrameShape, selectedFrameType, availableOnly, minimumPrice, maximumPrice, sortBy, page, searchParams, setSearchParams]);
 
   const resetFilters = () => {
     setQuery('');
-    setSelectedCategory('');
     setSelectedBrand('');
     setSelectedMaterial('');
     setSelectedColor('');
@@ -170,11 +179,32 @@ export default function ShopPage() {
     setMaximumPrice('');
     setSortBy('relevance');
     setPage(1);
-    setSearchParams({}, { replace: true });
+    const params = new URLSearchParams(searchParams);
+    params.delete('search');
+    params.delete('brand');
+    params.delete('material');
+    params.delete('color');
+    params.delete('badge');
+    params.delete('gender');
+    params.delete('shape');
+    params.delete('frameType');
+    params.delete('available');
+    params.delete('minPrice');
+    params.delete('maxPrice');
+    params.delete('sort');
+    params.delete('page');
+    setSearchParams(params, { replace: true });
   };
 
   const totalPages = Math.max(1, Math.ceil(catalogTotal / PAGE_SIZE));
   const pagedProducts = products;
+  const currentCategory = categories.find((category) =>
+    category.slug.toLowerCase() === selectedCategory.toLowerCase()
+    || category.id.toLowerCase() === selectedCategory.toLowerCase()
+    || normalize(category.name) === normalize(selectedCategory));
+  const categoryTitle = currentCategory?.name
+    ?? (selectedCategory ? selectedCategory.replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()) : 'Eyeglasses');
+  const displayedCatalogTotal = catalogCategoryKey === selectedCategory ? catalogTotal : 0;
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
@@ -205,7 +235,7 @@ export default function ShopPage() {
   const filterFields = (
     <div className="space-y-4">
       <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Category
-        <select value={selectedCategory} onChange={(event) => { setSelectedCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+        <select value={selectedCategory} onChange={(event) => { updateCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All categories</option>
           {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
         </select>
@@ -273,16 +303,16 @@ export default function ShopPage() {
               <Home className="h-4 w-4" /> Home
             </Link>
             <ChevronRightIcon className="h-4 w-4 text-[#7a867a]" />
-            <span>Eyeglasses</span>
+            <span>{categoryTitle}</span>
             <ChevronRightIcon className="h-4 w-4 text-[#7a867a]" />
             <span className="font-semibold text-[#17300d]">Frames</span>
           </div>
           <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[var(--brand-green-dark)]">Premium collection</p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#182116] sm:text-4xl">Eyeglasses Frames</h1>
+              <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#182116] sm:text-4xl">{categoryTitle} Frames</h1>
             </div>
-            <p className="text-sm text-[#5f6c5b]">{catalogTotal} styles ready to explore</p>
+            <p className="text-sm text-[#5f6c5b]">{catalogLoading && catalogCategoryKey !== selectedCategory ? 'Loading styles...' : `${displayedCatalogTotal} styles ready to explore`}</p>
           </div>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5f6c5b]">Discover frames that match your style.</p>
         </div>
@@ -326,11 +356,11 @@ export default function ShopPage() {
           <div>
             <div className="mb-3 flex items-center justify-between gap-3 rounded-[20px] border border-[#dfe7d7] bg-white px-4 py-3 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">
               <div className="flex min-w-0 items-center gap-3">
-                <button type="button" onClick={() => setFiltersOpen(true)} aria-label={`Open filters, ${activeFilterCount} active`} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2 text-sm font-medium text-[#17300d] transition hover:border-[#7CBF00]/50">
+                <button type="button" onClick={() => setFiltersOpen(true)} aria-label={`Open filters, ${activeFilterCount} active`} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2 text-sm font-medium text-[#17300d] transition hover:border-[#7CBF00]/50 lg:hidden">
                   <SlidersHorizontal className="h-4 w-4" /> Filter
                   <span className="rounded-full bg-[#edf7d9] px-2 py-0.5 text-xs font-semibold text-[#17300d]">{activeFilterCount}</span>
                 </button>
-                <p className="truncate text-sm text-[#536353]">Showing <span className="font-semibold text-[#182116]">{pagedProducts.length}</span> of <span className="font-semibold text-[#182116]">{catalogTotal}</span> frames</p>
+                <p className="truncate text-sm text-[#536353]">Showing <span className="font-semibold text-[#182116]">{catalogCategoryKey === selectedCategory ? pagedProducts.length : 0}</span> of <span className="font-semibold text-[#182116]">{displayedCatalogTotal}</span> frames</p>
               </div>
               <div className="hidden items-center gap-2 sm:flex">
                 <button onClick={() => setViewMode('grid')} aria-label="Grid view" aria-pressed={viewMode === 'grid'} className={`rounded-full border p-2 ${viewMode === 'grid' ? 'border-[#7CBF00]/40 bg-[#7CBF00]/10 text-[#17300d]' : 'border-[#dfe7d7] bg-[#f7f5f0] text-slate-600'}`}><LayoutGrid className="h-4 w-4" /></button>
@@ -338,7 +368,47 @@ export default function ShopPage() {
               </div>
             </div>
 
-            <div className={`grid auto-rows-fr gap-3 md:gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 2xl:grid-cols-4' : 'grid-cols-1'}`}>
+            <div className="mb-4 grid grid-cols-2 gap-2 rounded-[20px] border border-[#dfe7d7] bg-white p-3 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)] sm:grid-cols-3 lg:grid-cols-6">
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">Shop Category
+                <select value={selectedCategory} onChange={(event) => { updateCategory(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
+                  <option value="">All categories</option>
+                  {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
+                </select>
+              </label>
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">By Shape
+                <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
+                  <option value="">All shapes</option>
+                  {filterOptions.frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
+                </select>
+              </label>
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">By Brand
+                <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
+                  <option value="">All brands</option>
+                  {filterOptions.brands.map((brand) => <option key={brand}>{brand}</option>)}
+                </select>
+              </label>
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">Shop by Material
+                <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
+                  <option value="">All materials</option>
+                  {filterOptions.materials.map((material) => <option key={material}>{material}</option>)}
+                </select>
+              </label>
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">Shop by Colour
+                <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
+                  <option value="">All colours</option>
+                  {filterOptions.colors.map((color) => <option key={color} value={color}>{formatColorLabel(color)}</option>)}
+                </select>
+              </label>
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">Featured
+                <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
+                  <option value="">All labels</option>
+                  {filterOptions.badges.map((badge) => <option key={badge} value={badge}>{badge}</option>)}
+                </select>
+              </label>
+            </div>
+            {activeFilterCount > 0 ? <button type="button" onClick={resetFilters} className="mb-4 ml-auto block rounded-full border border-[#dfe7d7] px-3 py-2 text-xs font-semibold text-[#17300d] transition hover:border-[#7CBF00]">Clear filters</button> : null}
+
+            <div className={`grid auto-rows-fr gap-3 md:gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}>
               {pagedProducts.map((product, index) => (
                 <motion.div key={product.id} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.04 }} className="h-full">
                   <ProductCard product={product} layout={viewMode} />

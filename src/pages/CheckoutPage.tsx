@@ -27,6 +27,7 @@ import GstBreakdown from '../components/ui/GstBreakdown';
 import { toGstBreakdown } from '../utils/gst';
 import { useFranchiseLocation } from '../context/FranchiseLocationContext';
 import { franchiseStoreService, type StorefrontAvailability } from '../services/franchiseStoreService';
+import { useMaintenance } from '../context/MaintenanceContext';
 
 const NEW_ADDRESS_VALUE = '__new_address__';
 
@@ -75,6 +76,7 @@ function loadRazorpay() {
 }
 
 export default function CheckoutPage() {
+  const { status: maintenanceStatus } = useMaintenance();
   const { cart, cartLoading, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount } = useShop();
   const { user, refreshSession } = useAuth();
   const { locations, selectedLocationId, selectLocation } = useFranchiseLocation();
@@ -372,6 +374,9 @@ export default function CheckoutPage() {
   const loyaltyDiscount = currentRedemptionPreview?.discount ?? loyaltyValidation.discount;
   const payableTotal = Math.max(0, baseOrderTotal - loyaltyDiscount);
   const paymentDisabled = !checkoutQuote?.deliveryAvailability.available
+    || Boolean(maintenanceStatus?.maintenanceActive
+      && (maintenanceStatus.maintenanceType === 'PAYMENT'
+        || maintenanceStatus.maintenanceType === 'FULL_SYSTEM'))
     || (fulfillmentType === 'DELIVERY' && (!addressId || !selectedLocationIsSaved))
     || (fulfillmentType === 'PICKUP' && !selectedLocationId) || paymentLoading
     || quoteLoading || Boolean(loyaltyValidation.error)

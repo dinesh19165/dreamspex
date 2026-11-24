@@ -33,7 +33,7 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
   return (
     <>
       <motion.article whileHover={{ y: -3 }} transition={{ type: 'spring', stiffness: 220, damping: 18 }} className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_12px_30px_-24px_rgba(2,6,23,0.55)] ${layout === 'list' ? 'sm:flex-row' : ''}`}>
-        <div className={`relative h-[148px] overflow-hidden bg-[var(--bg-secondary)] sm:h-[170px] lg:h-[190px] ${layout === 'list' ? 'sm:aspect-auto sm:min-h-64 sm:w-2/5 sm:shrink-0' : ''}`}>
+        <div className={`relative overflow-hidden bg-[var(--bg-secondary)] ${layout === 'list' ? 'h-[148px] sm:aspect-auto sm:min-h-64 sm:w-2/5 sm:shrink-0 sm:h-[170px] lg:h-[190px]' : 'h-[220px] sm:h-[240px] lg:h-[250px] w-full'}`}>
           <Link to={productPath} aria-label={`View details for ${product.name}`} className="block h-full w-full">
             <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-[1.03]" />
           </Link>

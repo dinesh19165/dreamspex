@@ -67,6 +67,9 @@ import { AdminLoyaltyReportsPage, AdminLoyaltySettingsPage } from './pages/Admin
 import AdminProductReviewsPage from './pages/AdminProductReviewsPage';
 import AdminCustomerSmsPage from './pages/AdminCustomerSmsPage';
 import StoreLocatorPage from './pages/StoreLocatorPage';
+import MaintenancePage from './pages/MaintenancePage';
+import AdminMaintenancePage from './pages/AdminMaintenancePage';
+import { useMaintenance } from './context/MaintenanceContext';
 
 function RootEntry({ onReady, onTaglineChange }: { onReady: () => void; onTaglineChange: (tagline: string | null) => void }) {
   return <HomePage onInitialDataReady={onReady} onTaglineChange={onTaglineChange} />;
@@ -96,6 +99,20 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function MaintenanceWebsiteGate({ children }: { children: React.ReactNode }) {
+  const { status } = useMaintenance();
+  const { role } = useAuth();
+  const location = useLocation();
+  const fullSystemMaintenance = status?.maintenanceActive
+    && status.maintenanceType === 'FULL_SYSTEM'
+    && (status.targetScope === 'ALL' || status.targetScope === 'WEB')
+    && role !== 'SUPER_ADMIN'
+    && location.pathname !== '/admin/login';
+
+  if (fullSystemMaintenance) return <MaintenancePage />;
+  return <>{children}</>;
+}
+
 function App() {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [loading, setLoading] = useState(() => typeof window !== 'undefined' && window.location.pathname === '/');
@@ -116,9 +133,10 @@ function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <AuthExpirationHandler />
-        <ScrollToTop />
-        <div className="relative">
+        <MaintenanceWebsiteGate>
+          <AuthExpirationHandler />
+          <ScrollToTop />
+          <div className="relative">
           <AnimatePresence>{loading ? <LuxuryLoader tagline={loadingTagline} /> : null}</AnimatePresence>
           <ScrollProgressBar />
           <AnimatePresence>
@@ -210,6 +228,7 @@ function App() {
             <Route path="/admin/users" element={<SuperAdminRoute><SuperAdminUsersPage /></SuperAdminRoute>} />
             <Route path="/admin/profile" element={<SuperAdminRoute><SuperAdminProfilePage /></SuperAdminRoute>} />
             <Route path="/admin/settings" element={<SuperAdminRoute><SuperAdminSettingsPage /></SuperAdminRoute>} />
+            <Route path="/admin/maintenance" element={<SuperAdminRoute><AdminMaintenancePage /></SuperAdminRoute>} />
             <Route path="/admin/delivery-fees" element={<SuperAdminRoute><DeliveryFeeManagementPage /></SuperAdminRoute>} />
             <Route path="/admin/settings/gst" element={<SuperAdminRoute><SuperAdminGstSettingsPage /></SuperAdminRoute>} />
             <Route path="/admin/content" element={<SuperAdminRoute><HomepageBuilderPage /></SuperAdminRoute>} />
@@ -225,7 +244,8 @@ function App() {
             <Route path="/stores" element={<StoreLocatorPage />} />
             <Route path="*" element={<OtherPages />} />
           </Routes>
-        </div>
+          </div>
+        </MaintenanceWebsiteGate>
       </BrowserRouter>
     </HelmetProvider>
   );

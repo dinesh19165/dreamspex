@@ -397,58 +397,48 @@ img {
 .search-border-glow {
   position: relative;
   isolation: isolate;
+  border: 0;
 }
 
 .search-border-glow::before {
   position: absolute;
-  z-index: 1;
-  inset: -1px;
+  z-index: 0;
+  inset: -2px;
   box-sizing: border-box;
-  padding: 1px;
-  border-radius: inherit;
+  padding: 2px;
+  border-radius: 999px;
   background: conic-gradient(
-    from var(--search-border-angle),
-    transparent 0deg 250deg,
-    rgba(56, 189, 248, 0.12) 278deg,
-    rgba(56, 189, 248, 0.38) 305deg,
-    #38bdf8 326deg,
-    #cffafe 338deg,
-    #38bdf8 350deg,
-    transparent 360deg
+    from var(--maintenance-border-angle),
+    #78be20 0deg,
+    #22c55e 70deg,
+    #2563eb 180deg,
+    #1d4ed8 245deg,
+    #78be20 360deg
   );
   content: '';
   pointer-events: none;
-  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.55));
-  transition: filter 180ms ease;
+  filter: drop-shadow(0 0 5px rgba(120, 190, 32, 0.28))
+    drop-shadow(0 0 7px rgba(37, 99, 235, 0.18));
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  animation: search-border-rotation 3.6s linear infinite;
+  animation: maintenance-border-rotation 4s linear infinite;
 }
 
 .search-border-glow::after {
-  position: absolute;
-  z-index: 0;
-  inset: -1px;
-  box-sizing: border-box;
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  border-radius: inherit;
-  content: '';
-  pointer-events: none;
-  filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.16));
-  transition: filter 180ms ease, border-color 180ms ease;
+  content: none;
 }
 
 .search-border-glow:hover::before,
 .search-border-glow:focus-visible::before {
-  filter: drop-shadow(0 0 7px rgba(56, 189, 248, 0.72));
+  filter: drop-shadow(0 0 7px rgba(120, 190, 32, 0.38))
+    drop-shadow(0 0 9px rgba(37, 99, 235, 0.28));
 }
 
 .search-border-glow:hover::after,
 .search-border-glow:focus-visible::after {
-  border-color: rgba(56, 189, 248, 0.32);
-  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.3));
+  content: none;
 }
 
 .search-border-glow > * {
@@ -456,15 +446,58 @@ img {
   z-index: 2;
 }
 
-@property --search-border-angle {
+.maintenance-animated-border {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+}
+
+.maintenance-animated-border::before {
+  position: absolute;
+  z-index: -1;
+  inset: -3px;
+  border-radius: 35px;
+  background: conic-gradient(
+    from var(--maintenance-border-angle),
+    #78be20 0deg,
+    #22c55e 70deg,
+    #2563eb 180deg,
+    #1d4ed8 245deg,
+    #78be20 360deg
+  );
+  content: '';
+  pointer-events: none;
+  filter: drop-shadow(0 0 7px rgba(120, 190, 32, 0.28))
+    drop-shadow(0 0 10px rgba(37, 99, 235, 0.18));
+  animation: maintenance-border-rotation 4s linear infinite;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  padding: 3px;
+}
+
+.maintenance-card-content {
+  position: relative;
+  z-index: 1;
+}
+
+@property --maintenance-border-angle {
   syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
 }
 
-@keyframes search-border-rotation {
+@keyframes maintenance-border-rotation {
   to {
-    --search-border-angle: 360deg;
+    --maintenance-border-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maintenance-animated-border::before,
+  .search-border-glow::before {
+    animation: none;
   }
 }
 
@@ -725,7 +758,11 @@ img {
 .customer-mega-menu__card {
   position: relative;
   display: block;
-  height: clamp(8rem, 23svh, 13rem);
+  width: 100%;
+  height: auto;
+  max-width: 17rem;
+  justify-self: center;
+  aspect-ratio: 4 / 5;
   min-height: 0;
   overflow: hidden;
   border-radius: 0.75rem;
@@ -745,7 +782,8 @@ img {
   width: 100%;
   height: 100%;
   min-height: 0;
-  object-fit: cover;
+  object-fit: contain;
+  background: #fff;
   transition: transform 450ms cubic-bezier(0.2, 0.7, 0.25, 1);
 }
 
@@ -932,7 +970,9 @@ img {
   }
 
   .customer-mega-menu__card {
-    height: clamp(7rem, 20svh, 9.5rem);
+    height: auto;
+    max-width: 14rem;
+    aspect-ratio: 4 / 5;
   }
 }
 

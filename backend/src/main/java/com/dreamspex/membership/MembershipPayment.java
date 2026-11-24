@@ -1,4 +1,5 @@
-package com.dreamspex.membership;
+package com.dreamspex.membership;
+
 import com.dreamspex.auth.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

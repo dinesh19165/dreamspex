@@ -4,6 +4,7 @@ package com.dreamspex.config;
 import com.dreamspex.auth.entity.User;
 import com.dreamspex.auth.repository.UserRepository;
 import com.dreamspex.security.JwtAuthenticationFilter;import org.springframework.security.core.userdetails.UserDetailsService;
+import com.dreamspex.maintenance.MaintenanceRequestFilter;import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,6 +30,7 @@ import java.util.List;
 public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter,
+                                             MaintenanceRequestFilter maintenanceFilter,
                                              CorsProperties corsProperties) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -38,6 +40,7 @@ public class SecurityConfig {
                         new HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/maintenance/status").permitAll()
                         .requestMatchers("/api/v1/delivery/batches/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
@@ -52,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/cart/**", "/api/v1/wishlist/**", "/api/v1/coupons/**").hasRole("CUSTOMER")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(maintenanceFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 

@@ -397,18 +397,18 @@ img {
 .search-border-glow {
   position: relative;
   isolation: isolate;
-  border: 0;
+  border: 0 !important;
+  overflow: visible;
 }
 
 .search-border-glow::before {
   position: absolute;
   z-index: 0;
-  inset: -2px;
+  inset: -3px;
   box-sizing: border-box;
-  padding: 2px;
   border-radius: 999px;
   background: conic-gradient(
-    from var(--maintenance-border-angle),
+    from 0deg,
     #78be20 0deg,
     #22c55e 70deg,
     #2563eb 180deg,
@@ -419,15 +419,17 @@ img {
   pointer-events: none;
   filter: drop-shadow(0 0 5px rgba(120, 190, 32, 0.28))
     drop-shadow(0 0 7px rgba(37, 99, 235, 0.18));
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  animation: maintenance-border-rotation 4s linear infinite;
+  animation: search-border-spin 4s linear infinite;
 }
 
 .search-border-glow::after {
-  content: none;
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--bg-card);
+  content: '';
+  pointer-events: none;
 }
 
 .search-border-glow:hover::before,
@@ -436,14 +438,15 @@ img {
     drop-shadow(0 0 9px rgba(37, 99, 235, 0.28));
 }
 
-.search-border-glow:hover::after,
-.search-border-glow:focus-visible::after {
-  content: none;
-}
-
 .search-border-glow > * {
   position: relative;
   z-index: 2;
+}
+
+@keyframes search-border-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .maintenance-animated-border {
@@ -509,6 +512,13 @@ img {
 .navbar-home-overlay__search button > span:last-child:not(:only-child) {
   border-color: transparent;
   background: transparent;
+}
+
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .search-border-glow::after,
+.navbar-home-overlay.navbar-home-overlay--scrolled .search-border-glow::after {
+  background: rgba(8, 15, 11, 0.42);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .customer-nav-link {

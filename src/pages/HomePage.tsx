@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent 
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import type { Product } from '../types';
@@ -392,6 +392,7 @@ type HomePageProps = {
 };
 
 export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePageProps) {
+  const location = useLocation();
   const [cms, setCms] = useState<HomepageResponse | null>(null);
   const [catalog, setCatalog] = useState<{ products: CatalogProduct[]; categories: CatalogCategory[] } | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -410,6 +411,8 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
   const [bannerClock, setBannerClock] = useState(() => Date.now());
   const [activeCategorySlide, setActiveCategorySlide] = useState(0);
   const [categoryCarouselPaused, setCategoryCarouselPaused] = useState(false);
+  const [showAllMaterials, setShowAllMaterials] = useState(false);
+  const [showAllColours, setShowAllColours] = useState(false);
   const categoryTouchStartX = useRef<number | null>(null);
   const categorySwipeTriggered = useRef(false);
   const frameShapeCarouselRef = useRef<HTMLDivElement | null>(null);
@@ -579,6 +582,9 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
   const categoryCarouselColumns = materialsSectionHidden || categoriesSectionHidden
     ? ' home-shopping-showcase__layout--single'
     : '';
+  const homepageFilterParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const selectedMaterial = homepageFilterParams.get('material');
+  const selectedColour = homepageFilterParams.get('color');
   useEffect(() => {
     if (reducedMotion || categoryCarouselPaused || categoryCarousel.length < 2) return undefined;
     const timer = window.setInterval(() => {
@@ -761,29 +767,36 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                   <section className="home-shopping-filters__group" aria-labelledby="home-material-filter-title">
                     <h3 id="home-material-filter-title">Materials</h3>
                     <div className="home-filter-chip-list" aria-label="Filter by material">
-                      {supportedMaterials.map((material) => <Link
+                      {(showAllMaterials ? supportedMaterials : supportedMaterials.slice(0, 6)).map((material) => <Link
                         key={material}
                         to={`/shop?material=${encodeURIComponent(material)}`}
-                        className="home-filter-chip home-filter-chip--material"
+                        className={`home-filter-chip home-filter-chip--material${selectedMaterial?.toLowerCase() === material.toLowerCase() ? ' is-selected' : ''}`}
+                        aria-current={selectedMaterial?.toLowerCase() === material.toLowerCase() ? 'true' : undefined}
                       >
                         <span className="home-filter-chip__material-mark" aria-hidden="true" />
                         {formatFilterLabel(material)}
                       </Link>)}
                       {!supportedMaterials.length ? <p className="home-shopping-filters__empty" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading materials...' : catalogError || 'No materials are available right now.'}</p> : null}
                     </div>
+                    {supportedMaterials.length > 6 ? <button type="button" className="home-filter-view-toggle" onClick={() => setShowAllMaterials((current) => !current)} aria-expanded={showAllMaterials}>
+                      {showAllMaterials ? 'Show less' : `View all ${supportedMaterials.length}`}
+                      <ChevronRight aria-hidden="true" className={showAllMaterials ? 'home-filter-view-toggle__icon is-expanded' : 'home-filter-view-toggle__icon'} />
+                    </button> : null}
                   </section>
 
                   <section className="home-shopping-filters__group home-shopping-filters__group--colours" aria-labelledby="home-colour-filter-title">
                     <h3 id="home-colour-filter-title">Shop by colour</h3>
                     {supportedColorGroups.map(({ label, categorySlug, colors }) => {
                       const colorOptions = uniqueColorFilterOptions(colors);
+                      const visibleColorOptions = showAllColours ? colorOptions : colorOptions.slice(0, 8);
                       return <div key={label} className="home-shopping-filters__colour-group">
                         <h4>{label}</h4>
                         <div className="home-filter-chip-list" aria-label={`Filter ${label.toLowerCase()} by colour`}>
-                          {colorOptions.map(({ value, label: colorLabel }) => <Link
+                          {visibleColorOptions.map(({ value, label: colorLabel }) => <Link
                             key={colorLabel}
                             to={`/shop?category=${encodeURIComponent(categorySlug)}&color=${encodeURIComponent(value)}`}
-                            className="home-filter-chip home-filter-chip--colour"
+                            className={`home-filter-chip home-filter-chip--colour${selectedColour?.toLowerCase() === value.toLowerCase() ? ' is-selected' : ''}`}
+                            aria-current={selectedColour?.toLowerCase() === value.toLowerCase() ? 'true' : undefined}
                           >
                             <ColorSwatch color={value} className="home-filter-chip__swatch" />
                             {colorLabel}
@@ -792,6 +805,12 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                       </div>;
                     })}
                     {!supportedColorGroups.length ? <p className="home-shopping-filters__empty" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading colours...' : catalogError || 'No colour options are available right now.'}</p> : null}
+                    {supportedColorGroups.some(({ colors }) => uniqueColorFilterOptions(colors).length > 8)
+                      ? <button type="button" className="home-filter-view-toggle" onClick={() => setShowAllColours((current) => !current)} aria-expanded={showAllColours}>
+                        {showAllColours ? 'Show less' : 'View all colours'}
+                        <ChevronRight aria-hidden="true" className={showAllColours ? 'home-filter-view-toggle__icon is-expanded' : 'home-filter-view-toggle__icon'} />
+                      </button>
+                      : null}
                   </section>
                 </aside> : null}
 

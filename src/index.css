@@ -417,16 +417,17 @@ img {
     #1d4ed8 245deg,
     #78be20 360deg
   );
-  padding: 2px;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
   animation: search-border-spin 4s linear infinite;
 }
 
 .search-border-glow::after {
-  content: none;
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 2px;
+  border-radius: inherit;
+  background: var(--bg-primary);
+  pointer-events: none;
 }
 
 .search-border-glow__button {
@@ -437,13 +438,13 @@ img {
   height: auto;
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: var(--bg-primary);
 }
 
 .search-border-glow__button:hover,
 .search-border-glow__button:focus-visible,
 .search-border-glow__button:active {
-  background: transparent;
+  background: var(--bg-primary);
 }
 
 .search-border-glow:hover,
@@ -522,7 +523,7 @@ img {
 
 .navbar-home-overlay__search button:hover,
 .navbar-home-overlay__search button:focus-visible {
-  background: transparent;
+  background: var(--bg-primary);
 }
 
 .navbar-home-overlay__search button > span:last-child:not(:only-child) {
@@ -532,12 +533,14 @@ img {
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .search-border-glow__button,
 .navbar-home-overlay.navbar-home-overlay--scrolled .search-border-glow__button {
-  background: transparent;
+  background: rgba(8, 15, 11, 0.92);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .search-border-glow::after,
 .navbar-home-overlay.navbar-home-overlay--scrolled .search-border-glow::after {
-  content: none;
+  background: rgba(8, 15, 11, 0.92);
 }
 
 .customer-nav-link {
@@ -546,8 +549,7 @@ img {
   flex: 0 0 auto;
   align-items: center;
   min-height: 2.25rem;
-  color: #FFFFFF;
-  opacity: 1;
+  color: inherit;
   text-decoration: none;
   white-space: nowrap;
   transition: color 260ms ease;
@@ -582,8 +584,7 @@ img {
 .customer-nav-link:hover,
 .customer-nav-link:focus-visible,
 .customer-nav-link.is-active {
-  color: #FFFFFF;
-  opacity: 1;
+  color: #43c8ea;
 }
 
 .customer-nav-link:hover::after,
@@ -600,32 +601,13 @@ img {
   -webkit-backdrop-filter: blur(6px);
 }
 
-.navbar-home-overlay.navbar-home-overlay--scrolled .navbar-home-overlay__header {
-  border-bottom-color: rgba(255, 255, 255, 0.12);
-  background: rgba(10, 20, 30, 0.30);
-  color: #FFFFFF;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 8px 24px rgba(8, 15, 11, 0.08);
-}
-
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] > div {
-  color: #FFFFFF;
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] a:hover,
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] a:focus-visible {
-  color: #FFFFFF;
-  opacity: 1;
-}
-
-.navbar-home-overlay .navbar-home-overlay__header nav[aria-label='Store information'] .customer-nav-link,
-.navbar-home-overlay--scrolled .navbar-home-overlay__header nav[aria-label='Store information'] .customer-nav-link,
-.navbar-home-overlay .navbar-home-overlay__header nav[aria-label='Store information'] .customer-nav-link:hover,
-.navbar-home-overlay .navbar-home-overlay__header nav[aria-label='Store information'] .customer-nav-link:focus-visible,
-.navbar-home-overlay .navbar-home-overlay__header nav[aria-label='Store information'] .customer-nav-link.is-active {
-  color: #FFFFFF;
-  opacity: 1;
+  color: #fff;
 }
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search button {
@@ -634,7 +616,7 @@ img {
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search button:hover,
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search button:focus-visible {
-  background: transparent;
+  background: rgba(8, 15, 11, 0.92);
 }
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search button svg {

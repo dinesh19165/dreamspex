@@ -399,15 +399,15 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
           </div>
 
           <nav aria-label="Store information" className="hidden border-t border-[var(--border-subtle)] lg:block">
-            <div className="mx-auto flex max-w-7xl items-center justify-center gap-5 overflow-x-auto px-2 py-2 text-sm font-medium text-white xl:gap-7">
+            <div className="mx-auto flex max-w-7xl items-center justify-center gap-5 overflow-x-auto px-2 py-2 text-sm font-medium text-[var(--text-secondary)] xl:gap-7">
               {navItems.filter((item) => ['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
-                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`customer-nav-link customer-nav-link--primary text-white opacity-100${megaMenuOpen === item.label ? ' is-active' : ''}`}>
+                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`customer-nav-link customer-nav-link--primary${megaMenuOpen === item.label ? ' is-active' : ''}`}>
                   {item.label}
                 </Link>
               ))}
               <span aria-hidden="true" className="h-5 shrink-0 border-l border-[var(--border-subtle)]" />
               {navItems.filter((item) => !['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
-                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`customer-nav-link customer-nav-link--category text-white opacity-100${megaMenuOpen === item.label ? ' is-active' : ''}`}>{item.label}</Link>
+                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`customer-nav-link customer-nav-link--category${megaMenuOpen === item.label ? ' is-active' : ''}`}>{item.label}</Link>
               ))}
             </div>
           </nav>
@@ -534,7 +534,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
         <div className="mt-8 space-y-3">
           {navItems.map((item) => (
             <div key={item.label} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-              <button type="button" className="flex w-full items-center justify-between px-4 py-3 text-left text-[18px] leading-5 font-bold text-white opacity-100" onClick={() => setMobileMenuOpen((current) => current === item.label ? null : item.label)} aria-expanded={mobileMenuOpen === item.label}>
+              <button type="button" className="flex w-full items-center justify-between px-4 py-3 text-left text-[18px] leading-5 font-bold text-[var(--text-secondary)]" onClick={() => setMobileMenuOpen((current) => current === item.label ? null : item.label)} aria-expanded={mobileMenuOpen === item.label}>
                 {item.label}<ChevronDown className={`h-4 w-4 transition-transform ${mobileMenuOpen === item.label ? 'rotate-180 text-cyan-300' : ''}`} />
               </button>
               {mobileMenuOpen === item.label ? <div className="border-t border-[var(--border-subtle)] px-2 py-2">

@@ -503,9 +503,9 @@ img {
   background: transparent;
 }
 
-.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .search-border-glow::after,
-.navbar-home-overlay.navbar-home-overlay--scrolled .search-border-glow::after {
-  background: rgba(8, 15, 11, 0.42);
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .search-border-glow__button,
+.navbar-home-overlay.navbar-home-overlay--scrolled .search-border-glow__button {
+  background: rgba(8, 15, 11, 0.58);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -583,7 +583,7 @@ img {
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search button:hover,
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search button:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(8, 15, 11, 0.72);
 }
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__search button svg {

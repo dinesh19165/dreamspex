@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, Grid2X2, Home, LayoutDashboard, LogOut, MapPin, Menu, Package, Search, ShoppingBag, ShoppingCart, Heart, Settings, Star, UserRound, WalletCards, X, Sparkles, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
+import { ChevronDown, ArrowLeft, Grid2X2, Home, LayoutDashboard, LogOut, MapPin, Menu, Package, Search, ShoppingBag, ShoppingCart, Heart, Settings, Star, UserRound, WalletCards, X, Sparkles, Truck, ShieldCheck, RotateCcw } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useShop } from '../../context/ShopContext';
 import { useAuth } from '../../context/useAuth';
@@ -497,8 +497,11 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
 
       <AnimatePresence>
         {searchOpen ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] flex items-start justify-center bg-black/40 px-4 py-16 backdrop-blur-2xl">
-            <motion.div role="dialog" aria-modal="true" aria-label="Product search" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="w-full max-w-2xl rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-2xl">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] flex items-start justify-center bg-black/40 px-4 py-16 backdrop-blur-2xl" onClick={closeSearch}>
+            <motion.div role="dialog" aria-modal="true" aria-label="Product search" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }} className="w-full max-w-2xl rounded-[28px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+              <button type="button" onClick={closeSearch} aria-label="Go back" className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-secondary)] text-[var(--text-primary)] transition hover:border-[var(--brand-green)]/60">
+                <ArrowLeft className="h-5 w-5" />
+              </button>
               <div className="flex items-center gap-3 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-4 py-3">
                 <Search className="h-4 w-4 text-[var(--text-secondary)]" />
                 <input autoFocus value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') submitSearch(); if (event.key === 'Escape') closeSearch(); }} className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-secondary)]" placeholder="Search your next frame" aria-label="Search products" />

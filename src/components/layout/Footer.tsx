@@ -46,9 +46,9 @@ export default function Footer() {
             <li><Link to="/shipping-policy" className="inline-flex transition duration-200 hover:translate-x-1 hover:text-[#93C5FD]">Shipping</Link></li>
           </ul>
           <div className="mt-6">
-            <a href="https://wa.me/9949735181" target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-2 rounded-full border border-[#2F78B8] bg-[#0D3F72]/70 px-4 py-2.5 text-sm font-medium text-white transition duration-300 hover:-translate-y-0.5 hover:border-[#93C5FD] hover:bg-[#17558C]">
+            {/* <a href="https://wa.me/9949735181" target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-2 rounded-full border border-[#2F78B8] bg-[#0D3F72]/70 px-4 py-2.5 text-sm font-medium text-white transition duration-300 hover:-translate-y-0.5 hover:border-[#93C5FD] hover:bg-[#17558C]">
               <MessageCircle className="h-4 w-4 text-[#93C5FD]" /> WhatsApp Us
-            </a>
+            </a> */}
           </div>
         </div>
         <div className="lg:border-r lg:border-[#2A5688]/70 lg:px-8">

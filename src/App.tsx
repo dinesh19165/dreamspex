@@ -69,6 +69,7 @@ import AdminCustomerSmsPage from './pages/AdminCustomerSmsPage';
 import StoreLocatorPage from './pages/StoreLocatorPage';
 import MaintenancePage from './pages/MaintenancePage';
 import AdminMaintenancePage from './pages/AdminMaintenancePage';
+import AdminActivityLogsPage from './pages/AdminActivityLogsPage';
 import { useMaintenance } from './context/MaintenanceContext';
 
 function RootEntry({ onReady, onTaglineChange }: { onReady: () => void; onTaglineChange: (tagline: string | null) => void }) {
@@ -228,6 +229,7 @@ function App() {
             <Route path="/admin/users" element={<SuperAdminRoute><SuperAdminUsersPage /></SuperAdminRoute>} />
             <Route path="/admin/profile" element={<SuperAdminRoute><SuperAdminProfilePage /></SuperAdminRoute>} />
             <Route path="/admin/settings" element={<SuperAdminRoute><SuperAdminSettingsPage /></SuperAdminRoute>} />
+            <Route path="/admin/activity-logs" element={<SuperAdminRoute><AdminActivityLogsPage /></SuperAdminRoute>} />
             <Route path="/admin/maintenance" element={<SuperAdminRoute><AdminMaintenancePage /></SuperAdminRoute>} />
             <Route path="/admin/delivery-fees" element={<SuperAdminRoute><DeliveryFeeManagementPage /></SuperAdminRoute>} />
             <Route path="/admin/settings/gst" element={<SuperAdminRoute><SuperAdminGstSettingsPage /></SuperAdminRoute>} />

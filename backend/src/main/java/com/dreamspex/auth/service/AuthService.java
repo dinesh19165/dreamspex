@@ -19,6 +19,7 @@ import com.dreamspex.franchise.FranchiseUserRepository;
 import com.dreamspex.common.ApiException;
 import com.dreamspex.config.SecurityProperties;
 import com.dreamspex.audit.AuditLogService;
+import com.dreamspex.audit.AdminActivityLogService;
 import com.dreamspex.security.JwtService;
 import com.dreamspex.loyalty.LoyaltyService;
 import com.dreamspex.notification.Msg91OtpWidgetClient;
@@ -66,6 +67,7 @@ public class AuthService {
     private final Msg91OtpWidgetClient otpWidgetClient;
     private final RegistrationOtpSettingsService registrationOtpSettings;
     private final AuditLogService auditLogs;
+    private final AdminActivityLogService adminActivityLogs;
     private final SecureRandom random = new SecureRandom();
     private final SecretKeySpec otpKey;
     @Value("${dreamspex.frontend-base-url:${FRONTEND_BASE_URL:https://www.dreamspex.in}}")
@@ -79,7 +81,8 @@ public class AuthService {
                        OtpChallengeRepository challenges, PasswordEncoder passwordEncoder, JwtService jwtService,
                        SecurityProperties securityProperties, CustomerProfileRepository profiles,
                        OtpDeliveryService otpDelivery, Msg91OtpWidgetClient otpWidgetClient, AuditLogService auditLogs,
-                       RegistrationOtpSettingsService registrationOtpSettings) {
+                       RegistrationOtpSettingsService registrationOtpSettings,
+                       AdminActivityLogService adminActivityLogs) {
         this.users = users;
         this.roles = roles;
         this.refreshTokens = refreshTokens;
@@ -92,6 +95,7 @@ public class AuthService {
         this.otpWidgetClient = otpWidgetClient;
         this.auditLogs = auditLogs;
         this.registrationOtpSettings = registrationOtpSettings;
+        this.adminActivityLogs = adminActivityLogs;
         if (securityProperties.otpSecret() == null
                 || securityProperties.otpSecret().getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException("DREAMSPEX_OTP_SECRET must contain at least 32 bytes");
@@ -233,14 +237,17 @@ public class AuthService {
 
     @Transactional
     public TokenResponse adminLogin(LoginRequest request) {
-        User user = findUser(request.identifier());
-        requireRole(user, "SUPER_ADMIN");
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())
+        User user = findUserByIdentifier(request.identifier()).orElse(null);
+        boolean isAdmin = user != null && user.getRoles().stream()
+                .anyMatch(role -> "SUPER_ADMIN".equals(role.getCode()));
+        if (!isAdmin || !passwordEncoder.matches(request.password(), user.getPasswordHash())
                 || !"ACTIVE".equals(user.getStatus())) {
+            adminActivityLogs.recordLoginFailure(request.identifier(), isAdmin ? user : null);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials.");
         }
         user.setLastLoginAt(Instant.now());
         auditLogs.record(user, "AUTH_ADMIN_LOGIN");
+        adminActivityLogs.recordLoginSuccess(user);
         return tokensFor(user, UUID.randomUUID().toString());
     }
 
@@ -741,6 +748,7 @@ public class AuthService {
                     refreshTokens.revokeFamily(token.getFamilyId(), Instant.now());
                     token.getUser().incrementTokenVersion();
                     auditLogs.record(token.getUser(), "AUTH_LOGOUT");
+                    adminActivityLogs.recordLogout(token.getUser());
                 });
         return new SimpleResponse(true);
     }

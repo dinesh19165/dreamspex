@@ -20,6 +20,7 @@ import com.dreamspex.auth.service.RegistrationOtpSettingsService;
 import com.dreamspex.notification.Msg91OtpWidgetClient;
 import static com.dreamspex.auth.dto.AuthDtos.LoginRequest;
 import com.dreamspex.audit.AuditLogService;
+import com.dreamspex.audit.AdminActivityLogService;
 import com.dreamspex.common.ApiException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dreamspex.config.SecurityProperties;
@@ -60,6 +61,7 @@ class AuthServiceTest {
     @Mock Msg91OtpWidgetClient otpWidgetClient;
     @Mock RegistrationOtpSettingsService registrationOtpSettings;
     @Mock AuditLogService auditLogs;
+    @Mock AdminActivityLogService adminActivityLogs;
     @Mock FranchiseUserRepository franchiseUsers;
     private AuthService service;
 
@@ -69,7 +71,7 @@ class AuthServiceTest {
                 new SecurityProperties("issuer", "12345678901234567890123456789012",
                         "otp-secret-123456789012345678901234", 15, 30,
                         "link-secret-123456789012345678901234"), profiles, otpDelivery, otpWidgetClient, auditLogs,
-                registrationOtpSettings);
+                registrationOtpSettings, adminActivityLogs);
         ReflectionTestUtils.setField(service, "franchiseUsers", franchiseUsers);
     }
 
@@ -257,6 +259,7 @@ class AuthServiceTest {
                 () -> service.adminLogin(new LoginRequest("customer@example.com", "password")));
 
         assertEquals("INVALID_CREDENTIALS", exception.code());
+        verify(adminActivityLogs).recordLoginFailure("customer@example.com", null);
     }
 
     @Test

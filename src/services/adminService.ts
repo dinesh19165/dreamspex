@@ -172,6 +172,46 @@ export type AdminDashboard = {
   revenue: number;
 };
 
+export type AdminActivityLog = {
+  id: string;
+  adminId: string | null;
+  adminName: string | null;
+  adminEmail: string | null;
+  activityType: 'LOGIN_SUCCESS' | 'LOGIN_FAILED' | 'LOGOUT' | 'CREATE' | 'UPDATE' | 'DELETE' | 'BULK_IMPORT' | 'BULK_EXPORT' | 'ACTION';
+  module: string;
+  description: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  details: string | null;
+  status: 'SUCCESS' | 'FAILED';
+  createdAt: string;
+};
+
+export type AdminActivityLogFilters = {
+  q?: string;
+  activityType?: string;
+  module?: string;
+  from?: string;
+  to?: string;
+  status?: string;
+  page: number;
+  size: number;
+};
+
+export type AdminActivityLogPage = {
+  items: AdminActivityLog[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  summary: {
+    totalActivities: number;
+    successfulLogins: number;
+    failedLogins: number;
+    productChanges: number;
+  };
+};
+
 export type AdminReportTrendPoint = { date: string; value: number; count: number };
 export type AdminReport = {
   startDate: string;
@@ -341,9 +381,10 @@ async function request<T>(accessToken: string, path: string, init: RequestInit =
   return response.json() as Promise<T>;
 }
 
-async function requestPrivateFile(accessToken: string, path: string) {
+async function requestPrivateFile(accessToken: string, path: string, signal?: AbortSignal) {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
+    signal,
   });
   if (!response.ok) {
     const problem = await response.json().catch(() => ({})) as { message?: string };
@@ -353,6 +394,35 @@ async function requestPrivateFile(accessToken: string, path: string) {
 }
 
 export const adminService = {
+  activityLogs: {
+    list: (accessToken: string, filters: AdminActivityLogFilters, signal?: AbortSignal) => {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') params.set(key, String(value));
+      });
+      return request<AdminActivityLogPage>(accessToken, `/api/v1/admin/activity-logs?${params.toString()}`, { signal });
+    },
+    get: (accessToken: string, id: string) =>
+      request<AdminActivityLog>(accessToken, `/api/v1/admin/activity-logs/${encodeURIComponent(id)}`),
+    exportCsv: (accessToken: string, filters: Omit<AdminActivityLogFilters, 'page' | 'size'>) => {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+      const query = params.toString();
+      return requestPrivateFile(accessToken, `/api/v1/admin/activity-logs/export.csv${query ? `?${query}` : ''}`);
+    },
+    exportExcel: (accessToken: string, filters: Omit<AdminActivityLogFilters, 'page' | 'size'>) => {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+      const query = params.toString();
+      return requestPrivateFile(accessToken, `/api/v1/admin/activity-logs/export.xlsx${query ? `?${query}` : ''}`);
+    },
+    deleteSelected: (accessToken: string, ids: string[]) =>
+      request<void>(accessToken, '/api/v1/admin/activity-logs/selected', {
+        method: 'DELETE', body: JSON.stringify({ ids }),
+      }),
+    clearAll: (accessToken: string) =>
+      request<void>(accessToken, '/api/v1/admin/activity-logs/all', { method: 'DELETE' }),
+  },
   dashboard: (accessToken: string) => request<AdminDashboard>(accessToken, '/api/v1/admin/dashboard'),
   reports: (accessToken: string, startDate: string, endDate: string) =>
     request<AdminReport>(accessToken, `/api/v1/admin/reports?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`),

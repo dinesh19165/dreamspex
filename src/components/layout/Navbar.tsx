@@ -108,12 +108,19 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
   const closeMegaMenuTimer = useRef<number | null>(null);
 
   const cancelMegaMenuClose = () => {
-    if (closeMegaMenuTimer.current !== null) window.clearTimeout(closeMegaMenuTimer.current);
+    if (closeMegaMenuTimer.current !== null) {
+      window.clearTimeout(closeMegaMenuTimer.current);
+      closeMegaMenuTimer.current = null;
+    }
   };
   const scheduleMegaMenuClose = () => {
     cancelMegaMenuClose();
-    closeMegaMenuTimer.current = window.setTimeout(() => setMegaMenuOpen(null), 180);
+    closeMegaMenuTimer.current = window.setTimeout(() => {
+      closeMegaMenuTimer.current = null;
+      setMegaMenuOpen(null);
+    }, 180);
   };
+
   const openMegaMenu = (label: string) => {
     cancelMegaMenuClose();
     if (label !== megaMenuOpen) setSelectedMegaGroupTitle(null);
@@ -256,7 +263,10 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
 
   useEffect(() => {
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!megaMenuRef.current?.contains(event.target as Node)) setMegaMenuOpen(null);
+      if (!megaMenuRef.current?.contains(event.target as Node)) {
+        cancelMegaMenuClose();
+        setMegaMenuOpen(null);
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -283,13 +293,21 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
     };
   }, []);
 
+  useEffect(() => {
+    if (location.pathname !== '/' && !utilityNavItems.some((item) => item.label === megaMenuOpen)) {
+      cancelMegaMenuClose();
+      setMegaMenuOpen(null);
+    }
+  }, [location.pathname, megaMenuOpen]);
+
   const logout = () => {
     clearAuthenticated();
     setProfileOpen(false);
     navigate('/login', { replace: true });
   };
 
-  const activeMegaMenu = megaMenus.find((menu) => menu.label === megaMenuOpen);
+  const activeMegaMenu = megaMenus.find((menu) => menu.label === megaMenuOpen
+    && (location.pathname === '/' || utilityNavItems.some((item) => item.label === menu.label)));
   const activeMegaMenuGroups = activeMegaMenu?.groups.filter((group) => group.items.length > 0) ?? [];
   const selectedMegaGroup = activeMegaMenuGroups.find((group) => group.title === selectedMegaGroupTitle)
     ?? activeMegaMenuGroups[0];
@@ -338,7 +356,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
 
   return (
     <>
-      <div ref={megaMenuRef} className={`relative z-[80] ${homepageOverlayClass}`} onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
+      <div ref={megaMenuRef} className={`relative z-[80] ${homepageOverlayClass}`}>
       {!homepageOverlay ? <div className="top-promo px-4 py-2 text-xs font-medium tracking-wide sm:text-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-4 sm:justify-between">
           <div className="top-promo__perks hidden items-center gap-6 md:flex">
@@ -360,7 +378,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
             <BrandLogo compact />
 
             <div className={`hidden min-w-0 flex-1 items-center gap-2 lg:flex ${homepageOverlay ? 'navbar-home-overlay__search' : ''}`}>
-              <nav aria-label="Primary navigation" className="navbar-primary-nav flex shrink-0 items-center gap-2">
+              <nav aria-label="Primary navigation" className="navbar-primary-nav flex shrink-0 items-center gap-2" onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
                 {navItems.filter((item) => ['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
                   <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`customer-nav-link customer-nav-link--primary${megaMenuOpen === item.label ? ' is-active' : ''}`}>
                     {item.label}
@@ -404,19 +422,21 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
               selectedLocationId={selectedLocationId} selectLocation={selectLocation} error={locationError} />
           </div>
 
-          <nav aria-label="Store information" className="hidden border-t border-[var(--border-subtle)] lg:block">
-            <div className="mx-auto flex max-w-7xl items-center justify-center gap-5 overflow-x-auto px-2 py-2 text-sm font-medium text-[var(--text-secondary)] xl:gap-7">
-              {navItems.filter((item) => !['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
-                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`customer-nav-link customer-nav-link--category${megaMenuOpen === item.label ? ' is-active' : ''}`}>{item.label}</Link>
-              ))}
-            </div>
-          </nav>
+          {homeActive ? (
+            <nav aria-label="Store information" className="hidden border-t border-[var(--border-subtle)] lg:block" onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
+              <div className="mx-auto flex max-w-7xl items-center justify-center gap-5 overflow-x-auto px-2 py-2 text-sm font-medium text-[var(--text-secondary)] xl:gap-7">
+                {navItems.filter((item) => !['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
+                  <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`customer-nav-link customer-nav-link--category${megaMenuOpen === item.label ? ' is-active' : ''}`}>{item.label}</Link>
+                ))}
+              </div>
+            </nav>
+          ) : null}
         </div>
       </header>
 
       <AnimatePresence>
         {activeMegaMenu ? (
-          <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.16 }} className="customer-mega-menu-popover absolute left-0 right-0 top-full hidden pt-2 lg:block">
+          <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }} className="customer-mega-menu-popover absolute left-0 right-0 top-full hidden lg:block" onMouseEnter={cancelMegaMenuClose} onMouseLeave={scheduleMegaMenuClose}>
             <div className="customer-mega-menu">
               <div className="customer-mega-menu__heading">
                 <div><p>Dream Spex</p><h2>{activeMegaMenu.label}</h2></div>
@@ -542,7 +562,7 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
           <UserRound className="h-4 w-4 text-cyan-300" /> {isAuthenticated ? 'My account' : 'Sign in or create account'}
         </Link>
         <div className="mt-8 space-y-3">
-          {navItems.map((item) => (
+          {navItems.filter((item) => homeActive || utilityNavItems.some((utilityItem) => utilityItem.label === item.label)).map((item) => (
             <div key={item.label} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">
               <button type="button" className="flex w-full items-center justify-between px-4 py-3 text-left text-[18px] leading-5 font-bold text-[var(--text-secondary)]" onClick={() => setMobileMenuOpen((current) => current === item.label ? null : item.label)} aria-expanded={mobileMenuOpen === item.label}>
                 {item.label}<ChevronDown className={`h-4 w-4 transition-transform ${mobileMenuOpen === item.label ? 'rotate-180 text-cyan-300' : ''}`} />

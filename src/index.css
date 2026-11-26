@@ -1936,7 +1936,8 @@ img {
   display: grid;
   height: 100%;
   min-height: 100%;
-  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
   align-items: center;
   overflow: hidden;
   border: 1px solid rgba(46, 69, 50, 0.08);
@@ -1983,10 +1984,12 @@ img {
   position: relative;
   z-index: 2;
   display: flex;
-  max-width: 34rem;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
   flex-direction: column;
   align-items: flex-start;
-  padding: clamp(2rem, 4.5vw, 4.5rem);
+  padding: clamp(1.4rem, 3vw, 3rem);
 }
 
 .home-brand-promo__eyebrow {
@@ -2002,14 +2005,17 @@ img {
 
 .home-brand-promo__title {
   display: block;
+  max-width: 100%;
+  min-width: 0;
   margin: 0.95rem 0 0;
   color: #1c2a20;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2.4rem, 4.2vw, 4.1rem);
+  font-size: clamp(2rem, 3.8vw, 3.5rem);
   font-weight: 500;
   letter-spacing: -0.055em;
   line-height: 0.99;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .home-brand-promo__description {
@@ -2024,6 +2030,7 @@ img {
   position: relative;
   z-index: 1;
   display: flex;
+  min-width: 0;
   height: clamp(22rem, 29vw, 25rem);
   min-width: 0;
   align-items: center;
@@ -2076,7 +2083,7 @@ img {
   }
 
   .home-brand-promo-layout .home-brand-promo__stage {
-    height: 20rem;
+    height: clamp(30rem, 45vw, 32rem);
   }
 
   .home-brand-promo__empty {
@@ -2088,12 +2095,13 @@ img {
   }
 
   .home-brand-promo {
-    grid-template-columns: minmax(0, 0.76fr) minmax(0, 1.24fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     border-radius: 1.5rem;
   }
 
   .home-brand-promo__copy {
-    padding: 1.75rem;
+    padding: 1.75rem 2rem 0.5rem;
   }
 
   .home-brand-promo__title {
@@ -2101,8 +2109,8 @@ img {
   }
 
   .home-brand-promo__visual {
-    height: 20rem;
-    padding-right: 1.25rem;
+    height: 14rem;
+    padding: 0.25rem 1.5rem 1rem;
   }
 }
 
@@ -2133,6 +2141,7 @@ img {
 
   .home-brand-promo {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     border-radius: 1.25rem;
   }
 

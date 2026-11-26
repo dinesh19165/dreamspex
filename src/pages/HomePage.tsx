@@ -989,7 +989,7 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                     </motion.div>
                   </AnimatePresence>
                 </div>
-                {promotionalImageCards.length > 1 ? <div className="home-brand-promo__pagination" role="group" aria-label="Choose a promotion">
+                {promotionalImageCards.length > 1? <div className="home-brand-promo__pagination" role="group" aria-label="Choose a promotion">
                   {promotionalImageCards.map(({ card }, index) => <button
                     key={card.id}
                     type="button"

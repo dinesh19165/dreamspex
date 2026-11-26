@@ -166,7 +166,7 @@ function CompactHomeProductCard({ product }: { product: HomeProduct }) {
       <div className="flex flex-1 flex-col p-3">
         <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#689f24]">{product.category}</p>
         <h3 className="mt-2 text-base font-semibold leading-5 text-[var(--text-primary)]">{product.name}</h3>
-        <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{product.description}</p>
+        {/* <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{product.description}</p> */}
 
         <div className="mt-auto pt-3">
           <p className="mb-2 flex items-center gap-1 text-xs text-[var(--text-secondary)]" aria-label={`${product.rating.toFixed(1)} out of 5 from ${product.reviews} verified reviews`}>
@@ -579,9 +579,6 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
   const activeCarouselIndex = categoryCarousel.length ? activeCategorySlide % categoryCarousel.length : 0;
   const materialsSectionHidden = cmsHidden(homepageSectionSlugs.materials, sections);
   const categoriesSectionHidden = cmsHidden(homepageSectionSlugs.categories, sections);
-  const categoryCarouselColumns = materialsSectionHidden || categoriesSectionHidden
-    ? ' home-shopping-showcase__layout--single'
-    : '';
   const homepageFilterParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const selectedMaterial = homepageFilterParams.get('material');
   const selectedColour = homepageFilterParams.get('color');
@@ -751,70 +748,13 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
 
         <div className="homepage-main-sections">
           <section
-            hidden={materialsSectionHidden && categoriesSectionHidden}
-            aria-label="Shop by material, colour, and category"
+            hidden={categoriesSectionHidden}
+            aria-label="Shop eyewear collections"
             className="home-shopping-showcase"
           >
             <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
-              <div className={`home-shopping-showcase__layout${categoryCarouselColumns}`}>
-                {!materialsSectionHidden ? <aside className="home-shopping-filters" aria-label="Shopping filters">
-                  <div className="home-shopping-filters__heading">
-                    <p className="home-shopping-filters__eyebrow">Shop by material</p>
-                    <h2>{cmsText(sections, homepageSectionSlugs.materials, 'title', 'Made from considered materials')}</h2>
-                    <p>Find the right finish, tone, and feel for your next pair.</p>
-                  </div>
-
-                  <section className="home-shopping-filters__group" aria-labelledby="home-material-filter-title">
-                    <h3 id="home-material-filter-title">Materials</h3>
-                    <div className="home-filter-chip-list" aria-label="Filter by material">
-                      {(showAllMaterials ? supportedMaterials : supportedMaterials.slice(0, 6)).map((material) => <Link
-                        key={material}
-                        to={`/shop?material=${encodeURIComponent(material)}`}
-                        className={`home-filter-chip home-filter-chip--material${selectedMaterial?.toLowerCase() === material.toLowerCase() ? ' is-selected' : ''}`}
-                        aria-current={selectedMaterial?.toLowerCase() === material.toLowerCase() ? 'true' : undefined}
-                      >
-                        <span className="home-filter-chip__material-mark" aria-hidden="true" />
-                        {formatFilterLabel(material)}
-                      </Link>)}
-                      {!supportedMaterials.length ? <p className="home-shopping-filters__empty" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading materials...' : catalogError || 'No materials are available right now.'}</p> : null}
-                    </div>
-                    {supportedMaterials.length > 6 ? <button type="button" className="home-filter-view-toggle" onClick={() => setShowAllMaterials((current) => !current)} aria-expanded={showAllMaterials}>
-                      {showAllMaterials ? 'Show less' : `View all ${supportedMaterials.length}`}
-                      <ChevronRight aria-hidden="true" className={showAllMaterials ? 'home-filter-view-toggle__icon is-expanded' : 'home-filter-view-toggle__icon'} />
-                    </button> : null}
-                  </section>
-
-                  <section className="home-shopping-filters__group home-shopping-filters__group--colours" aria-labelledby="home-colour-filter-title">
-                    <h3 id="home-colour-filter-title">Shop by colour</h3>
-                    {supportedColorGroups.map(({ label, categorySlug, colors }) => {
-                      const colorOptions = uniqueColorFilterOptions(colors);
-                      const visibleColorOptions = showAllColours ? colorOptions : colorOptions.slice(0, 8);
-                      return <div key={label} className="home-shopping-filters__colour-group">
-                        <h4>{label}</h4>
-                        <div className="home-filter-chip-list" aria-label={`Filter ${label.toLowerCase()} by colour`}>
-                          {visibleColorOptions.map(({ value, label: colorLabel }) => <Link
-                            key={colorLabel}
-                            to={`/shop?category=${encodeURIComponent(categorySlug)}&color=${encodeURIComponent(value)}`}
-                            className={`home-filter-chip home-filter-chip--colour${selectedColour?.toLowerCase() === value.toLowerCase() ? ' is-selected' : ''}`}
-                            aria-current={selectedColour?.toLowerCase() === value.toLowerCase() ? 'true' : undefined}
-                          >
-                            <ColorSwatch color={value} className="home-filter-chip__swatch" />
-                            {colorLabel}
-                          </Link>)}
-                        </div>
-                      </div>;
-                    })}
-                    {!supportedColorGroups.length ? <p className="home-shopping-filters__empty" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading colours...' : catalogError || 'No colour options are available right now.'}</p> : null}
-                    {supportedColorGroups.some(({ colors }) => uniqueColorFilterOptions(colors).length > 8)
-                      ? <button type="button" className="home-filter-view-toggle" onClick={() => setShowAllColours((current) => !current)} aria-expanded={showAllColours}>
-                        {showAllColours ? 'Show less' : 'View all colours'}
-                        <ChevronRight aria-hidden="true" className={showAllColours ? 'home-filter-view-toggle__icon is-expanded' : 'home-filter-view-toggle__icon'} />
-                      </button>
-                      : null}
-                  </section>
-                </aside> : null}
-
-                {!categoriesSectionHidden ? <section
+              <div className="home-shopping-showcase__layout home-shopping-showcase__layout--single">
+                <section
                   className="home-category-carousel"
                   aria-label="Shop eyewear collections"
                   aria-roledescription="carousel"
@@ -876,7 +816,7 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                       />)}
                     </div> : null}
                   </div>
-                </section> : null}
+                </section>
               </div>
             </div>
           </section>
@@ -920,63 +860,122 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
               <Link to="/shop" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#689f24]">Browse all styles <ChevronRight className="h-4 w-4" /></Link>
             </div>
 
-            {activePromotion ? <div
-              className="home-brand-promo-carousel"
-              onFocusCapture={() => setPromotionCarouselPaused(true)}
-              onBlurCapture={(event) => {
-                if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setPromotionCarouselPaused(false);
-              }}
-            >
-              <div
-                className="home-brand-promo__stage"
-                onPointerEnter={(event) => {
-                  if (event.pointerType === 'mouse') setPromotionCarouselPaused(true);
-                }}
-                onPointerLeave={(event) => {
-                  if (event.pointerType === 'mouse') setPromotionCarouselPaused(false);
-                }}
-                onTouchStart={handlePromotionTouchStart}
-                onTouchEnd={handlePromotionTouchEnd}
-                onClickCapture={handlePromotionClickCapture}
-              >
-                <AnimatePresence initial={false} mode="sync">
-                  <motion.div
-                    key={activePromotion.card.id}
-                    className="home-brand-promo__slide"
-                    initial={{ opacity: 0, x: 28 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -28 }}
-                    transition={{ duration: reducedMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <Link
-                      to={homepageCardHref(activePromotion.card)}
-                      aria-label={`Shop ${activePromotion.card.title}`}
-                      className="home-brand-promo"
+            <div className={`home-brand-promo-layout${materialsSectionHidden ? ' home-brand-promo-layout--single' : ''}`}>
+              {!materialsSectionHidden ? <aside className="home-shopping-filters" aria-label="Shopping filters">
+                <div className="home-shopping-filters__heading">
+                  <p className="home-shopping-filters__eyebrow">Shop by material</p>
+                  <h2>{cmsText(sections, homepageSectionSlugs.materials, 'title', 'Made from considered materials')}</h2>
+                  <p>Find the right finish, tone, and feel for your next pair.</p>
+                </div>
+
+                <section className="home-shopping-filters__group" aria-labelledby="home-material-filter-title">
+                  <h3 id="home-material-filter-title">Materials</h3>
+                  <div className="home-filter-chip-list" aria-label="Filter by material">
+                    {(showAllMaterials ? supportedMaterials : supportedMaterials.slice(0, 2)).map((material) => <Link
+                      key={material}
+                      to={`/shop?material=${encodeURIComponent(material)}`}
+                      className={`home-filter-chip home-filter-chip--material${selectedMaterial?.toLowerCase() === material.toLowerCase() ? ' is-selected' : ''}`}
+                      aria-current={selectedMaterial?.toLowerCase() === material.toLowerCase() ? 'true' : undefined}
                     >
-                      <span className="home-brand-promo__copy">
-                        <span className="home-brand-promo__eyebrow">Premium eyewear</span>
-                        <h2 className="home-brand-promo__title">{activePromotion.card.title}</h2>
-                        <p className="home-brand-promo__description">Discover Your Signature Style. Crafted for clarity. Designed for confidence.</p>
-                      </span>
-                      <span className="home-brand-promo__visual" aria-hidden="true">
-                        <img src={activePromotion.image} alt="" loading="lazy" />
-                      </span>
-                    </Link>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-              {promotionalImageCards.length > 1 ? <div className="home-brand-promo__pagination" role="group" aria-label="Choose a promotion">
-                {promotionalImageCards.map(({ card }, index) => <button
-                  key={card.id}
-                  type="button"
-                  aria-label={`Show promotion: ${card.title}`}
-                  aria-current={index === activePromotionIndex ? 'true' : undefined}
-                  onClick={() => setActivePromotionSlide(index)}
-                />)}
-              </div> : null}
-            </div> : <p className="py-8 text-sm text-[var(--text-secondary)]" role={cmsError ? 'alert' : 'status'}>
-              {cmsError ? 'Promotions could not be loaded.' : 'No active promotions are available right now.'}
-            </p>}
+                      <span className="home-filter-chip__material-mark" aria-hidden="true" />
+                      {formatFilterLabel(material)}
+                    </Link>)}
+                    {!supportedMaterials.length ? <p className="home-shopping-filters__empty" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading materials...' : catalogError || 'No materials are available right now.'}</p> : null}
+                  </div>
+                  {supportedMaterials.length > 6 ? <button type="button" className="home-filter-view-toggle" onClick={() => setShowAllMaterials((current) => !current)} aria-expanded={showAllMaterials}>
+                    {showAllMaterials ? 'Show less' : `View all ${supportedMaterials.length}`}
+                    <ChevronRight aria-hidden="true" className={showAllMaterials ? 'home-filter-view-toggle__icon is-expanded' : 'home-filter-view-toggle__icon'} />
+                  </button> : null}
+                </section>
+
+                <section className="home-shopping-filters__group home-shopping-filters__group--colours" aria-labelledby="home-colour-filter-title">
+                  <h3 id="home-colour-filter-title">Shop by colour</h3>
+                  {supportedColorGroups.map(({ label, categorySlug, colors }) => {
+                    const colorOptions = uniqueColorFilterOptions(colors);
+                    const visibleColorOptions = showAllColours ? colorOptions : colorOptions.slice(0, 2);
+                    return <div key={label} className="home-shopping-filters__colour-group">
+                      <h4>{label}</h4>
+                      <div className="home-filter-chip-list" aria-label={`Filter ${label.toLowerCase()} by colour`}>
+                        {visibleColorOptions.map(({ value, label: colorLabel }) => <Link
+                          key={colorLabel}
+                          to={`/shop?category=${encodeURIComponent(categorySlug)}&color=${encodeURIComponent(value)}`}
+                          className={`home-filter-chip home-filter-chip--colour${selectedColour?.toLowerCase() === value.toLowerCase() ? ' is-selected' : ''}`}
+                          aria-current={selectedColour?.toLowerCase() === value.toLowerCase() ? 'true' : undefined}
+                        >
+                          <ColorSwatch color={value} className="home-filter-chip__swatch" />
+                          {colorLabel}
+                        </Link>)}
+                      </div>
+                    </div>;
+                  })}
+                  {!supportedColorGroups.length ? <p className="home-shopping-filters__empty" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading colours...' : catalogError || 'No colour options are available right now.'}</p> : null}
+                  {supportedColorGroups.some(({ colors }) => uniqueColorFilterOptions(colors).length > 8)
+                    ? <button type="button" className="home-filter-view-toggle" onClick={() => setShowAllColours((current) => !current)} aria-expanded={showAllColours}>
+                      {showAllColours ? 'Show less' : 'View all colours'}
+                      <ChevronRight aria-hidden="true" className={showAllColours ? 'home-filter-view-toggle__icon is-expanded' : 'home-filter-view-toggle__icon'} />
+                    </button>
+                    : null}
+                </section>
+              </aside> : null}
+
+              {activePromotion ? <div
+                className="home-brand-promo-carousel"
+                onFocusCapture={() => setPromotionCarouselPaused(true)}
+                onBlurCapture={(event) => {
+                  if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setPromotionCarouselPaused(false);
+                }}
+              >
+                <div
+                  className="home-brand-promo__stage"
+                  onPointerEnter={(event) => {
+                    if (event.pointerType === 'mouse') setPromotionCarouselPaused(true);
+                  }}
+                  onPointerLeave={(event) => {
+                    if (event.pointerType === 'mouse') setPromotionCarouselPaused(false);
+                  }}
+                  onTouchStart={handlePromotionTouchStart}
+                  onTouchEnd={handlePromotionTouchEnd}
+                  onClickCapture={handlePromotionClickCapture}
+                >
+                  <AnimatePresence initial={false} mode="sync">
+                    <motion.div
+                      key={activePromotion.card.id}
+                      className="home-brand-promo__slide"
+                      initial={{ opacity: 0, x: 28 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -28 }}
+                      transition={{ duration: reducedMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <Link
+                        to={homepageCardHref(activePromotion.card)}
+                        aria-label={`Shop ${activePromotion.card.title}`}
+                        className="home-brand-promo"
+                      >
+                        <span className="home-brand-promo__copy">
+                          <span className="home-brand-promo__eyebrow">Premium eyewear</span>
+                          <h2 className="home-brand-promo__title">{activePromotion.card.title}</h2>
+                          <p className="home-brand-promo__description">Discover Your Signature Style. Crafted for clarity. Designed for confidence.</p>
+                        </span>
+                        <span className="home-brand-promo__visual" aria-hidden="true">
+                          <img src={activePromotion.image} alt="" loading="lazy" />
+                        </span>
+                      </Link>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+                {promotionalImageCards.length > 1 ? <div className="home-brand-promo__pagination" role="group" aria-label="Choose a promotion">
+                  {promotionalImageCards.map(({ card }, index) => <button
+                    key={card.id}
+                    type="button"
+                    aria-label={`Show promotion: ${card.title}`}
+                    aria-current={index === activePromotionIndex ? 'true' : undefined}
+                    onClick={() => setActivePromotionSlide(index)}
+                  />)}
+                </div> : null}
+              </div> : <p className="home-brand-promo__empty" role={cmsError ? 'alert' : 'status'}>
+                {cmsError ? 'Promotions could not be loaded.' : 'No active promotions are available right now.'}
+              </p>}
+            </div>
           </section>
 
           <CmsSectionGate slug={homepageSectionSlugs.brands} sections={sections}><section aria-label="shop by brand" className="border-y border-black/10 bg-white py-12">

@@ -11,7 +11,7 @@ export default function MaintenancePage() {
     : null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--bg-primary)] px-5 py-12">
+    <main className="maintenance-page flex min-h-screen items-center justify-center px-5 py-12">
       <section className="maintenance-animated-border w-full max-w-xl rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-7 text-center shadow-2xl sm:p-10">
         <div className="maintenance-card-content">
           <div className="mx-auto flex w-fit"><BrandLogo /></div>

@@ -32,7 +32,7 @@ export default function Footer() {
     <footer className="border-t border-[#16416f] bg-gradient-to-br from-[#061B3A] to-[#0B3470] text-[#B9CCE5]">
       <div className="mx-auto grid max-w-7xl gap-x-8 gap-y-10 px-4 py-14 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.35fr_0.85fr_0.85fr_1fr] lg:px-8 lg:py-16">
         <div className="flex min-w-0 flex-col items-center justify-center pr-0 text-center lg:border-r lg:border-[#2A5688]/70 lg:pr-8">
-          {homepageSubtitle ? <p className="max-w-[13ch] font-serif text-4xl italic leading-[1.05] tracking-tight text-[#F2F7FF] sm:text-6xl">{homepageSubtitle}</p> : null}
+          {homepageSubtitle ? <p className="max-w-[13ch] font-serif text-5xl italic leading-[1.05] tracking-tight text-[#F2F7FF] sm:text-6xl">{homepageSubtitle}</p> : null}
           {/* <p className={`${homepageSubtitle ? 'mt-4' : ''} max-w-sm text-sm leading-7 text-[#B9CCE5]`}>Crafted for modern connoisseurs who value clarity, craftsmanship, and cinematic luxury.</p> */}
           {/* <Link to="/stores" className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#66A4E5] px-5 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:border-[#93C5FD] hover:bg-[#174D82] hover:shadow-[0_10px_25px_rgba(8,47,94,0.35)]">
             <MapPin className="h-4 w-4 text-[#93C5FD]" /> Find a Dream Spex Store

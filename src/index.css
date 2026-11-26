@@ -565,6 +565,15 @@ img {
   letter-spacing: 0.045em;
 }
 
+.navbar-primary-nav {
+  gap: clamp(0.3rem, 0.6vw, 0.65rem);
+}
+
+.navbar-primary-nav .customer-nav-link--primary {
+  font-size: clamp(0.75rem, 1.05vw, 0.88rem);
+  letter-spacing: 0.01em;
+}
+
 .customer-nav-link--category {
   font-size: 18px;
   font-weight: 700;
@@ -593,6 +602,11 @@ img {
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] > div {
   color: rgba(255, 255, 255, 0.94);
+}
+
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-primary-nav a:hover,
+.navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-primary-nav a:focus-visible {
+  color: #fff;
 }
 
 .navbar-home-overlay:not(.navbar-home-overlay--scrolled) .navbar-home-overlay__header nav[aria-label='Store information'] a:hover,

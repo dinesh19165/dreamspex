@@ -29,6 +29,10 @@ function normalizedCategory(value: string) {
   return value.toLowerCase().replace(/[^a-z]/g, '');
 }
 
+function normalizedBrandName(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 function categoryMatchesEyewearType(category: CatalogCategory, type: 'eyeglasses' | 'sunglasses') {
   const token = type === 'eyeglasses' ? 'eyeglass' : 'sunglass';
   return `${normalizedCategory(category.name)} ${normalizedCategory(category.slug)}`.includes(token);
@@ -660,6 +664,20 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
   const availableBrands = [...new Set((catalog?.products ?? []).map((product) => product.brand).filter(Boolean))];
   const brandCards = (cms?.cards ?? []).filter((card) => card.sectionKey === 'EXPLORE_BY_BRAND');
   const visibleBrandCards: HomeCard[] = brandCards.length ? brandCards : availableBrands.map((brand, index) => ({ id: brand, title: brand, subtitle: null, description: null, imageUrl: null, buttonText: 'Shop frames', destinationType: 'BRAND', destinationValue: brand, displayOrder: index }));
+  const eyewearImageProducts = (catalog?.products ?? [])
+    .filter((product) => product.categories.some((category) => categoryMatchesEyewearType(category, 'eyeglasses')
+      || categoryMatchesEyewearType(category, 'sunglasses')))
+    .map(catalogHomeProduct)
+    .filter((product) => Boolean(product.image));
+  const usedBrandImageUrls = new Set<string>();
+  const brandCardsWithImages = visibleBrandCards.map((card) => {
+    const brandKeys = [card.title, card.destinationValue].map(normalizedBrandName);
+    const matchingProduct = eyewearImageProducts.find((product) => brandKeys.includes(normalizedBrandName(product.brand))
+      && !usedBrandImageUrls.has(product.image));
+    const product = matchingProduct ?? eyewearImageProducts.find((item) => !usedBrandImageUrls.has(item.image));
+    if (product) usedBrandImageUrls.add(product.image);
+    return { card, product };
+  });
   const availableWearers = uniqueWearerValues((catalog?.products ?? []).map((product) => product.gender));
   const wearerCards = deduplicateWearerCards((cms?.cards ?? []).filter((card) => card.sectionKey === 'SHOP_BY_WEARER'));
   const visibleWearerCards: HomeCard[] = wearerCards.length ? wearerCards : availableWearers.map((gender, index) => ({ id: gender, title: gender, subtitle: null, description: null, imageUrl: null, buttonText: 'Shop styles', destinationType: 'GENDER', destinationValue: gender, displayOrder: index }));
@@ -1010,10 +1028,29 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                 <div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">The brands we carry</p><h2 id="brand-showcase-title" className="mt-2 font-serif text-3xl text-[#182116]">{cmsText(sections, homepageSectionSlugs.brands, 'title', 'Explore by brand')}</h2></div>
                 <p className="max-w-md text-sm leading-6 text-[#5f6c5b]">Brands</p>
               </div>
-              <div className="mt-6 flex flex-wrap gap-3">
-                  {visibleBrandCards.map((card) => <Link key={card.id} to={homepageCardHref(card)} className="rounded-xl border border-[#d5dfd1] bg-[#f7f9f5] px-6 py-4 text-lg font-semibold tracking-wide text-[#263322] transition hover:border-[#689f24] hover:bg-white hover:text-[#4b781a]">{card.title}<span className="ml-3 text-xs font-normal text-[#687468]">{card.buttonText ?? 'Shop frames'}</span></Link>)}
-                  {!visibleBrandCards.length ? <p className="py-4 text-sm text-[var(--text-secondary)]" role={catalogError ? 'alert' : 'status'}>{catalogLoading ? 'Loading brands...' : catalogError ? 'Brand cards could not be loaded.' : 'No brands are available right now.'}</p> : null}
-                </div>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {brandCardsWithImages.map(({ card, product }) => <Link
+                  key={card.id}
+                  to={homepageCardHref(card)}
+                  className="group overflow-hidden rounded-2xl border border-[#d5dfd1] bg-[#f7f9f5] text-[#263322] transition duration-300 hover:-translate-y-0.5 hover:border-[#689f24] hover:bg-white hover:text-[#4b781a]"
+                >
+                  <span className="flex items-center justify-between gap-3 px-5 pt-4">
+                    <span className="min-w-0 text-lg font-semibold tracking-wide">{card.title}</span>
+                    <span className="shrink-0 text-xs font-normal text-[#687468]">{card.buttonText ?? 'Shop frames'}</span>
+                  </span>
+                  <span className="mx-3 mb-3 mt-4 block aspect-[4/3] overflow-hidden rounded-xl bg-white">
+                    {product ? <img
+                      src={product.image}
+                      alt={product.name}
+                      loading="lazy"
+                      className="h-full w-full object-contain p-3 transition duration-500 group-hover:scale-[1.04]"
+                    /> : <span className="grid h-full place-items-center px-4 text-center text-xs text-[var(--text-secondary)]">Product image unavailable</span>}
+                  </span>
+                </Link>)}
+                {!visibleBrandCards.length ? <p className="col-span-full py-4 text-sm text-[var(--text-secondary)]" role={catalogError ? 'alert' : 'status'}>
+                  {catalogLoading ? 'Loading brands...' : catalogError ? 'Brand cards could not be loaded.' : 'No brands are available right now.'}
+                </p> : null}
+              </div>
             </div>
           </section></CmsSectionGate>
 

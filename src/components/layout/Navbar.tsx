@@ -360,7 +360,14 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
           <div className="flex min-w-0 items-center justify-between gap-2 py-2.5 sm:gap-3 lg:py-3">
             <BrandLogo compact />
 
-            <div className={`hidden min-w-0 flex-1 items-center gap-3 lg:flex ${homepageOverlay ? 'navbar-home-overlay__search' : ''}`}>
+            <div className={`hidden min-w-0 flex-1 items-center gap-2 lg:flex ${homepageOverlay ? 'navbar-home-overlay__search' : ''}`}>
+              <nav aria-label="Primary navigation" className="navbar-primary-nav flex shrink-0 items-center gap-2">
+                {navItems.filter((item) => ['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
+                  <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`customer-nav-link customer-nav-link--primary${megaMenuOpen === item.label ? ' is-active' : ''}`}>
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
               <div className="search-border-glow h-10 min-w-0 flex-1">
                 <button onClick={openSearch} className="search-border-glow__button flex h-full w-full items-center justify-between gap-3 rounded-full px-4 text-sm leading-none text-white opacity-100">
                   <span className="flex min-w-0 items-center gap-2 whitespace-nowrap text-white opacity-100"><Search className="h-4 w-4 shrink-0 text-white opacity-100" /><span className="truncate text-white opacity-100">Search frames</span></span>
@@ -400,12 +407,6 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
 
           <nav aria-label="Store information" className="hidden border-t border-[var(--border-subtle)] lg:block">
             <div className="mx-auto flex max-w-7xl items-center justify-center gap-5 overflow-x-auto px-2 py-2 text-sm font-medium text-[var(--text-secondary)] xl:gap-7">
-              {navItems.filter((item) => ['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
-                <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') openMegaMenu(item.label); }} className={`customer-nav-link customer-nav-link--primary${megaMenuOpen === item.label ? ' is-active' : ''}`}>
-                  {item.label}
-                </Link>
-              ))}
-              <span aria-hidden="true" className="h-5 shrink-0 border-l border-[var(--border-subtle)]" />
               {navItems.filter((item) => !['Collections', 'Offers', 'Eye Care', 'Services'].includes(item.label)).map((item) => (
                 <Link key={item.label} to={item.path} onMouseEnter={() => openMegaMenu(item.label)} onFocus={() => openMegaMenu(item.label)} className={`customer-nav-link customer-nav-link--category${megaMenuOpen === item.label ? ' is-active' : ''}`}>{item.label}</Link>
               ))}

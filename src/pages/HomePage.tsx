@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ChevronRight, Eye, Feather, FileText, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronRight, Feather, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -1138,7 +1138,7 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Why Dream Spex</p>
               <h2 className="mt-3 font-serif text-3xl text-[var(--text-primary)] sm:text-4xl">A clearer way to choose eyewear</h2>
             </div>
-            <div className="mt-7 grid items-stretch gap-5 md:grid-cols-3">
+            <div className="mx-auto mt-7 grid max-w-5xl items-stretch gap-5 md:grid-cols-2">
               <Link to="/categories" className="group flex min-h-[400px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
                 <span aria-hidden="true" className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#f4f7ef] to-[#e8f0e1]">
                   <span className="absolute h-32 w-32 rounded-full border border-[#78be20]/20 transition duration-500 group-hover:scale-110" />
@@ -1154,25 +1154,6 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                   <p className="mt-3 text-sm leading-6 text-[#5c665f]">Explore products and categories available in the current catalogue.</p>
                   <span className="mt-auto inline-flex w-fit items-center gap-3 rounded-full bg-[#eaf3df] py-1.5 pl-4 pr-1.5 text-sm font-semibold text-[#355e17] transition group-hover:bg-[#78be20]">
                     Explore products
-                    <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-[#355e17] shadow-sm"><ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
-                  </span>
-                </span>
-              </Link>
-              <Link to="/prescription/1" className="group flex min-h-[400px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
-                <span aria-hidden="true" className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#f7f7ec] to-[#edf2e1]">
-                  <span className="absolute h-32 w-32 rounded-full border border-[#78be20]/20 transition duration-500 group-hover:scale-110" />
-                  <span className="absolute h-24 w-24 rounded-full bg-white/75 shadow-inner" />
-                  <span className="relative flex h-[72px] w-[72px] items-center justify-center rounded-[22px] border border-white/90 bg-white/90 text-[#355e17] shadow-[0_12px_28px_-16px_rgba(23,35,28,0.42)] transition duration-300 group-hover:scale-105">
-                    <FileText className="h-11 w-11 stroke-[1.6]" />
-                  </span>
-                  <Eye className="absolute right-[27%] top-8 h-5 w-5 text-[#78be20]" />
-                  <span className="absolute bottom-7 left-[27%] h-2 w-2 rounded-full bg-[#78be20]/65" />
-                </span>
-                <span className="flex flex-1 flex-col p-6 sm:p-7">
-                  <h3 className="font-serif text-2xl font-semibold text-[#17231c]">Personalise Your Lenses</h3>
-                  <p className="mt-3 text-sm leading-6 text-[#5c665f]">Use the existing prescription and lens selection flow with a supported frame.</p>
-                  <span className="mt-auto inline-flex w-fit items-center gap-3 rounded-full bg-[#eaf3df] py-1.5 pl-4 pr-1.5 text-sm font-semibold text-[#355e17] transition group-hover:bg-[#78be20]">
-                    See lens options
                     <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-[#355e17] shadow-sm"><ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
                   </span>
                 </span>

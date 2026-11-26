@@ -16,7 +16,6 @@ import type { Product } from '../types';
 
 const PAGE_SIZE = 6;
 const normalize = (value: string) => value.trim().toLowerCase().replaceAll('-', ' ').replaceAll('_', ' ');
-type ShopProduct = Product & { listingImage: string };
 
 function isCustomerImageAsset(imageUrl: string, altText?: string | null, storageKey?: string | null) {
   return /(?:selfie|avatar|customer[-_\s]*(?:photo|image|picture)|profile[-_\s]*(?:photo|picture)|user[-_\s]*(?:photo|upload)|review[-_\s]*(?:photo|image))/i
@@ -70,7 +69,7 @@ export default function ShopPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(Number.isInteger(pageFilter) && pageFilter > 0 ? pageFilter : 1);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [products, setProducts] = useState<ShopProduct[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [filterOptions, setFilterOptions] = useState({
     brands: [] as string[],
@@ -174,7 +173,7 @@ export default function ShopPage() {
         if (requestId !== catalogRequestRef.current) return;
         setProducts(result.items.map((catalogProduct) => ({
           ...toProduct(catalogProduct),
-          listingImage: getListingProductImage(catalogProduct),
+          image: getListingProductImage(catalogProduct),
         })));
         setCatalogTotal(result.total);
         setCatalogCategoryKey(selectedCategory);
@@ -417,7 +416,7 @@ export default function ShopPage() {
             <div className={`grid auto-rows-fr gap-4 md:gap-5 ${viewMode === 'grid' ? (cartQuantity > 0 ? 'grid-cols-2 2xl:grid-cols-3' : 'grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4') : 'grid-cols-1'}`}>
               {pagedProducts.map((product, index) => (
                 <motion.div key={product.id} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.04 }} className="h-full">
-                  <ProductCard product={product} layout={viewMode} variant="catalog" displayImage={product.listingImage} />
+                  <ProductCard product={product} layout={viewMode} />
                 </motion.div>
               ))}
               {!catalogLoading && !pagedProducts.length ? <div className="col-span-full rounded-[24px] border border-[#dfe7d7] bg-white p-8 text-center"><p className="font-serif text-2xl text-[#182116]">No frames match your current selection.</p><p className="mt-2 text-sm text-[#5f6c5b]">Try broadening your search or resetting the filters.</p><button type="button" onClick={resetFilters} className="mt-5 rounded-full bg-[#edf4e7] px-4 py-2.5 text-sm font-semibold text-[#355e17]">Reset filters</button></div> : null}

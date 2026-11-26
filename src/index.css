@@ -2162,6 +2162,50 @@ img {
   }
 }
 
+.home-wearer-card {
+  opacity: 0;
+  transform: translateY(1.25rem);
+  transition:
+    opacity 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 500ms ease;
+}
+
+.home-wearer-card.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.home-wearer-card.is-visible:hover {
+  transform: translateY(-0.25rem);
+}
+
+.home-wearer-card__image {
+  transform: scale(1.055);
+  transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-wearer-card.is-visible .home-wearer-card__image {
+  transform: scale(1);
+}
+
+.home-wearer-card.is-visible:hover .home-wearer-card__image {
+  transform: scale(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-wearer-card,
+  .home-wearer-card.is-visible,
+  .home-wearer-card.is-visible:hover,
+  .home-wearer-card__image,
+  .home-wearer-card.is-visible .home-wearer-card__image,
+  .home-wearer-card.is-visible:hover .home-wearer-card__image {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 .home-service-strip {
   border-block: 1px solid var(--border-subtle);
   background: var(--bg-secondary);

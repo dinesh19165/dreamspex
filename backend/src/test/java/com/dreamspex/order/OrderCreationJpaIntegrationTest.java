@@ -358,11 +358,24 @@ class OrderCreationJpaIntegrationTest {
         assertEquals(new BigDecimal("1070.00"), savedPrescriptionItem.getUnitPrice());
         assertEquals(1, savedItems.stream().filter(item -> item.getPrescription() == null).count());
         assertEquals(order.getId(), prescriptions.findById(prescription.getId()).orElseThrow().getOrder().getId());
+        String checkoutCartId = cart.getId();
+        assertEquals(2, cartItems.findAll().stream()
+                .filter(item -> item.getCart().getId().equals(checkoutCartId)).count());
 
         var admin = authentication(new UsernamePasswordAuthenticationToken(user.getId(), null,
                 List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))));
         var customer = authentication(new UsernamePasswordAuthenticationToken(user.getId(), null,
                 List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER"))));
+        mockMvc.perform(post("/api/v1/orders")
+                        .with(customer)
+                        .header("Idempotency-Key", "order-" + suffix)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"addressId":"%s","couponCode":null}
+                                """.formatted(address.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(order.getId()));
+        assertEquals(1, orders.findByUserIdOrderByCreatedAtDesc(user.getId()).size());
         MvcResult detailsResult = mockMvc.perform(get("/api/v1/admin/orders/{id}", order.getId()).with(admin))
                 .andExpect(status().isOk()).andReturn();
         AdminOrderResponse details = objectMapper.readValue(detailsResult.getResponse().getContentAsByteArray(),

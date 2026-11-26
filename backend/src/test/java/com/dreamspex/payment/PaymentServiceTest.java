@@ -5,9 +5,15 @@ import com.dreamspex.auth.entity.User;
 import com.dreamspex.notification.NotificationService;
 import com.dreamspex.order.OrderRepository;
 import com.dreamspex.order.Order;
+import com.dreamspex.order.OrderItem;
 import com.dreamspex.order.OrderDtos.PaymentFailureRequest;
 import com.dreamspex.order.OrderDtos.PaymentResponse;
-import com.dreamspex.order.OrderDtos.PaymentVerificationRequest;import com.dreamspex.security.CurrentUser;
+import com.dreamspex.order.OrderDtos.PaymentVerificationRequest;
+import com.dreamspex.security.CurrentUser;
+import com.dreamspex.catalog.entity.ProductVariant;
+import com.dreamspex.shopping.entity.Cart;
+import com.dreamspex.shopping.entity.CartItem;
+import com.dreamspex.shopping.repository.CartRepository;
 import com.dreamspex.returns.ReturnRefundProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -32,6 +38,7 @@ import org.json.JSONObject;
 class PaymentServiceTest {
     @Mock CurrentUser current;
     @Mock OrderRepository orders;
+    @Mock CartRepository carts;
     @Mock PaymentRepository payments;
     @Mock PaymentWebhookEventRepository events;
     @Mock NotificationService notifications;
@@ -55,6 +62,24 @@ class PaymentServiceTest {
     }
 
     @Test
+    void retryReusesExistingPaymentForTheSameOrder() {
+        User user = new User();
+        Order order = order(user);
+        Payment payment = payment(order);
+        payment.setStatus("FAILED");
+        when(current.require(any())).thenReturn(user);
+        when(orders.findByIdAndUserId("order-id", user.getId())).thenReturn(Optional.of(order));
+        when(payments.findByProviderAndOrderId("RAZORPAY_TEST", order.getId())).thenReturn(Optional.of(payment));
+
+        var response = service().create(auth(), "order-id");
+
+        assertEquals("order_1", response.payment().providerOrderId());
+        assertEquals("FAILED", response.payment().status());
+        verify(razorpay, never()).createOrder(anyString(), any(), anyString());
+        verify(payments, never()).save(any(Payment.class));
+    }
+
+    @Test
     void existingPaymentMustMatchTheSavedOrderTotal() {
         User user = new User();
         Order order = order(user);
@@ -72,7 +97,7 @@ class PaymentServiceTest {
 
     @Test
     void invalidWebhookSignatureIsRejected() {
-        PaymentService service = new PaymentService(current, orders, payments, events,
+        PaymentService service = new PaymentService(current, orders, carts, payments, events,
                 new PaymentProperties("RAZORPAY_TEST", "key", "secret", "webhook-secret"),
                 new ObjectMapper(), notifications, razorpay, returnRefundProcessor);
 
@@ -259,6 +284,43 @@ class PaymentServiceTest {
     }
 
     @Test
+    void successfulVerificationRemovesPurchasedCartLineOnlyOnce() throws Exception {
+        User user = new User();
+        Order order = order(user);
+        Payment payment = payment(order);
+        ProductVariant orderedVariant = new ProductVariant();
+        orderedVariant.setId("ordered-variant");
+        ProductVariant otherVariant = new ProductVariant();
+        otherVariant.setId("other-variant");
+        Cart cart = new Cart();
+        cart.setUser(user);
+        CartItem orderedCartItem = cartItem(cart, orderedVariant, 2);
+        CartItem otherCartItem = cartItem(cart, otherVariant, 1);
+        cart.getItems().addAll(java.util.List.of(orderedCartItem, otherCartItem));
+        OrderItem orderItem = new OrderItem();
+        orderItem.setOrder(order);
+        orderItem.setVariant(orderedVariant);
+        orderItem.setQuantity(2);
+        order.getItems().add(orderItem);
+        when(current.require(any())).thenReturn(user);
+        when(payments.findByProviderAndProviderOrderId("RAZORPAY_TEST", "order_1")).thenReturn(Optional.of(payment));
+        when(payments.findByProviderAndProviderPaymentId("RAZORPAY_TEST", "pay_1")).thenReturn(Optional.empty());
+        when(razorpay.fetchPayment("pay_1")).thenReturn(new RazorpayGateway.RazorpayPayment("order_1", 1099, "INR", "captured"));
+        when(payments.save(payment)).thenReturn(payment);
+        when(carts.findByUserIdAndStatus(user.getId(), "ACTIVE")).thenReturn(Optional.of(cart));
+
+        service().verify(auth(), order.getId(),
+                new PaymentVerificationRequest("order_1", "pay_1", signature("order_1|pay_1")));
+
+        assertEquals(1, cart.getItems().size());
+        assertEquals(otherCartItem, cart.getItems().get(0));
+        service().verify(auth(), order.getId(),
+                new PaymentVerificationRequest("order_1", "pay_1", "duplicate callback"));
+        assertEquals(1, cart.getItems().size());
+        verify(carts).findByUserIdAndStatus(user.getId(), "ACTIVE");
+    }
+
+    @Test
     void invalidSignatureIsRejected() {
         Payment payment = payment(order(new User()));
         when(current.require(any())).thenReturn(payment.getOrder().getUser());
@@ -313,6 +375,7 @@ class PaymentServiceTest {
         assertEquals("FAILED", response.status());
         assertEquals("FAILED", payment.getOrder().getPaymentStatus());
         verify(payments).save(payment);
+        verifyNoInteractions(carts);
     }
 
     @Test
@@ -334,7 +397,7 @@ class PaymentServiceTest {
     }
 
     private PaymentService service() {
-        return new PaymentService(current, orders, payments, events,
+        return new PaymentService(current, orders, carts, payments, events,
                 new PaymentProperties("RAZORPAY_TEST", "key", "secret", "webhook-secret"),
                 new ObjectMapper(), notifications, razorpay, returnRefundProcessor);
     }
@@ -358,6 +421,15 @@ class PaymentServiceTest {
         payment.setProviderOrderId("order_1");
         payment.setAmount(new java.math.BigDecimal("10.99"));
         return payment;
+    }
+
+    private CartItem cartItem(Cart cart, ProductVariant variant, int quantity) {
+        CartItem item = new CartItem();
+        item.setCart(cart);
+        item.setVariant(variant);
+        item.setQuantity(quantity);
+        item.setUnitPriceSnapshot(new java.math.BigDecimal("10.99"));
+        return item;
     }
 
     private String signature(String value) throws Exception {

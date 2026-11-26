@@ -138,7 +138,6 @@ public class OrderService {
      for (CartItem item : cart.getItems()) {
          if (item.getPrescription() != null) item.getPrescription().setOrder(saved);
      }
-     cart.getItems().clear();
      notifications.create(user, "ORDER_CREATED", "Order created", "Your order " + saved.getOrderNumber() + " was created.");
      notifications.enqueueSms("order:" + saved.getId() + ":ORDER_PLACED", "ORDER_PLACED",
              saved, Map.of("VAR1", saved.getOrderNumber()));

@@ -5,15 +5,39 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ProductCard from '../components/ui/ProductCard';
-import { catalogService, toProduct, type CatalogCategory } from '../services/catalogService';
+import { catalogService, toProduct, type CatalogCategory, type CatalogProduct } from '../services/catalogService';
 import { useShop } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
 import { formatINR } from '../utils/currency';
 import { useFranchiseLocation } from '../context/FranchiseLocationContext';
 import { formatColorLabel } from '../utils/colorSwatches';
+import { resolveCmsMediaUrl } from '../config/api';
+import type { Product } from '../types';
 
 const PAGE_SIZE = 6;
 const normalize = (value: string) => value.trim().toLowerCase().replaceAll('-', ' ').replaceAll('_', ' ');
+type ShopProduct = Product & { listingImage: string };
+
+function isCustomerImageAsset(imageUrl: string, altText?: string | null, storageKey?: string | null) {
+  return /(?:selfie|avatar|customer[-_\s]*(?:photo|image|picture)|profile[-_\s]*(?:photo|picture)|user[-_\s]*(?:photo|upload)|review[-_\s]*(?:photo|image))/i
+    .test(`${imageUrl} ${altText ?? ''} ${storageKey ?? ''}`);
+}
+
+function getListingProductImage(product: CatalogProduct): string {
+  const tryOnImageUrl = product.tryOnImageUrl
+    ? resolveCmsMediaUrl(product.tryOnImageUrl) ?? product.tryOnImageUrl
+    : '';
+  const isNonProductImage = (imageUrl: string, altText?: string | null, storageKey?: string | null) =>
+    Boolean(tryOnImageUrl && (resolveCmsMediaUrl(imageUrl) ?? imageUrl) === tryOnImageUrl)
+    || isCustomerImageAsset(imageUrl, altText, storageKey);
+  const catalogImages = (product.images ?? [])
+    .filter((image) => Boolean(image.imageUrl) && !isNonProductImage(image.imageUrl, image.altText, image.storageKey));
+  const primaryImage = [...catalogImages]
+    .sort((a, b) => Number(b.primaryImage) - Number(a.primaryImage) || a.sortOrder - b.sortOrder)[0];
+  const fallbackImage = product.imageUrl && !isNonProductImage(product.imageUrl) ? product.imageUrl : '';
+  const imageUrl = primaryImage?.imageUrl ?? fallbackImage;
+  return imageUrl ? resolveCmsMediaUrl(imageUrl) ?? imageUrl : '';
+}
 
 export default function ShopPage() {
   const { selectedLocationId } = useFranchiseLocation();
@@ -46,7 +70,7 @@ export default function ShopPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [page, setPage] = useState(Number.isInteger(pageFilter) && pageFilter > 0 ? pageFilter : 1);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [products, setProducts] = useState<import('../types').Product[]>([]);
+  const [products, setProducts] = useState<ShopProduct[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [filterOptions, setFilterOptions] = useState({
     brands: [] as string[],
@@ -148,7 +172,10 @@ export default function ShopPage() {
     catalogService.search(params, controller.signal)
       .then((result) => {
         if (requestId !== catalogRequestRef.current) return;
-        setProducts(result.items.map(toProduct));
+        setProducts(result.items.map((catalogProduct) => ({
+          ...toProduct(catalogProduct),
+          listingImage: getListingProductImage(catalogProduct),
+        })));
         setCatalogTotal(result.total);
         setCatalogCategoryKey(selectedCategory);
       })
@@ -204,6 +231,7 @@ export default function ShopPage() {
     || normalize(category.name) === normalize(selectedCategory));
   const categoryTitle = currentCategory?.name
     ?? (selectedCategory ? selectedCategory.replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()) : 'Eyeglasses');
+  const shopAllHref = selectedCategory ? `/shop?category=${encodeURIComponent(selectedCategory)}` : '/shop';
   const displayedCatalogTotal = catalogCategoryKey === selectedCategory ? catalogTotal : 0;
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
@@ -234,44 +262,44 @@ export default function ShopPage() {
 
   const filterFields = (
     <div className="space-y-4">
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Category
-        <select value={selectedCategory} onChange={(event) => { updateCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#536353]">Shop Category
+        <select value={selectedCategory} onChange={(event) => { updateCategory(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All categories</option>
           {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Brand
-        <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#536353]">By Brand
+        <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All brands</option>{filterOptions.brands.map((brand) => <option key={brand}>{brand}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Gender
-        <select value={selectedGender} onChange={(event) => { setSelectedGender(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#536353]">Gender
+        <select value={selectedGender} onChange={(event) => { setSelectedGender(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All genders</option>{filterOptions.genders.map((gender) => <option key={gender}>{gender}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Frame shape
-        <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#536353]">By Shape
+        <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All shapes</option>{filterOptions.frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Frame type
-        <select value={selectedFrameType} onChange={(event) => { setSelectedFrameType(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#536353]">Frame type
+        <select value={selectedFrameType} onChange={(event) => { setSelectedFrameType(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All frame types</option>{filterOptions.frameTypes.map((type) => <option key={type}>{type}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Material
-        <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#536353]">Shop by Material
+        <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All materials</option>{filterOptions.materials.map((material) => <option key={material}>{material}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Colour
-        <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#536353]">Shop by Colour
+        <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All colours</option>{filterOptions.colors.map((color) => <option key={color} value={color}>{formatColorLabel(color)}</option>)}
         </select>
       </label>
-      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Product label
-        <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-2 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
+      <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#536353]">Featured
+        <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-2 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm font-normal normal-case tracking-normal text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15">
           <option value="">All labels</option>{filterOptions.badges.map((badge) => <option key={badge} value={badge}>{badge}</option>)}
         </select>
       </label>
@@ -279,14 +307,14 @@ export default function ShopPage() {
         <legend className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-secondary)]">Price range</legend>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <label className="text-xs text-[var(--text-secondary)]">Min
-            <input type="number" min="0" value={minimumPrice} onChange={(event) => { setMinimumPrice(event.target.value); setPage(1); }} placeholder="₹0" className="mt-1 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15" />
+            <input type="number" min="0" value={minimumPrice} onChange={(event) => { setMinimumPrice(event.target.value); setPage(1); }} placeholder="₹0" className="mt-1 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15" />
           </label>
           <label className="text-xs text-[var(--text-secondary)]">Max
-            <input type="number" min="0" value={maximumPrice} onChange={(event) => { setMaximumPrice(event.target.value); setPage(1); }} placeholder="No limit" className="mt-1 w-full rounded-2xl border border-slate-200 bg-[#f8f7f2] px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15" />
+            <input type="number" min="0" value={maximumPrice} onChange={(event) => { setMaximumPrice(event.target.value); setPage(1); }} placeholder="No limit" className="mt-1 w-full rounded-xl border border-[#dfe7d7] bg-[#f8f7f2] px-3 py-2.5 text-sm text-[#182116] outline-none transition focus:border-[#7CBF00] focus:ring-2 focus:ring-[#7CBF00]/15" />
           </label>
         </div>
       </fieldset>
-      <label className="flex items-center gap-2 text-sm text-slate-600">
+      <label className="flex items-center gap-2 text-sm text-[#536353]">
         <input type="checkbox" checked={availableOnly} onChange={(event) => { setAvailableOnly(event.target.checked); setPage(1); }} className="h-4 w-4 accent-[#7CBF00]" />
         In-stock items only
       </label>
@@ -296,7 +324,7 @@ export default function ShopPage() {
   return (
     <div className="min-h-screen bg-[#f7f5f0] text-slate-800">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-16">
+      <main className="mx-auto max-w-[1440px] px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-16">
         <div className="rounded-[28px] border border-[#dfe7d7] bg-white px-5 py-5 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)] sm:px-7">
           <div className="flex flex-wrap items-center gap-2 text-sm text-[#5e6b5e]">
             <Link to="/" className="inline-flex items-center gap-1 font-medium text-[#17300d] hover:text-[#24491a]">
@@ -307,12 +335,17 @@ export default function ShopPage() {
             <ChevronRightIcon className="h-4 w-4 text-[#7a867a]" />
             <span className="font-semibold text-[#17300d]">Frames</span>
           </div>
-          <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-[var(--brand-green-dark)]">Premium collection</p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight text-[#182116] sm:text-4xl">{categoryTitle} Frames</h1>
+              <h1 className="mt-2 font-serif text-4xl font-semibold tracking-tight text-[#182116] sm:text-5xl">{categoryTitle} Frames</h1>
             </div>
-            <p className="text-sm text-[#5f6c5b]">{catalogLoading && catalogCategoryKey !== selectedCategory ? 'Loading styles...' : `${displayedCatalogTotal} styles ready to explore`}</p>
+            <div className="flex flex-wrap items-center gap-4 md:justify-end">
+              <p className="text-sm text-[#5f6c5b]">{catalogLoading && catalogCategoryKey !== selectedCategory ? 'Loading styles...' : `${displayedCatalogTotal} styles ready to explore`}</p>
+              <Link to={shopAllHref} className="inline-flex items-center gap-2 rounded-full bg-[#78be20] px-5 py-3 text-sm font-semibold text-[#172015] shadow-[0_10px_24px_-16px_rgba(47,81,22,0.65)] transition hover:bg-[#91cb43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b781a]">
+                Shop all {categoryTitle} <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#5f6c5b]">Discover frames that match your style.</p>
         </div>
@@ -352,8 +385,21 @@ export default function ShopPage() {
           <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#17300d]"><FileText className="h-4 w-4 text-[var(--brand-green-dark)]" /> Prescription available on selected eyewear</div>
         </motion.div>
 
-        <div className={`mt-6 grid gap-5 lg:gap-6 ${cartQuantity > 0 ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : ''}`}>
-          <div>
+        <div className={`mt-6 grid items-start gap-5 lg:gap-6 ${cartQuantity > 0 ? 'xl:grid-cols-[minmax(0,1fr)_320px]' : ''}`}>
+          <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]">
+            <aside aria-label="Product filters" className="hidden lg:block">
+              <div className="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-[24px] border border-[#dfe7d7] bg-white shadow-[0_16px_38px_-30px_rgba(18,35,18,0.45)]">
+                <div className="flex items-center justify-between gap-3 border-b border-[#e7ecdf] px-5 py-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#4b781a]">Refine your fit</p>
+                    <p className="mt-1 text-xs text-[#687468]">{activeFilterCount} active filters</p>
+                  </div>
+                  {activeFilterCount > 0 ? <button type="button" onClick={resetFilters} className="shrink-0 rounded-full border border-[#dfe7d7] px-3 py-1.5 text-xs font-semibold text-[#355e17] transition hover:border-[#78be20] hover:bg-[#f4f8ef]">Clear</button> : null}
+                </div>
+                <div className="p-5">{filterFields}</div>
+              </div>
+            </aside>
+            <div className="min-w-0">
             <div className="mb-3 flex items-center justify-between gap-3 rounded-[20px] border border-[#dfe7d7] bg-white px-4 py-3 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">
               <div className="flex min-w-0 items-center gap-3">
                 <button type="button" onClick={() => setFiltersOpen(true)} aria-label={`Open filters, ${activeFilterCount} active`} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#dfe7d7] bg-[#f7f5f0] px-3 py-2 text-sm font-medium text-[#17300d] transition hover:border-[#7CBF00]/50 lg:hidden">
@@ -368,53 +414,13 @@ export default function ShopPage() {
               </div>
             </div>
 
-            <div className="mb-4 grid grid-cols-2 gap-2 rounded-[20px] border border-[#dfe7d7] bg-white p-3 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)] sm:grid-cols-3 lg:grid-cols-6">
-              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">Shop Category
-                <select value={selectedCategory} onChange={(event) => { updateCategory(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
-                  <option value="">All categories</option>
-                  {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
-                </select>
-              </label>
-              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">By Shape
-                <select value={selectedFrameShape} onChange={(event) => { setSelectedFrameShape(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
-                  <option value="">All shapes</option>
-                  {filterOptions.frameShapes.map((shape) => <option key={shape}>{shape}</option>)}
-                </select>
-              </label>
-              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">By Brand
-                <select value={selectedBrand} onChange={(event) => { setSelectedBrand(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
-                  <option value="">All brands</option>
-                  {filterOptions.brands.map((brand) => <option key={brand}>{brand}</option>)}
-                </select>
-              </label>
-              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">Shop by Material
-                <select value={selectedMaterial} onChange={(event) => { setSelectedMaterial(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
-                  <option value="">All materials</option>
-                  {filterOptions.materials.map((material) => <option key={material}>{material}</option>)}
-                </select>
-              </label>
-              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">Shop by Colour
-                <select value={selectedColor} onChange={(event) => { setSelectedColor(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
-                  <option value="">All colours</option>
-                  {filterOptions.colors.map((color) => <option key={color} value={color}>{formatColorLabel(color)}</option>)}
-                </select>
-              </label>
-              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#536353]">Featured
-                <select value={selectedBadge} onChange={(event) => { setSelectedBadge(event.target.value); setPage(1); }} className="mt-1.5 h-10 w-full rounded-xl border border-[#dfe7d7] bg-[#f7f5f0] px-2 text-xs font-normal normal-case tracking-normal text-[#182116] outline-none focus:border-[#7CBF00]">
-                  <option value="">All labels</option>
-                  {filterOptions.badges.map((badge) => <option key={badge} value={badge}>{badge}</option>)}
-                </select>
-              </label>
-            </div>
-            {activeFilterCount > 0 ? <button type="button" onClick={resetFilters} className="mb-4 ml-auto block rounded-full border border-[#dfe7d7] px-3 py-2 text-xs font-semibold text-[#17300d] transition hover:border-[#7CBF00]">Clear filters</button> : null}
-
-            <div className={`grid auto-rows-fr gap-3 md:gap-4 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}>
+            <div className={`grid auto-rows-fr gap-4 md:gap-5 ${viewMode === 'grid' ? (cartQuantity > 0 ? 'grid-cols-2 2xl:grid-cols-3' : 'grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4') : 'grid-cols-1'}`}>
               {pagedProducts.map((product, index) => (
                 <motion.div key={product.id} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.04 }} className="h-full">
-                  <ProductCard product={product} layout={viewMode} />
+                  <ProductCard product={product} layout={viewMode} variant="catalog" displayImage={product.listingImage} />
                 </motion.div>
               ))}
-              {!catalogLoading && !pagedProducts.length ? <div className="rounded-[24px] border border-[#dfe7d7] bg-white p-8 text-center sm:col-span-2 xl:col-span-3 2xl:col-span-4"><p className="font-serif text-2xl text-[#182116]">No frames match your current selection.</p><p className="mt-2 text-sm text-[#5f6c5b]">Try broadening your search or resetting the filters.</p><button type="button" onClick={resetFilters} className="mt-5 rounded-full bg-[var(--bg-secondary)] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)]">Reset filters</button></div> : null}
+              {!catalogLoading && !pagedProducts.length ? <div className="col-span-full rounded-[24px] border border-[#dfe7d7] bg-white p-8 text-center"><p className="font-serif text-2xl text-[#182116]">No frames match your current selection.</p><p className="mt-2 text-sm text-[#5f6c5b]">Try broadening your search or resetting the filters.</p><button type="button" onClick={resetFilters} className="mt-5 rounded-full bg-[#edf4e7] px-4 py-2.5 text-sm font-semibold text-[#355e17]">Reset filters</button></div> : null}
             </div>
 
             <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[#dfe7d7] bg-white px-4 py-4 shadow-[0_12px_35px_-30px_rgba(18,35,18,0.45)]">
@@ -427,6 +433,7 @@ export default function ShopPage() {
                 <button onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="rounded-full border border-[#dfe7d7] bg-[#f7f5f0] p-2.5 text-[#17300d]"><ChevronRight className="h-4 w-4" /></button>
               </div>
             </div>
+          </div>
           </div>
 
           {cartQuantity > 0 && (

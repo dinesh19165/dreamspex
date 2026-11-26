@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LoaderCircle, LockKeyhole } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
-import { useShop } from '../context/ShopContext';
+import { useShop, type CartItem } from '../context/ShopContext';
 import { getCartItemKey } from '../utils/cart';
 import { formatINR } from '../utils/currency';
 import { useAuth } from '../context/useAuth';
@@ -30,6 +30,68 @@ import { franchiseStoreService, type StorefrontAvailability } from '../services/
 import { useMaintenance } from '../context/MaintenanceContext';
 
 const NEW_ADDRESS_VALUE = '__new_address__';
+const CHECKOUT_ATTEMPT_STORAGE_KEY = 'dream-spex-checkout-attempt';
+
+type CheckoutAttempt = {
+  userId: string;
+  idempotencyKey: string;
+  signature: string;
+  cartFingerprint: string;
+  addressId: string;
+  fulfillmentType: 'DELIVERY' | 'PICKUP';
+  selectedLocationId: string;
+  appliedCouponCode: string | null;
+  couponInput: string;
+  loyaltyPointsInput: string;
+  shippingOption: string;
+};
+
+function isCheckoutAttempt(value: unknown): value is CheckoutAttempt {
+  if (!value || typeof value !== 'object') return false;
+  const attempt = value as Record<string, unknown>;
+  return typeof attempt.userId === 'string'
+    && typeof attempt.idempotencyKey === 'string'
+    && typeof attempt.signature === 'string'
+    && typeof attempt.cartFingerprint === 'string'
+    && typeof attempt.addressId === 'string'
+    && (attempt.fulfillmentType === 'DELIVERY' || attempt.fulfillmentType === 'PICKUP')
+    && typeof attempt.selectedLocationId === 'string'
+    && (typeof attempt.appliedCouponCode === 'string' || attempt.appliedCouponCode === null)
+    && typeof attempt.couponInput === 'string'
+    && typeof attempt.loyaltyPointsInput === 'string'
+    && typeof attempt.shippingOption === 'string';
+}
+
+function readCheckoutAttempt(): CheckoutAttempt | null {
+  try {
+    const stored = localStorage.getItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed: unknown = JSON.parse(stored);
+    if (isCheckoutAttempt(parsed)) return parsed;
+    localStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+  } catch (reason) {
+    console.error('Unable to restore the pending checkout attempt.', reason);
+  }
+  return null;
+}
+
+function clearCheckoutAttempt() {
+  try {
+    localStorage.removeItem(CHECKOUT_ATTEMPT_STORAGE_KEY);
+  } catch (reason) {
+    console.error('Unable to clear the completed checkout attempt.', reason);
+  }
+}
+
+function getCartFingerprint(cart: CartItem[]) {
+  return JSON.stringify(cart.map((item) => ({
+    variantId: item.backendVariantId ?? String(item.variantId),
+    quantity: item.quantity,
+    unitPrice: item.backendUnitPrice ?? item.price + (item.lensSelection?.additionalPrice ?? 0),
+    prescriptionId: item.prescriptionId ?? null,
+    lensCodes: item.lensSelection?.codes ?? [],
+  })).sort((first, second) => first.variantId.localeCompare(second.variantId)));
+}
 
 function emptyAddressDraft(): CustomerAddressRequest {
   return {
@@ -77,11 +139,14 @@ function loadRazorpay() {
 
 export default function CheckoutPage() {
   const { status: maintenanceStatus } = useMaintenance();
-  const { cart, cartLoading, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount } = useShop();
+  const { cart, cartLoading, cartReady, appliedCoupon, applyCoupon, removeCoupon, subtotal, discount, clearCart } = useShop();
   const { user, refreshSession } = useAuth();
   const { locations, selectedLocationId, selectLocation } = useFranchiseLocation();
   const navigate = useNavigate();
-  const [couponCode, setCouponCode] = useState('');
+  const [storedCheckoutAttempt] = useState<CheckoutAttempt | null>(() => readCheckoutAttempt());
+  const pendingCheckoutAttempt = useRef<CheckoutAttempt | null>(storedCheckoutAttempt);
+  const checkoutAttemptRestored = useRef(false);
+  const [couponCode, setCouponCode] = useState(storedCheckoutAttempt?.couponInput ?? '');
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -92,14 +157,16 @@ export default function CheckoutPage() {
   const [reverseGeocoding, setReverseGeocoding] = useState(false);
   const [locationError, setLocationError] = useState('');
   const [locationNotice, setLocationNotice] = useState('');
-  const [shippingOption, setShippingOption] = useState('standard');
-  const [fulfillmentType, setFulfillmentType] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
+  const [shippingOption, setShippingOption] = useState(storedCheckoutAttempt?.shippingOption ?? 'standard');
+  const [fulfillmentType, setFulfillmentType] = useState<'DELIVERY' | 'PICKUP'>(
+    storedCheckoutAttempt?.fulfillmentType ?? 'DELIVERY',
+  );
   const [storeAvailability, setStoreAvailability] = useState<StorefrontAvailability[]>([]);
   const [storeAvailabilityError, setStoreAvailabilityError] = useState('');
   const [checkoutQuote, setCheckoutQuote] = useState<CheckoutQuoteResponse | null>(null);
   const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
   const [loyaltyAvailablePoints, setLoyaltyAvailablePoints] = useState<number | null>(null);
-  const [loyaltyPointsInput, setLoyaltyPointsInput] = useState('');
+  const [loyaltyPointsInput, setLoyaltyPointsInput] = useState(storedCheckoutAttempt?.loyaltyPointsInput ?? '');
   const [redemptionPreview, setRedemptionPreview] = useState<{
     value: RedemptionPreview;
     eligibleAmount: number;
@@ -114,12 +181,50 @@ export default function CheckoutPage() {
   const [paymentError, setPaymentError] = useState('');
   const [paymentState, setPaymentState] = useState('');
   const checkoutGst = toGstBreakdown(checkoutQuote?.gstSnapshot);
+  const currentCartFingerprint = useMemo(() => getCartFingerprint(cart), [cart]);
+
+  useEffect(() => {
+    if (!user?.id || cartLoading || !cartReady || checkoutAttemptRestored.current) return;
+    const attempt = pendingCheckoutAttempt.current ?? readCheckoutAttempt();
+    checkoutAttemptRestored.current = true;
+    if (!attempt) return;
+    if (attempt.userId !== user.id || attempt.cartFingerprint !== currentCartFingerprint) {
+      clearCheckoutAttempt();
+      pendingCheckoutAttempt.current = null;
+      setCouponCode('');
+      setLoyaltyPointsInput('');
+      setShippingOption('standard');
+      setFulfillmentType('DELIVERY');
+      return;
+    }
+
+    pendingCheckoutAttempt.current = attempt;
+    setCouponCode(attempt.couponInput);
+    setLoyaltyPointsInput(attempt.loyaltyPointsInput);
+    setShippingOption(attempt.shippingOption);
+    setFulfillmentType(attempt.fulfillmentType);
+    if (attempt.addressId && addresses.some((address) => address.id === attempt.addressId)) {
+      setAddressId(attempt.addressId);
+    }
+    if (attempt.selectedLocationId && locations.some((location) => location.id === attempt.selectedLocationId)) {
+      selectLocation(attempt.selectedLocationId);
+    }
+    if (attempt.appliedCouponCode && appliedCoupon?.code !== attempt.appliedCouponCode) {
+      void applyCoupon(attempt.appliedCouponCode).catch((reason) => {
+        setCouponError(reason instanceof Error ? reason.message : 'Unable to restore the applied coupon.');
+      });
+    }
+  }, [addresses, appliedCoupon?.code, applyCoupon, cartLoading, cartReady, currentCartFingerprint, locations, selectLocation, user?.id]);
 
   useEffect(() => {
     if (!user?.accessToken) return;
     addressService.list(user.accessToken).then((items) => {
       setAddresses(items);
-      const selected = items.find((item) => item.defaultAddress) ?? items[0];
+      const attempt = pendingCheckoutAttempt.current;
+      const savedSelection = attempt?.userId === user.id
+        ? items.find((item) => item.id === attempt.addressId)
+        : undefined;
+      const selected = savedSelection ?? items.find((item) => item.defaultAddress) ?? items[0];
       setAddressId(selected?.id ?? '');
       if (selected) {
         setAddressDraft(addressDraftFrom(selected));
@@ -127,7 +232,7 @@ export default function CheckoutPage() {
         setAddressDraft(emptyAddressDraft());
       }
     }).catch(() => setPaymentError('Unable to load your saved addresses.'));
-  }, [user?.accessToken]);
+  }, [user?.accessToken, user?.id]);
 
   const selectedAddress = addresses.find((address) => address.id === addressId) ?? null;
   const savedAddressCoordinates = useMemo(
@@ -462,22 +567,63 @@ export default function CheckoutPage() {
     setPaymentState('');
     try {
       let accessToken = user.accessToken;
-      const idempotencyKey = crypto.randomUUID();
+      const signature = JSON.stringify({
+        userId: user.id,
+        cartFingerprint: currentCartFingerprint,
+        addressId: fulfillmentType === 'DELIVERY' ? addressId : null,
+        fulfillmentType,
+        selectedLocationId: fulfillmentType === 'PICKUP' ? selectedLocationId : null,
+        appliedCouponCode: appliedCoupon?.code ?? null,
+        couponInput: couponCode,
+        loyaltyPoints: loyaltyValidation.points,
+        shippingOption,
+      });
+      let attempt = pendingCheckoutAttempt.current;
+      if (!attempt || attempt.userId !== user.id || attempt.signature !== signature) {
+        attempt = {
+          userId: user.id,
+          idempotencyKey: crypto.randomUUID(),
+          signature,
+          cartFingerprint: currentCartFingerprint,
+          addressId,
+          fulfillmentType,
+          selectedLocationId,
+          appliedCouponCode: appliedCoupon?.code ?? null,
+          couponInput: couponCode,
+          loyaltyPointsInput,
+          shippingOption,
+        };
+        pendingCheckoutAttempt.current = attempt;
+      }
+      localStorage.setItem(CHECKOUT_ATTEMPT_STORAGE_KEY, JSON.stringify(attempt));
       const createOrder = async () => orderService.create(
         accessToken,
         fulfillmentType === 'DELIVERY' ? addressId : null,
         appliedCoupon?.code ?? null,
-        idempotencyKey,
+        attempt.idempotencyKey,
         loyaltyValidation.points,
         fulfillmentType === 'PICKUP' ? selectedLocationId : undefined,
         fulfillmentType,
       );
-      let order;
+      let order: Awaited<ReturnType<typeof orderService.create>>;
       try { order = await createOrder(); } catch (reason) {
         if (!(reason instanceof Error) || !reason.message.includes('401') || !(await refreshSession())) throw reason;
         const stored = JSON.parse(localStorage.getItem('dream-spex-auth-session') ?? '{}') as { accessToken?: string };
         accessToken = stored.accessToken ?? accessToken;
         order = await createOrder();
+      }
+      if (order.status === 'PAID' || order.paymentStatus === 'PAID') {
+        clearCheckoutAttempt();
+        pendingCheckoutAttempt.current = null;
+        clearCart();
+        setPaymentLoading(false);
+        navigate(`/orders/success?orderId=${encodeURIComponent(order.id)}`);
+        return;
+      }
+      if (order.status !== 'PENDING_PAYMENT') {
+        clearCheckoutAttempt();
+        pendingCheckoutAttempt.current = null;
+        throw new Error('This checkout order is no longer awaiting payment. Review your cart and try again.');
       }
       const intent = await paymentService.create(accessToken, order.id);
       await loadRazorpay();
@@ -496,6 +642,10 @@ export default function CheckoutPage() {
               providerPaymentId: response.razorpay_payment_id,
               signature: response.razorpay_signature,
             });
+            clearCheckoutAttempt();
+            pendingCheckoutAttempt.current = null;
+            clearCart();
+            setPaymentState('');
             navigate(`/orders/success?orderId=${encodeURIComponent(order.id)}`);
           } catch (reason) {
             setPaymentError(reason instanceof Error ? reason.message : 'Payment verification failed.');
@@ -504,11 +654,21 @@ export default function CheckoutPage() {
           }
         },
         modal: { ondismiss: () => {
+          setPaymentState('Payment cancelled. Your cart is preserved; you can try again.');
           void paymentService.failed(accessToken, order.id, { providerOrderId: intent.payment.providerOrderId })
-            .catch(() => undefined);
-          setPaymentState('Payment cancelled. Your order remains unpaid.');
-          setPaymentLoading(false);
+            .then(() => setPaymentLoading(false))
+            .catch((reason) => {
+              setPaymentError(reason instanceof Error
+                ? `Payment was cancelled, but its status could not be updated: ${reason.message}`
+                : 'Payment was cancelled, but its status could not be updated.');
+              setPaymentLoading(false);
+            });
         } },
+      });
+      razorpay.on?.('payment.failed', (response) => {
+        setPaymentError(response.error?.description
+          ? `${response.error.description} Your cart is saved, and you can retry securely.`
+          : 'Payment failed. Your cart is saved, and you can retry securely.');
       });
       razorpay.open();
     } catch (reason) {

@@ -113,9 +113,22 @@ function resolveProductImageUrls(product: CatalogProduct): CatalogProduct {
   };
 }
 
+export function getCatalogProductImage(product: Pick<CatalogProduct, 'imageUrl' | 'images' | 'tryOnImageUrl'>): string {
+  const tryOnImageUrl = product.tryOnImageUrl
+    ? resolveCmsMediaUrl(product.tryOnImageUrl) ?? product.tryOnImageUrl
+    : '';
+  const isTryOnImage = (imageUrl: string) => Boolean(tryOnImageUrl
+    && (resolveCmsMediaUrl(imageUrl) ?? imageUrl) === tryOnImageUrl);
+  const catalogImages = (product.images ?? [])
+    .filter((image) => Boolean(image.imageUrl) && !isTryOnImage(image.imageUrl));
+  const primaryImage = [...catalogImages]
+    .sort((a, b) => Number(b.primaryImage) - Number(a.primaryImage) || a.sortOrder - b.sortOrder)[0];
+  const fallbackImage = product.imageUrl && !isTryOnImage(product.imageUrl) ? product.imageUrl : '';
+  const imageUrl = primaryImage?.imageUrl ?? fallbackImage;
+  return imageUrl ? resolveCmsMediaUrl(imageUrl) ?? imageUrl : '';
+}
+
 export function toProduct(product: CatalogProduct): Product {
-  const images = product.images ?? [];
-  const primaryImage = [...images].sort((a, b) => Number(b.primaryImage) - Number(a.primaryImage) || a.sortOrder - b.sortOrder)[0];
   const activeVariants = product.variants.filter((variant) => variant.status.toUpperCase() === 'ACTIVE');
   const available = activeVariants.reduce((total, variant) => total + variant.availableQuantity, 0);
   const firstVariant = activeVariants.find((variant) => variant.availableQuantity > 0);
@@ -133,7 +146,7 @@ export function toProduct(product: CatalogProduct): Product {
     frameType: product.frameType ?? undefined,
     price: Number(product.basePrice),
     oldPrice: product.compareAtPrice == null ? undefined : Number(product.compareAtPrice),
-    image: primaryImage?.imageUrl ?? product.imageUrl ?? '',
+    image: getCatalogProductImage(product),
     tryOnImageUrl: product.tryOnImageUrl ?? undefined,
     badge: product.badge ?? undefined,
     rating: product.ratingSummary?.averageRating ?? 0,

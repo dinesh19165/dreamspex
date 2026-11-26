@@ -7,7 +7,7 @@ import { useAuth } from '../../context/useAuth';
 import { useFranchiseLocation } from '../../context/FranchiseLocationContext';
 import BrandLogo from '../ui/BrandLogo';
 import { resolveCmsMediaUrl } from '../../config/api';
-import { catalogService, type CatalogCategory, type CatalogProduct } from '../../services/catalogService';
+import { catalogService, getCatalogProductImage, type CatalogCategory, type CatalogProduct } from '../../services/catalogService';
 import { fetchOffers, type Offer } from '../../services/offerService';
 import { fetchMembershipPlans, type MembershipPlan } from '../../services/membershipService';
 import type { StorefrontFranchise } from '../../services/franchiseStoreService';
@@ -71,8 +71,7 @@ type MegaMenuGroup = { title: string; kind: MegaMenuGroupKind; items: MegaMenuIt
 type MegaMenu = { label: string; groups: MegaMenuGroup[] };
 
 function getProductImage(product: CatalogProduct) {
-  const primaryImage = [...(product.images ?? [])].sort((a, b) => Number(b.primaryImage) - Number(a.primaryImage) || a.sortOrder - b.sortOrder)[0];
-  return resolveCmsMediaUrl(primaryImage?.imageUrl ?? product.tryOnImageUrl);
+  return getCatalogProductImage(product) || null;
 }
 
 function getProductCardColor(product: CatalogProduct) {

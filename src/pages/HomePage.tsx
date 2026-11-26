@@ -114,7 +114,7 @@ function FaceShapeCarousel({ reducedMotion }: { reducedMotion: boolean }) {
     onBlurCapture={(event) => {
       if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setIsFocused(false);
     }}
-    className="group relative aspect-[4/3] overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] md:aspect-[2/1]"
+    className="group relative aspect-[4/3] overflow-hidden rounded-[28px] border border-white/80 bg-[var(--bg-secondary)] shadow-[0_24px_55px_-30px_rgba(24,34,24,0.42)] md:aspect-[3/2]"
   >
     <div aria-hidden="true" className="absolute inset-0 grid place-items-center">
       <FaceShapeIllustration shape={activeShape} />
@@ -129,27 +129,27 @@ function FaceShapeCarousel({ reducedMotion }: { reducedMotion: boolean }) {
       }}
       className="absolute inset-0 z-10 h-full w-full object-cover object-center"
     />
-    <div aria-hidden="true" className="absolute inset-0 z-10 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-    <div className="absolute right-5 top-5 z-20 flex gap-1.5" role="group" aria-label="Choose a face shape">
+    <div aria-hidden="true" className="absolute inset-0 z-10 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+    <div className="absolute right-4 top-4 z-20 flex gap-1.5 rounded-full border border-white/25 bg-black/20 p-2 backdrop-blur-md sm:right-5 sm:top-5" role="group" aria-label="Choose a face shape">
       {faceShapeNames.map((shape, index) => <button
         key={shape}
         type="button"
         aria-label={`Show ${shape} face shape`}
         aria-current={index === activeIndex ? 'true' : undefined}
         onClick={() => setActiveIndex(index)}
-        className={`h-2.5 rounded-full transition-all ${index === activeIndex ? 'w-6 bg-white' : 'w-2.5 bg-white/60 hover:bg-white'}`}
+        className={`h-2.5 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${index === activeIndex ? 'w-7 bg-white' : 'w-2.5 bg-white/60 hover:bg-white'}`}
       />)}
     </div>
-    <div className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-4 p-5 text-white sm:p-6">
+    <div className="absolute inset-x-0 bottom-0 z-20 flex items-end justify-between gap-4 p-5 text-white sm:p-7">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/80">Face shape</p>
-        <h3 className="mt-1 font-serif text-3xl font-semibold drop-shadow">{activeShape}</h3>
+        <h3 className="mt-1 font-serif text-4xl font-semibold leading-none drop-shadow sm:text-5xl">{activeShape}</h3>
       </div>
       <div className="flex shrink-0 gap-2">
-        <button type="button" aria-label="Previous face shape" onClick={() => moveSlide(-1)} className="grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#172015] shadow transition hover:bg-white">
+        <button type="button" aria-label="Previous face shape" onClick={() => moveSlide(-1)} className="grid h-11 w-11 place-items-center rounded-full border border-white/70 bg-white/90 text-[#172015] shadow-lg backdrop-blur transition duration-200 hover:bg-[#eaf3df] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         </button>
-        <button type="button" aria-label="Next face shape" onClick={() => moveSlide(1)} className="grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#172015] shadow transition hover:bg-white">
+        <button type="button" aria-label="Next face shape" onClick={() => moveSlide(1)} className="grid h-11 w-11 place-items-center rounded-full border border-white/70 bg-white/90 text-[#172015] shadow-lg backdrop-blur transition duration-200 hover:bg-[#eaf3df] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
           <ArrowRight aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>
@@ -1104,19 +1104,22 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
             </div>
           </section>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.faceFit, sections)} className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-            <div className="grid gap-8 rounded-3xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 sm:p-8 md:grid-cols-[.72fr_1.28fr] md:p-10">
-              <div className="flex flex-col justify-center">
-                <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Find your fit</p>
-                <h2 className="mt-3 font-serif text-4xl">Frames for your face</h2>
-                <p className="mt-4 max-w-md text-[var(--text-secondary)]">Explore common face shapes, then preview frames with virtual try-on. The current catalogue does not yet map individual frames to face shapes.</p>
-                <Link to="/virtual-try-on" className="mt-7 inline-flex w-fit items-center gap-2 rounded-full bg-[#7cbf00] px-5 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[#9acd32]">Try frames virtually <ArrowRight className="h-4 w-4" /></Link>
+          <section hidden={cmsHidden(homepageSectionSlugs.faceFit, sections)} className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+            <div className="grid items-stretch gap-7 rounded-[30px] border border-[#e2e9dd] bg-[#fbfcf8] p-5 shadow-[0_20px_50px_-38px_rgba(24,34,24,0.32)] sm:gap-9 sm:p-8 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-10 lg:p-10">
+              <div className="flex flex-col justify-center py-1 sm:py-3">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]"><span aria-hidden="true" className="h-px w-7 bg-[#9ac86a]" />Find your fit</p>
+                <h2 className="mt-4 max-w-md font-serif text-4xl leading-[1.08] text-[var(--text-primary)] sm:text-5xl">Frames for your face</h2>
+                <p className="mt-5 max-w-md text-base leading-7 text-[var(--text-secondary)] sm:text-lg sm:leading-8">Explore common face shapes, then preview frames with virtual try-on. The current catalogue does not yet map individual frames to face shapes.</p>
+                <Link to="/virtual-try-on" className="mt-7 inline-flex w-fit items-center gap-3 rounded-full bg-[#78be20] py-1.5 pl-5 pr-1.5 text-sm font-semibold text-[#172015] shadow-[0_10px_22px_-14px_rgba(47,81,22,0.55)] transition hover:bg-[#91cb43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b781a]">
+                  Try frames virtually
+                  <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-[#355e17] shadow-sm"><ArrowRight className="h-4 w-4" /></span>
+                </Link>
               </div>
               <FaceShapeCarousel reducedMotion={reducedMotion} />
             </div>
           </section>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.collections, sections)} className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+          <section hidden={cmsHidden(homepageSectionSlugs.collections, sections)} className="mx-auto max-w-7xl px-4 pt-20 pb-10 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">The current edit</p><h2 className="mt-3 font-serif text-4xl text-[var(--text-primary)]">Trending eyewear</h2></div>
               <Link to={collectionPath} className="inline-flex items-center gap-1 text-sm font-semibold text-[#689f24]">Explore collection <ChevronRight className="h-4 w-4" /></Link>
@@ -1130,50 +1133,139 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
 
           {/* <section hidden={cmsHidden(homepageSectionSlugs.tryOn, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"><div className="grid overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[#e9eee4] lg:grid-cols-[1fr_1.1fr]"><div className="p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]">Try before you choose</p><h2 className="mt-4 font-serif text-4xl leading-tight text-[#182116]">Your next pair is closer than you think.</h2><p className="mt-5 max-w-md leading-7 text-[#5f6c5b]">Upload a photo or use your camera to preview selected frames. Switch styles until the right one feels obvious.</p><Link to="/virtual-try-on" className="mt-8 inline-flex"><Button><Camera className="mr-2 h-4 w-4" /> Start virtual try-on</Button></Link></div><div className="relative min-h-[300px]"><img src="https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=1200&q=90" alt="Person wearing stylish spectacles" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /></div></div></section> */}
 
-          <section hidden={cmsHidden(homepageSectionSlugs.why, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-            <div className="text-center"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Why Dream Spex</p><h2 className="mt-3 font-serif text-4xl text-[var(--text-primary)]">A clearer way to choose eyewear</h2></div>
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              <Link to="/categories" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1 hover:shadow-md"><Eye className="h-6 w-6 text-[#689f24]" /><h3 className="mt-4 text-lg font-semibold">Browse a considered edit</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Explore products and categories available in the current catalogue.</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">Explore products <ArrowRight className="h-4 w-4" /></span></Link>
-              <Link to="/prescription/1" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 transition hover:-translate-y-1 hover:shadow-md"><FileText className="h-6 w-6 text-[#689f24]" /><h3 className="mt-4 text-lg font-semibold">Personalise your lenses</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Use the existing prescription and lens selection flow with a supported frame.</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">See lens options <ArrowRight className="h-4 w-4" /></span></Link>
-              <Link to="/stores" className="rounded-2xl border border-[var(--border-subtle)] bg-[var,--bg-card)] p-6 transition hover:-translate-y-1 hover:shadow-md"><MapPin className="h-6 w-6 text-[#689f24]" /><h3 className="mt-4 text-lg font-semibold">Find a store</h3><p className="mt-2 text-sm leading-6 text-[var,--text-secondary]">Browse the locations in the Dream Spex store directory.</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#689f24]">View locations <ArrowRight className="h-4 w-4" /></span></Link>
+          <section hidden={cmsHidden(homepageSectionSlugs.why, sections)} className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Why Dream Spex</p>
+              <h2 className="mt-3 font-serif text-3xl text-[var(--text-primary)] sm:text-4xl">A clearer way to choose eyewear</h2>
+            </div>
+            <div className="mt-7 grid items-stretch gap-5 md:grid-cols-3">
+              <Link to="/categories" className="group flex min-h-[400px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
+                <span aria-hidden="true" className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#f4f7ef] to-[#e8f0e1]">
+                  <span className="absolute h-32 w-32 rounded-full border border-[#78be20]/20 transition duration-500 group-hover:scale-110" />
+                  <span className="absolute h-24 w-24 rounded-full bg-white/75 shadow-inner" />
+                  <span className="relative flex h-[72px] w-[72px] items-center justify-center rounded-[22px] border border-white/90 bg-white/90 text-[#355e17] shadow-[0_12px_28px_-16px_rgba(23,35,28,0.42)] transition duration-300 group-hover:scale-105">
+                    <Glasses className="h-12 w-12 stroke-[1.6]" />
+                  </span>
+                  <Sparkles className="absolute right-[27%] top-8 h-5 w-5 text-[#78be20]" />
+                  <span className="absolute bottom-7 left-[27%] h-2 w-2 rounded-full bg-[#78be20]/65" />
+                </span>
+                <span className="flex flex-1 flex-col p-6 sm:p-7">
+                  <h3 className="font-serif text-2xl font-semibold text-[#17231c]">Browse Products</h3>
+                  <p className="mt-3 text-sm leading-6 text-[#5c665f]">Explore products and categories available in the current catalogue.</p>
+                  <span className="mt-auto inline-flex w-fit items-center gap-3 rounded-full bg-[#eaf3df] py-1.5 pl-4 pr-1.5 text-sm font-semibold text-[#355e17] transition group-hover:bg-[#78be20]">
+                    Explore products
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-[#355e17] shadow-sm"><ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
+                  </span>
+                </span>
+              </Link>
+              <Link to="/prescription/1" className="group flex min-h-[400px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
+                <span aria-hidden="true" className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#f7f7ec] to-[#edf2e1]">
+                  <span className="absolute h-32 w-32 rounded-full border border-[#78be20]/20 transition duration-500 group-hover:scale-110" />
+                  <span className="absolute h-24 w-24 rounded-full bg-white/75 shadow-inner" />
+                  <span className="relative flex h-[72px] w-[72px] items-center justify-center rounded-[22px] border border-white/90 bg-white/90 text-[#355e17] shadow-[0_12px_28px_-16px_rgba(23,35,28,0.42)] transition duration-300 group-hover:scale-105">
+                    <FileText className="h-11 w-11 stroke-[1.6]" />
+                  </span>
+                  <Eye className="absolute right-[27%] top-8 h-5 w-5 text-[#78be20]" />
+                  <span className="absolute bottom-7 left-[27%] h-2 w-2 rounded-full bg-[#78be20]/65" />
+                </span>
+                <span className="flex flex-1 flex-col p-6 sm:p-7">
+                  <h3 className="font-serif text-2xl font-semibold text-[#17231c]">Personalise Your Lenses</h3>
+                  <p className="mt-3 text-sm leading-6 text-[#5c665f]">Use the existing prescription and lens selection flow with a supported frame.</p>
+                  <span className="mt-auto inline-flex w-fit items-center gap-3 rounded-full bg-[#eaf3df] py-1.5 pl-4 pr-1.5 text-sm font-semibold text-[#355e17] transition group-hover:bg-[#78be20]">
+                    See lens options
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-[#355e17] shadow-sm"><ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
+                  </span>
+                </span>
+              </Link>
+              <Link to="/stores" className="group flex min-h-[400px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
+                <span aria-hidden="true" className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#eff6ed] to-[#e5efe3]">
+                  <span className="absolute h-32 w-32 rounded-full border border-[#78be20]/20 transition duration-500 group-hover:scale-110" />
+                  <span className="absolute h-24 w-24 rounded-full bg-white/75 shadow-inner" />
+                  <span className="relative flex h-[72px] w-[72px] items-center justify-center rounded-[22px] border border-white/90 bg-white/90 text-[#355e17] shadow-[0_12px_28px_-16px_rgba(23,35,28,0.42)] transition duration-300 group-hover:scale-105">
+                    <MapPin className="h-12 w-12 stroke-[1.6]" />
+                  </span>
+                  <span className="absolute right-[27%] top-8 h-2 w-2 rounded-full bg-[#78be20]" />
+                  <span className="absolute bottom-7 left-[27%] h-2 w-2 rounded-full bg-[#78be20]/65" />
+                </span>
+                <span className="flex flex-1 flex-col p-6 sm:p-7">
+                  <h3 className="font-serif text-2xl font-semibold text-[#17231c]">Find a Store</h3>
+                  <p className="mt-3 text-sm leading-6 text-[#5c665f]">Browse the locations in the Dream Spex store directory.</p>
+                  <span className="mt-auto inline-flex w-fit items-center gap-3 rounded-full bg-[#eaf3df] py-1.5 pl-4 pr-1.5 text-sm font-semibold text-[#355e17] transition group-hover:bg-[#78be20]">
+                    View locations
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-[#355e17] shadow-sm"><ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" /></span>
+                  </span>
+                </span>
+              </Link>
             </div>
           </section>
 
-          <section hidden={cmsHidden(homepageSectionSlugs.membership, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-            <div className="overflow-hidden rounded-[32px] border border-[var(--border-subtle)] bg-[#e9eee4] text-[var(--text-primary)] shadow-[0_24px_60px_-42px_rgba(24,34,24,0.3)]">
-              <div className="grid lg:grid-cols-[1.5fr_0.8fr]">
-                <div className="flex flex-col justify-center p-6 sm:p-9 lg:p-11">
+          <section hidden={cmsHidden(homepageSectionSlugs.membership, sections)} className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+            <div className="overflow-hidden rounded-[30px] border border-[#e3e9df] bg-[#fbfcf8] text-[#182116] shadow-[0_22px_55px_-42px_rgba(24,34,24,0.35)]">
+              <div className="grid lg:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.8fr)]">
+                <div className="flex flex-col justify-center p-5 sm:p-8 lg:p-9">
                   <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#4b781a]">Dream Spex membership</p>
-                  <h2 className="mt-3 max-w-lg font-serif text-4xl text-[#182116]">Membership benefits, made clear.</h2>
-                  {membershipPlans.length ? <div className="mt-8 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">{membershipPlans.map((plan) => {
+                  <h2 className="mt-2 max-w-lg font-serif text-3xl text-[#182116] sm:text-4xl">Membership benefits, made clear.</h2>
+                  {membershipPlans.length ? <div className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 2xl:grid-cols-3">{membershipPlans.map((plan) => {
                     const perks = plan.perks.filter(isDisplayableMembershipCopy);
-                    return <article key={plan.id} className={`flex h-full flex-col rounded-2xl border bg-white p-5 text-[#182116] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${plan.recommended ? 'border-[#689f24] ring-1 ring-[#689f24]/20' : 'border-[#d5dfd1]'}`}>
+                    const PlanIcon = plan.recommended ? Star : ShieldCheck;
+                    return <article key={plan.id} className={`relative isolate flex h-full flex-col overflow-hidden rounded-[22px] border p-5 text-[#182116] shadow-[0_12px_30px_-25px_rgba(24,34,24,0.45)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_36px_-25px_rgba(24,34,24,0.4)] ${plan.recommended ? 'border-[#91bb5c] bg-[#f5f9ef] ring-1 ring-[#78be20]/20' : 'border-[#e0e7dc] bg-white'}`}>
+                      <span aria-hidden="true" className={`absolute -right-10 -top-10 -z-10 h-28 w-28 rounded-full ${plan.recommended ? 'bg-[#e6f1d8]' : 'bg-[#f4f6f1]'}`} />
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-base font-semibold text-[#4b781a]">{plan.name}</h3>
-                        {plan.recommended ? <span className="rounded-full bg-[#edf4e7] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#4b781a]">Recommended</span> : null}
+                        <div className="flex items-center gap-3">
+                          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${plan.recommended ? 'bg-[#e5f0d7] text-[#4b781a]' : 'bg-[#f1f4ed] text-[#64814a]'}`}>
+                            <PlanIcon className="h-5 w-5" strokeWidth={1.8} />
+                          </span>
+                          <div>
+                            <h3 className="font-serif text-xl font-semibold leading-tight">{plan.name}</h3>
+                            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#71806a]">Membership plan</p>
+                          </div>
+                        </div>
+                        {plan.recommended ? <span className="rounded-full bg-[#e6f1d8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#4b781a]">Recommended</span> : null}
                       </div>
-                      <p className="mt-4 text-2xl font-semibold">{membershipDiscountLabel(plan)}</p>
-                      <p className="mt-1 text-xs text-[#5f6c5b]">{membershipValidityLabel(plan)} from activation</p>
-                      <p className="mt-4 text-xl font-semibold">{formatINR(plan.price)}<span className="ml-1 text-xs font-normal text-[#5f6c5b]">membership price</span></p>
+                      <p className="mt-5 text-3xl font-semibold tracking-tight text-[#23351c]">{membershipDiscountLabel(plan)}</p>
+                      <p className="mt-1 text-xs text-[#687468]">{membershipValidityLabel(plan)} from activation</p>
+                      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <p className="text-2xl font-semibold tracking-tight">{formatINR(plan.price)}</p>
+                        <span className="text-xs text-[#687468]">membership price</span>
+                      </div>
                       <p className="mt-3 text-sm leading-6 text-[#5f6c5b]">{membershipPlanDescription(plan)}</p>
                       {plan.discountPercentage != null && plan.discountPercentage > 0
                         ? <p className="mt-3 text-xs leading-5 text-[#5f6c5b]">Discount applies to the eligible product subtotal while active. Coupon discounts take precedence at checkout.</p>
                         : null}
                       {perks.length ? <ul className="mt-4 flex-1 space-y-2 border-t border-[#e5ebdf] pt-4 text-xs leading-5 text-[#5f6c5b]">{perks.slice(0, 3).map((perk) => <li key={perk} className="flex gap-2"><span className="font-bold text-[#5d9417]" aria-hidden="true">✓</span><span>{perk}</span></li>)}</ul> : <div className="flex-1" />}
-                      <Link to={`/membership/checkout?plan=${encodeURIComponent(plan.id)}`} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#7cbf00] px-4 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[#9acd32] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b781a]">
+                      <Link to={`/membership/checkout?plan=${encodeURIComponent(plan.id)}`} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#78be20] px-4 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[#91cb43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b781a]">
                         Join now <ArrowRight className="h-4 w-4" />
                       </Link>
                     </article>;
                   })}</div> : <p className="mt-6 text-sm text-[#5f6c5b]" role={membershipError ? 'alert' : 'status'}>{membershipLoading ? 'Loading membership plans...' : membershipError || 'Membership plans are not available right now.'}</p>}
-                  {!membershipPlans.length ? <Link to="/membership" className="mt-4 inline-flex text-sm font-semibold text-[#5d9417]">Explore membership <ArrowRight className="ml-1 h-4 w-4" /></Link> : null}
+                  {!membershipPlans.length ? <Link to="/membership" className="mt-4 inline-flex items-center text-sm font-semibold text-[#5d9417]">Explore membership <ArrowRight className="ml-1 h-4 w-4" /></Link> : null}
                 </div>
-                <div className="rounded-3xl border border-[#d5dfd1] bg-[#f0f4ed] p-8">
-                  <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Offers</p>
+                <aside className="flex flex-col border-t border-[#e0e7dc] bg-[#f4f7f0] p-5 sm:p-8 lg:border-l lg:border-t-0">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-[#638c35] shadow-sm"><Gift className="h-5 w-5" /></span>
+                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Offers</p>
+                  </div>
                   <h2 className="mt-3 font-serif text-3xl text-[#182116]">A little more clarity for less.</h2>
-                  {offersError ? <p className="mt-6 text-sm text-red-700" role="alert">{offersError}</p> : null}
-                  {activeHomepageOffers.length ? <div className="mt-6 space-y-3">{activeHomepageOffers.slice(0, 4).map((offer) => <div key={offer.id} className="flex items-center justify-between gap-4 border-b border-[#d5dfd1] pb-3"><div className="min-w-0"><p className="font-semibold text-[#182116]">{offer.discountType === 'PERCENT' ? `${offer.discountValue}% OFF` : `${formatINR(offer.discountValue)} OFF`} <span className="font-normal text-[#687468]">{offer.title}</span></p>{offer.couponCode ? <p className="text-xs text-[#687468]">Code: {offer.couponCode}</p> : null}{offer.endsAt ? <p className="mt-1 text-xs text-[#687468]">Valid until {new Date(offer.endsAt).toLocaleDateString('en-IN')}</p> : null}</div><Link to={offer.linkUrl || '/offers'} className="shrink-0 text-sm font-semibold text-[#5d9417]">View offer</Link></div>)}</div> : null}
-                  {!activeHomepageOffers.length && !offersError ? <p className="mt-6 text-sm text-[#5f6c5b]" role="status">{offersLoading ? 'Loading current offers...' : 'There are no current offers.'}</p> : null}
-                </div>
+                  {offersError ? <p className="mt-5 rounded-xl border border-red-200 bg-white/80 p-3 text-sm text-red-700" role="alert">{offersError}</p> : null}
+                  {activeHomepageOffers.length ? <div className="mt-6 space-y-3">{activeHomepageOffers.slice(0, 4).map((offer) => <article key={offer.id} className="rounded-2xl border border-[#e0e7dc] bg-white p-4 shadow-[0_8px_24px_-22px_rgba(24,34,24,0.4)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xl font-semibold tracking-tight text-[#29411e]">{offer.discountType === 'PERCENT' ? `${offer.discountValue}% OFF` : `${formatINR(offer.discountValue)} OFF`}</p>
+                        <p className="mt-1 text-sm font-medium leading-5 text-[#485347]">{offer.title}</p>
+                        {offer.couponCode ? <p className="mt-2 inline-flex rounded-md bg-[#f1f5ec] px-2 py-1 text-xs font-semibold tracking-wide text-[#526b3d]">Code: {offer.couponCode}</p> : null}
+                        {offer.endsAt ? <p className="mt-2 text-xs text-[#687468]">Valid until {new Date(offer.endsAt).toLocaleDateString('en-IN')}</p> : null}
+                      </div>
+                      <Link to={offer.linkUrl || '/offers'} className="inline-flex shrink-0 items-center gap-1 pt-1 text-xs font-semibold text-[#5d9417] transition hover:text-[#355e17]">View offer <ArrowRight className="h-3.5 w-3.5" /></Link>
+                    </div>
+                  </article>)}</div> : null}
+                  {!activeHomepageOffers.length && !offersError ? offersLoading
+                    ? <div className="mt-6 flex items-center gap-3 rounded-2xl border border-[#e0e7dc] bg-white/80 p-5 text-sm text-[#5f6c5b]" role="status"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#edf4e7] text-[#689f24]"><Gift className="h-5 w-5" /></span>Loading current offers...</div>
+                    : <div className="mt-6 flex flex-col items-center rounded-2xl border border-dashed border-[#cbd8c2] bg-white/75 px-5 py-8 text-center" role="status">
+                      <span className="grid h-12 w-12 place-items-center rounded-full bg-[#edf4e7] text-[#689f24]"><Gift className="h-6 w-6" /></span>
+                      <p className="mt-4 text-sm font-semibold text-[#33432c]">There are no current offers.</p>
+                      <p className="mt-1 max-w-xs text-xs leading-5 text-[#687468]">Check back soon for something special.</p>
+                    </div> : null}
+                </aside>
               </div>
             </div>
           </section>

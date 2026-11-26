@@ -4,9 +4,13 @@ import com.dreamspex.franchise.FranchiseService;
 import com.dreamspex.common.ApiException;
 import com.dreamspex.notification.NotificationService;
 import com.dreamspex.order.Order;
+import com.dreamspex.order.OrderItem;
 import com.dreamspex.order.OrderRepository;
 import com.dreamspex.order.OrderStatusHistory;
 import com.dreamspex.returns.ReturnRefundProcessor;
+import com.dreamspex.shopping.entity.Cart;
+import com.dreamspex.shopping.entity.CartItem;
+import com.dreamspex.shopping.repository.CartRepository;
 import com.dreamspex.loyalty.LoyaltyService;
 import com.dreamspex.security.CurrentUser;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,7 +20,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -36,6 +42,7 @@ public class PaymentService {
 
     private final CurrentUser current;
     private final OrderRepository orders;
+    private final CartRepository carts;
     private final PaymentRepository payments;
     private final PaymentWebhookEventRepository events;
     private final PaymentProperties properties;
@@ -44,12 +51,13 @@ public class PaymentService {
     private final RazorpayGateway razorpay;
     private final ReturnRefundProcessor returnRefundProcessor;
 
-    public PaymentService(CurrentUser current, OrderRepository orders, PaymentRepository payments,
+    public PaymentService(CurrentUser current, OrderRepository orders, CartRepository carts, PaymentRepository payments,
                           PaymentWebhookEventRepository events, PaymentProperties properties, ObjectMapper mapper,
                           NotificationService notifications, RazorpayGateway razorpay,
                           ReturnRefundProcessor returnRefundProcessor) {
         this.current = current;
         this.orders = orders;
+        this.carts = carts;
         this.payments = payments;
         this.events = events;
         this.properties = properties;
@@ -274,8 +282,10 @@ public class PaymentService {
     }
 
     private void markOrderPaid(Order order, User changedBy) {
+        boolean firstConfirmation = !"PAID".equals(order.getPaymentStatus());
         order.setPaymentStatus("PAID");
         order.setStatus("PAID");
+        if (firstConfirmation) removePurchasedCartItems(order);
         if (franchiseService != null) franchiseService.commitOrder(order);
         notifications.enqueueSms("order:" + order.getId() + ":PAYMENT_SUCCESSFUL", "PAYMENT_SUCCESSFUL",
                 order, Map.of("VAR1", order.getOrderNumber()));
@@ -287,6 +297,29 @@ public class PaymentService {
             history.setChangedBy(changedBy);
             order.getHistory().add(history);
         }
+    }
+
+    private void removePurchasedCartItems(Order order) {
+        if (order.getItems().isEmpty()) return;
+        Cart cart = carts.findByUserIdAndStatus(order.getUser().getId(), "ACTIVE").orElse(null);
+        if (cart == null) return;
+
+        for (OrderItem orderItem : order.getItems()) {
+            for (Iterator<CartItem> items = cart.getItems().iterator(); items.hasNext();) {
+                CartItem cartItem = items.next();
+                if (!sameCartLine(cartItem, orderItem)) continue;
+                int remainingQuantity = cartItem.getQuantity() - orderItem.getQuantity();
+                if (remainingQuantity > 0) cartItem.setQuantity(remainingQuantity);
+                else items.remove();
+                break;
+            }
+        }
+    }
+
+    private boolean sameCartLine(CartItem cartItem, OrderItem orderItem) {
+        return Objects.equals(cartItem.getVariant().getId(), orderItem.getVariant().getId())
+                && Objects.equals(cartItem.getPrescription(), orderItem.getPrescription())
+                && Objects.equals(cartItem.getSelectedLensCodes(), orderItem.getSelectedLensCodes());
     }
 
     private void enqueuePaymentFailure(Order order) {

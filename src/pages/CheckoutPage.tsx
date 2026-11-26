@@ -520,30 +520,30 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <SectionTitle eyebrow="Secure checkout" title="Review delivery details" description="Pay securely using Razorpay test mode." />
 
         {cart.length === 0 ? (
-          <div className="mt-10 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-10 text-center backdrop-blur-xl">
+          <div className="mt-7 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 text-center backdrop-blur-xl sm:p-8">
             <p className="text-lg font-semibold text-[var(--text-primary)]">Your bag is empty.</p>
             <p className="mt-3 text-sm leading-7 text-[var(--text-secondary)]">Add a few signature frames to proceed through checkout.</p>
             <Link to="/shop" className="mt-6 inline-flex items-center rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 px-5 py-3 text-sm font-semibold text-[var(--text-primary)]">Continue shopping</Link>
           </div>
         ) : (
-          <div className="mt-10 grid grid-cols-1 items-start gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="rounded-[32px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-8 backdrop-blur-xl">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="mt-7 grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(330px,0.85fr)] lg:gap-6">
+            <div className="min-w-0 rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 backdrop-blur-xl sm:p-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">Checkout preview</p>
-                  <h2 className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">Review your delivery details</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-400">Checkout preview</p>
+                  <h2 className="mt-1.5 text-2xl font-semibold text-[var(--text-primary)]">Review your delivery details</h2>
                 </div>
                 <Link to="/cart" className="text-sm font-semibold text-cyan-300">Back to cart</Link>
               </div>
-              <form id="checkout-form" onSubmit={handleSubmit} className="mt-8 space-y-6">
-                <fieldset className="grid gap-3 sm:grid-cols-2">
-                  <legend className="mb-2 text-sm font-medium text-[var(--text-secondary)]">How would you like to receive your order?</legend>
+              <form id="checkout-form" onSubmit={handleSubmit} className="mt-5 space-y-4">
+                <fieldset className="grid gap-2 sm:grid-cols-2">
+                  <legend className="mb-1 text-sm font-medium text-[var(--text-secondary)]">How would you like to receive your order?</legend>
                   {(['DELIVERY', 'PICKUP'] as const).map((type) => (
-                    <label key={type} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-sm ${fulfillmentType === type ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/10' : 'border-[var(--border-subtle)]'}`}>
+                    <label key={type} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm ${fulfillmentType === type ? 'border-[var(--brand-green)] bg-[var(--brand-green)]/10' : 'border-[var(--border-subtle)]'}`}>
                       <input type="radio" name="fulfillmentType" value={type} checked={fulfillmentType === type}
                         onChange={() => { setFulfillmentType(type); setCheckoutQuote(null); setPaymentError(''); }} />
                       <span>{type === 'DELIVERY' ? 'Home delivery' : 'Store pickup'}</span>
@@ -551,7 +551,7 @@ export default function CheckoutPage() {
                   ))}
                 </fieldset>
                 {fulfillmentType === 'DELIVERY' ? <>
-                <label className="space-y-2 text-sm text-[var(--text-secondary)]">
+                <label className="space-y-1.5 text-sm text-[var(--text-secondary)]">
                   <span>Delivery address</span>
                   <select value={addressId || NEW_ADDRESS_VALUE} onChange={(event) => {
                     if (event.target.value === NEW_ADDRESS_VALUE) {
@@ -564,21 +564,21 @@ export default function CheckoutPage() {
                       return;
                     }
                     selectAddress(event.target.value);
-                  }} className="w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]">
+                  }} className="w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]">
                     {addresses.map((address) => <option key={address.id} value={address.id}>
                       {address.label || address.recipientName}{address.defaultAddress ? ' · Default' : ''} · {address.city}
                     </option>)}
                     <option value={NEW_ADDRESS_VALUE}>{addresses.length ? 'Enter a new address' : 'Enter delivery address'}</option>
                   </select>
                 </label>
-                {selectedAddress ? <p className="rounded-xl bg-[var(--bg-primary)] p-3 text-sm text-[var(--text-secondary)]">
+                {selectedAddress ? <p className="rounded-xl bg-[var(--bg-primary)] p-2.5 text-sm text-[var(--text-secondary)]">
                   Selected {selectedAddress.defaultAddress ? 'default ' : ''}address: {selectedAddress.line1}
                   {selectedAddress.line2 ? `, ${selectedAddress.line2}` : ''}, {selectedAddress.city}, {selectedAddress.state} {selectedAddress.postalCode}
                   {locationDraft
                     ? ` · Saved location ${locationDraft.latitude.toFixed(6)}, ${locationDraft.longitude.toFixed(6)}`
                     : ' · No saved GPS location'}
                 </p> : <p className="text-sm text-[var(--text-secondary)]">Enter a new delivery address below. GPS is optional.</p>}
-                <section className="space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
+                <section className="space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
                   <CustomerLocationPicker value={locationDraft} onChange={(coordinates) => {
                     setLocationDraft(coordinates);
                     setCheckoutQuote(null);
@@ -587,18 +587,18 @@ export default function CheckoutPage() {
                   }} onCurrentLocation={(coordinates) => void handleCurrentLocation(coordinates)} />
                   {reverseGeocoding ? <p className="text-sm text-[var(--text-secondary)]" role="status">Looking up the address for your selected location…</p> : null}
                   <p className="text-xs text-[var(--text-secondary)]">Your browser location is requested only when you tap Use Current Location. Address lookup uses OpenStreetMap.</p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="text-sm text-[var(--text-secondary)]"><span>Address label</span><input value={addressDraft.label} onChange={(event) => updateAddressField('label', event.target.value)} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]" placeholder="Home" /></label>
-                    <label className="text-sm text-[var(--text-secondary)]"><span>Recipient name</span><input required value={addressDraft.recipientName} onChange={(event) => updateAddressField('recipientName', event.target.value)} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]" /></label>
-                    <label className="text-sm text-[var(--text-secondary)]"><span>Phone (international format)</span><input required value={addressDraft.phone} onChange={(event) => updateAddressField('phone', event.target.value)} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]" placeholder="+919876543210" /></label>
-                    <label className="text-sm text-[var(--text-secondary)]"><span>Street address</span><input required value={addressDraft.line1} onChange={(event) => updateAddressField('line1', event.target.value)} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]" /></label>
-                    <label className="text-sm text-[var(--text-secondary)]"><span>Area / apartment / landmark</span><input value={addressDraft.line2} onChange={(event) => updateAddressField('line2', event.target.value)} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]" /></label>
-                    <label className="text-sm text-[var(--text-secondary)]"><span>City</span><input required value={addressDraft.city} onChange={(event) => updateAddressField('city', event.target.value)} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]" /></label>
-                    <label className="text-sm text-[var(--text-secondary)]"><span>State</span><input required value={addressDraft.state} onChange={(event) => updateAddressField('state', event.target.value)} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]" /></label>
+                  <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-2">
+                    <label className="text-sm text-[var(--text-secondary)]"><span>Address label</span><input value={addressDraft.label} onChange={(event) => updateAddressField('label', event.target.value)} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]" placeholder="Home" /></label>
+                    <label className="text-sm text-[var(--text-secondary)]"><span>Recipient name</span><input required value={addressDraft.recipientName} onChange={(event) => updateAddressField('recipientName', event.target.value)} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]" /></label>
+                    <label className="text-sm text-[var(--text-secondary)]"><span>Phone (international format)</span><input required value={addressDraft.phone} onChange={(event) => updateAddressField('phone', event.target.value)} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]" placeholder="+919876543210" /></label>
+                    <label className="text-sm text-[var(--text-secondary)]"><span>Street address</span><input required value={addressDraft.line1} onChange={(event) => updateAddressField('line1', event.target.value)} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]" /></label>
+                    <label className="text-sm text-[var(--text-secondary)]"><span>Area / apartment / landmark</span><input value={addressDraft.line2} onChange={(event) => updateAddressField('line2', event.target.value)} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]" /></label>
+                    <label className="text-sm text-[var(--text-secondary)]"><span>City</span><input required value={addressDraft.city} onChange={(event) => updateAddressField('city', event.target.value)} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]" /></label>
+                    <label className="text-sm text-[var(--text-secondary)]"><span>State</span><input required value={addressDraft.state} onChange={(event) => updateAddressField('state', event.target.value)} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]" /></label>
                     <label className="text-sm text-[var(--text-secondary)]"><span>PIN / postal code</span><input required value={addressDraft.postalCode} onChange={(event) => {
                       updateAddressField('postalCode', event.target.value);
-                    }} inputMode="numeric" autoComplete="postal-code" className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)]" /></label>
-                    <label className="text-sm text-[var(--text-secondary)]"><span>Country code</span><input required maxLength={2} value={addressDraft.countryCode} onChange={(event) => updateAddressField('countryCode', event.target.value.toUpperCase())} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm uppercase text-[var(--text-primary)]" /></label>
+                    }} inputMode="numeric" autoComplete="postal-code" className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)]" /></label>
+                    <label className="text-sm text-[var(--text-secondary)]"><span>Country code</span><input required maxLength={2} value={addressDraft.countryCode} onChange={(event) => updateAddressField('countryCode', event.target.value.toUpperCase())} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm uppercase text-[var(--text-primary)]" /></label>
                   </div>
                   <button type="button" disabled={locationSaving || reverseGeocoding} onClick={() => void saveDeliveryLocation()}
                     className="rounded-full bg-[#7CBF00] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50">
@@ -608,7 +608,7 @@ export default function CheckoutPage() {
                   {locationNotice ? <p className="text-sm text-emerald-300" role="status">{locationNotice}</p> : null}
                 </section>
 
-                <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4" aria-live="polite">
+                <div className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3" aria-live="polite">
                   <p className="text-sm font-semibold text-[var(--text-primary)]">Delivery availability</p>
                   {quoteLoading ? <p className="mt-2 text-sm text-[var(--text-secondary)]">Checking straight-line distance from an active store…</p>
                     : quoteError ? <p className="mt-2 text-sm text-rose-300" role="alert">{quoteError}</p>
@@ -639,7 +639,7 @@ export default function CheckoutPage() {
                     <select value={selectedLocationId} onChange={(event) => {
                       selectLocation(event.target.value);
                       setCheckoutQuote(null);
-                    }} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-[var(--text-primary)]">
+                    }} className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-[var(--text-primary)]">
                       <option value="" disabled>Select a store</option>
                       {locations.map((location) => <option key={location.id} value={location.id}>{location.name} · {location.city}</option>)}
                     </select>
@@ -675,23 +675,23 @@ export default function CheckoutPage() {
                 </section>}
               </form>
             </div>
-            <div className="h-fit rounded-[32px] border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-6 text-[var(--text-secondary)] sm:p-8">
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">Order summary</p>
-              <div className="mt-6 grid gap-4">
+            <div className="h-fit min-w-0 rounded-[24px] border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--bg-secondary)] to-[var(--bg-primary)] p-4 text-[var(--text-secondary)] sm:p-5 lg:sticky lg:top-24 lg:self-start">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">Order summary</p>
+              <div className="mt-4 grid gap-3">
                 {cart.map((item) => (
-                  <div key={getCartItemKey(item)} className="grid gap-4 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 lg:grid-cols-[auto_1fr] lg:items-center">
-                    <img src={item.image} alt={item.name} className="h-20 w-20 rounded-[20px] object-cover" />
-                    <div>
-                      <p className="font-semibold text-[var(--text-primary)]">{item.name}</p>
+                  <div key={getCartItemKey(item)} className="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3">
+                    <img src={item.image} alt={item.name} className="h-14 w-14 rounded-xl object-cover" />
+                    <div className="min-w-0">
+                      <p className="break-words font-semibold leading-5 text-[var(--text-primary)]">{item.name}</p>
                       <p className="text-sm text-[var(--text-secondary)]">{item.quantity} × {formatINR(item.price + (item.lensSelection?.additionalPrice ?? 0))}</p>
-                      <p className="mt-3 text-sm text-[var(--text-secondary)]">{item.category}</p>
-                      {item.lensSelection ? <p className="mt-2 text-xs text-cyan-200">{item.lensSelection.type} · Prescription attached</p> : null}
+                      <p className="mt-1 text-xs text-[var(--text-secondary)]">{item.category}</p>
+                      {item.lensSelection ? <p className="mt-1 text-xs text-cyan-200">{item.lensSelection.type} · Prescription attached</p> : null}
                     </div>
-                    <span className="self-center justify-self-end text-lg font-semibold text-[var(--text-primary)]">{formatINR((item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity)}</span>
+                    <span className="justify-self-end text-right text-sm font-semibold text-[var(--text-primary)]">{formatINR((item.price + (item.lensSelection?.additionalPrice ?? 0)) * item.quantity)}</span>
                   </div>
                 ))}
               </div>
-              <div className="mt-6 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
+              <div className="mt-4 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-[var(--text-primary)]">Loyalty points</p>
@@ -709,14 +709,14 @@ export default function CheckoutPage() {
                     Use maximum
                   </button>
                 </div>
-                <label htmlFor="loyalty-points" className="mt-4 block text-xs text-[var(--text-secondary)]">Points to redeem</label>
+                <label htmlFor="loyalty-points" className="mt-3 block text-xs text-[var(--text-secondary)]">Points to redeem</label>
                 <input id="loyalty-points" type="text" inputMode="numeric" pattern="[0-9]*"
                   value={loyaltyPointsInput}
                   onChange={(event) => {
                     setLoyaltyPointsInput(event.target.value);
                     setPaymentError('');
                   }}
-                  className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" />
+                  className="mt-1.5 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none" />
                 {loyaltyPointsInput ? <button type="button" onClick={() => {
                   setLoyaltyPointsInput('');
                   setPaymentError('');
@@ -733,26 +733,26 @@ export default function CheckoutPage() {
                     {currentRedemptionPreview ? 'Loyalty discount' : 'Estimated loyalty discount'}: {formatINR(loyaltyDiscount)}
                   </p> : null}
               </div>
-              <div className="mt-6 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
+              <div className="mt-4 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
                 <label htmlFor="checkout-coupon" className="text-sm text-[var(--text-secondary)]">Have a coupon code?</label>
-                <div className="mt-3 flex gap-2"><input id="checkout-coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Enter coupon code" className="min-w-0 flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none" /><button type="button" disabled={couponLoading || !couponCode.trim()} onClick={handleApplyCoupon} className="rounded-full bg-[#7CBF00] px-4 py-3 text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50">{couponLoading ? 'Applying...' : 'Apply'}</button></div>
+                <div className="mt-2 flex gap-2"><input id="checkout-coupon" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Enter coupon code" className="min-w-0 flex-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none" /><button type="button" disabled={couponLoading || !couponCode.trim()} onClick={handleApplyCoupon} className="rounded-full bg-[#7CBF00] px-4 py-2.5 text-sm font-semibold text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-50">{couponLoading ? 'Applying...' : 'Apply'}</button></div>
                 {couponError ? <p className="mt-2 text-xs text-rose-300" role="alert">{couponError}</p> : null}
                 {appliedCoupon ? <div className="mt-3 flex items-center justify-between gap-3 text-xs text-cyan-200"><span>✓ Coupon {appliedCoupon.code} applied · You saved {formatINR(checkoutQuote?.discount ?? discount)}</span><button type="button" onClick={removeCoupon} className="text-cyan-300 underline">Remove</button></div> : null}
               </div>
-              <div className="mt-6 grid gap-3 border-t border-[var(--border-subtle)] pt-5 text-sm">
+              <div className="mt-4 grid gap-2 border-t border-[var(--border-subtle)] pt-4 text-sm">
                 <div className="flex justify-between text-[var(--text-secondary)]"><span>Subtotal</span><span>{formatINR(checkoutQuote?.subtotal ?? subtotal)}</span></div>
                 {checkoutQuote?.couponDiscount ? <div className="flex justify-between text-cyan-200"><span>{appliedCoupon?.code ?? 'Coupon'} discount</span><span>-{formatINR(checkoutQuote.couponDiscount)}</span></div> : null}
                 {checkoutQuote?.membershipDiscount ? <div className="flex justify-between text-cyan-200"><span>Membership discount</span><span>-{formatINR(checkoutQuote.membershipDiscount)}</span></div> : null}
                 {loyaltyDiscount > 0 ? <div className="flex justify-between text-emerald-300"><span>Loyalty points ({loyaltyValidation.points})</span><span>-{formatINR(loyaltyDiscount)}</span></div> : null}
-                <div className="border-t border-[var(--border-subtle)] pt-3"><GstBreakdown breakdown={checkoutGst} /></div>
+                <div className="border-t border-[var(--border-subtle)] pt-2"><GstBreakdown breakdown={checkoutGst} /></div>
                 <div className="flex justify-between text-[var(--text-secondary)]"><span>Shipping</span><span>{checkoutQuote ? checkoutQuote.shipping === 0 ? 'FREE' : formatINR(checkoutQuote.shipping) : quoteLoading ? 'Calculating...' : '—'}</span></div>
-                <div className="flex justify-between border-t border-[var(--border-subtle)] pt-3 text-lg font-semibold text-[var(--text-primary)]"><span>Total</span><span>{checkoutQuote ? formatINR(payableTotal) : quoteLoading ? 'Calculating...' : '—'}</span></div>
+                <div className="flex justify-between border-t border-[var(--border-subtle)] pt-2 text-lg font-semibold text-[var(--text-primary)]"><span>Total</span><span>{checkoutQuote ? formatINR(payableTotal) : quoteLoading ? 'Calculating...' : '—'}</span></div>
                 {quoteError ? <p className="text-xs text-rose-300" role="alert">{quoteError}</p> : null}
               </div>
-              <div className="mt-5 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">
+              <div className="mt-4 rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4">
                 <label className="text-sm text-[var(--text-secondary)]">
-                  <span className="block text-xs uppercase tracking-[0.3em] text-[var(--text-secondary)]">Shipping option</span>
-                  <select value={shippingOption} onChange={(event) => setShippingOption(event.target.value)} className="mt-3 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none">
+                  <span className="block text-xs uppercase tracking-[0.25em] text-[var(--text-secondary)]">Shipping option</span>
+                  <select value={shippingOption} onChange={(event) => setShippingOption(event.target.value)} className="mt-2 w-full rounded-full border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none">
                     {fulfillmentType === 'PICKUP' ? <option value="pickup">Store pickup</option> : <>
                       <option value="standard">Standard delivery</option>
                       <option value="express">Express delivery</option>
@@ -768,7 +768,7 @@ export default function CheckoutPage() {
                 form="checkout-form"
                 disabled={paymentDisabled}
                 aria-busy={paymentLoading}
-                className="mt-5 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[var(--brand-green)] px-5 py-4 text-base font-semibold text-[var(--text-primary)] shadow-lg shadow-black/10 transition hover:bg-[var(--brand-green-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[var(--brand-green)] px-5 py-4 text-base font-semibold text-[var(--text-primary)] shadow-lg shadow-black/10 transition hover:bg-[var(--brand-green-light)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {paymentLoading ? <>
                   <LoaderCircle aria-hidden="true" className="h-5 w-5 animate-spin" />

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ChevronRight, Feather, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
-import { Helmet } from 'react-helmet-async';
 import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import SEO from '../components/SEO';
 import type { Product } from '../types';
 import { HERO_IMAGE_URL, HERO_MOBILE_IMAGE_URL } from '../config/siteMedia';
 import { fetchHomepage, type HomepageCard, type HomepageProduct, type HomepageResponse, type HomepageSection } from '../services/homepageService';
@@ -743,7 +743,10 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
-      <Helmet><title>Dream Spex | See Better. Look Remarkable.</title><meta name="description" content="Premium eyewear, precision lenses and expert optical care from Dream Spex." /></Helmet>
+      <SEO
+        title="DreamSpex | Premium Eyeglasses, Sunglasses & Contact Lenses"
+        description="Explore stylish eyeglasses, sunglasses and contact lenses at DreamSpex. Discover premium eyewear for every style and occasion."
+      />
       <Navbar homepageOverlay />
       <main>
         {activeBanners.length > 0 && !cmsHeroError ? <CmsHero
@@ -830,7 +833,7 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                         aria-label={`${index + 1} of ${categoryCarousel.length}: ${category.title}`}
                         tabIndex={index === activeCarouselIndex ? 0 : -1}
                       >
-                        <img src={category.image} alt="" loading={index === activeCarouselIndex ? 'eager' : 'lazy'} />
+                        <img src={category.image} alt={`${category.title} eyewear collection`} loading={index === activeCarouselIndex ? 'eager' : 'lazy'} />
                         <span className="home-category-carousel__shade" aria-hidden="true" />
                         <span className="home-category-carousel__copy">
                           <span className="home-category-carousel__eyebrow">Dream Spex collections</span>

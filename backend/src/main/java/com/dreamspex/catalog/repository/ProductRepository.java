@@ -7,12 +7,16 @@ import com.dreamspex.catalog.entity.ProductVariant;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.Collection;
 import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, String>, JpaSpecificationExecutor<Product> {
+    @Query("select p.id from Product p where p.deletedAt is null and p.status = 'PUBLISHED'")
+    Page<String> findPublicProductIds(Pageable pageable);
     Optional<Product> findBySku(String sku);
     Optional<Product> findBySlug(String slug);
     List<Product> findAllBySkuIn(Collection<String> skus);

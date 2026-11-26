@@ -4,6 +4,7 @@ import { FileText, Search, LayoutGrid, List, ChevronLeft, ChevronRight, Shopping
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import SEO from '../components/SEO';
 import ProductCard from '../components/ui/ProductCard';
 import { catalogService, toProduct, type CatalogCategory, type CatalogProduct } from '../services/catalogService';
 import { useShop } from '../context/ShopContext';
@@ -228,6 +229,32 @@ export default function ShopPage() {
     category.slug.toLowerCase() === selectedCategory.toLowerCase()
     || category.id.toLowerCase() === selectedCategory.toLowerCase()
     || normalize(category.name) === normalize(selectedCategory));
+  const indexableCategory = Boolean(currentCategory && !brandFilter
+    && [...searchParams.keys()].every((key) => key === 'category'));
+  const indexableBrand = Boolean(brandFilter && !selectedCategory
+    && [...searchParams.keys()].every((key) => key === 'brand'));
+  const categoryName = currentCategory?.name ?? '';
+  const categoryToken = normalize(`${categoryName} ${currentCategory?.slug ?? ''}`);
+  const isEyeglasses = /eye\s*glasses?/.test(categoryToken);
+  const isSunglasses = /sun\s*glasses?/.test(categoryToken);
+  const isContactLenses = /contact\s*lenses?/.test(categoryToken);
+  const collectionTitle = isEyeglasses ? 'Eyeglasses'
+    : isSunglasses ? 'Sunglasses'
+      : isContactLenses ? 'Contact Lenses'
+        : categoryName || brandFilter;
+  const collectionSeoTitle = indexableCategory
+    ? `${collectionTitle} Online in India | DreamSpex`
+    : `${brandFilter} Eyewear | Glasses & Sunglasses | DreamSpex`;
+  const collectionSeoDescription = indexableCategory
+    ? currentCategory?.description?.trim()
+      || `Explore ${collectionTitle.toLowerCase()} at DreamSpex. Shop premium styles for every look and occasion.`
+    : `Explore ${brandFilter} eyewear at DreamSpex. Shop ${brandFilter} eyeglasses and sunglasses in a range of styles.`;
+  const isIndexableCollection = indexableCategory || indexableBrand;
+  const collectionCanonicalPath = indexableCategory
+    ? `/shop?category=${encodeURIComponent(currentCategory?.slug ?? '')}`
+    : indexableBrand
+      ? `/shop?brand=${encodeURIComponent(brandFilter)}`
+      : '/shop';
   const categoryTitle = currentCategory?.name
     ?? (selectedCategory ? selectedCategory.replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()) : 'Eyeglasses');
   const shopAllHref = selectedCategory ? `/shop?category=${encodeURIComponent(selectedCategory)}` : '/shop';
@@ -322,6 +349,14 @@ export default function ShopPage() {
 
   return (
     <div className="min-h-screen bg-[#f7f5f0] text-slate-800">
+      <SEO
+        title={isIndexableCollection ? collectionSeoTitle : 'Shop Eyewear Online | DreamSpex'}
+        description={isIndexableCollection
+          ? collectionSeoDescription
+          : 'Browse the DreamSpex eyewear catalogue and use filters to find products for your style.'}
+        canonicalPath={collectionCanonicalPath}
+        robots={isIndexableCollection ? 'index,follow' : 'noindex,follow'}
+      />
       <Navbar />
       <main className="mx-auto max-w-[1440px] px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:pb-16">
         <div className="rounded-[28px] border border-[#dfe7d7] bg-white px-5 py-5 shadow-[0_18px_40px_-30px_rgba(18,35,18,0.45)] sm:px-7">

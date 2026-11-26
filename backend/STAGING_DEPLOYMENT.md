@@ -51,6 +51,8 @@ The Docker image declares `/var/lib/dream-spex/homepage-images` as a volume and 
 | `VITE_API_BASE_URL` | Yes | Staging backend HTTPS origin, without `/api/v1`; embedded in the frontend build. |
 | `VITE_WHATSAPP_NUMBER` | No | Optional staging contact number. If omitted, the current frontend default is used. |
 
+For the dynamic sitemap route, also set the Cloudflare Pages **Functions runtime** variable `DREAMSPEX_API_BASE_URL` to the same staging backend HTTPS origin (without `/api/v1`). On Vercel, the sitemap function uses the existing `VITE_API_BASE_URL` environment variable at runtime.
+
 ## Migration and data safety
 
 The staging profile enables Flyway. Start with a newly provisioned, empty staging database; migrations V1–V35 run on backend startup. Do not point staging at a production database or import production data. Before relying on TiDB, validate all migrations against a fresh database on the selected TiDB cluster. In particular, V20 uses prepared dynamic DDL, and later migrations alter foreign keys and use check constraints; compatibility is not yet confirmed.

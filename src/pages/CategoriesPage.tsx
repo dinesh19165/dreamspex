@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import SEO from '../components/SEO';
 import SectionTitle from '../components/ui/SectionTitle';
 import { catalogService, type CatalogCategory } from '../services/catalogService';
 import { fetchHomepage } from '../services/homepageService';
@@ -25,6 +26,11 @@ export default function CategoriesPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <SEO
+        title="Eyewear Categories | Shop Eyeglasses, Sunglasses & More | DreamSpex"
+        description="Explore eyewear categories at DreamSpex, including eyeglasses, sunglasses and contact lenses. Find styles for every look and occasion."
+        canonicalPath="/categories"
+      />
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <SectionTitle eyebrow="Categories" title="Explore the collection" description="Browse categories represented by products in the current Dream Spex catalogue." />
@@ -35,7 +41,7 @@ export default function CategoriesPage() {
             const resolvedImage = resolveCmsMediaUrl(imageUrl) ?? categoryImages[slug];
             return <Link key={slug} to={`/shop?category=${encodeURIComponent(slug)}`} className="group flex h-full flex-col overflow-hidden rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg focus-visible:outline">
               <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--bg-card)]">
-                {resolvedImage ? <img src={resolvedImage} alt={name} loading="lazy" className="h-full w-full object-contain p-1 transition duration-500 group-hover:scale-[1.03]" /> : <div className="grid h-full place-items-center px-6 text-center font-serif text-2xl text-[var(--text-secondary)]">{name}</div>}
+                {resolvedImage ? <img src={resolvedImage} alt={`${name} eyewear collection`} loading="lazy" className="h-full w-full object-contain p-1 transition duration-500 group-hover:scale-[1.03]" /> : <div className="grid h-full place-items-center px-6 text-center font-serif text-2xl text-[var(--text-secondary)]">{name}</div>}
               </div>
               <div className="px-5 py-4">
                 <div className="flex items-start justify-between gap-3">

@@ -35,7 +35,12 @@ export default function ProductCard({ product, layout = 'grid' }: ProductCardPro
       <motion.article whileHover={{ y: -3 }} transition={{ type: 'spring', stiffness: 220, damping: 18 }} className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-[0_12px_30px_-24px_rgba(2,6,23,0.55)] ${layout === 'list' ? 'sm:flex-row' : ''}`}>
         <div className={`relative overflow-hidden bg-[var(--bg-secondary)] ${layout === 'list' ? 'h-[148px] sm:aspect-auto sm:min-h-64 sm:w-2/5 sm:shrink-0 sm:h-[170px] lg:h-[190px]' : 'h-[220px] sm:h-[240px] lg:h-[250px] w-full'}`}>
           <Link to={productPath} aria-label={`View details for ${product.name}`} className="block h-full w-full">
-            <img src={product.image} alt={product.name} loading="lazy" className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-[1.03]" />
+            <img
+              src={product.image}
+              alt={`${product.brand} ${product.name} ${product.category}${product.frameShape ? `, ${product.frameShape} frame` : ''}`}
+              loading="lazy"
+              className="h-full w-full object-contain p-2 transition duration-500 group-hover:scale-[1.03]"
+            />
           </Link>
           <div className="absolute left-2 top-2 max-w-[70%] truncate rounded-full bg-[var(--bg-primary)]/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-primary)]">{product.badge}</div>
           <button onClick={() => toggleWishlist(product)} className={`absolute right-2 top-2 rounded-full border p-1.5 transition ${isInWishlist(product.id) ? 'border-[var(--brand-green)]/40 bg-[var(--brand-green)]/15 text-[var(--brand-green-dark)]' : 'border-[var(--border-subtle)] bg-[var(--bg-primary)]/90 text-[var(--text-primary)]'}`} aria-label={isInWishlist(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}>

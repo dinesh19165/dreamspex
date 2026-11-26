@@ -111,6 +111,17 @@ public class CatalogService {
                 sorted(products.findPublicBadges()));
     }
     @Transactional(readOnly = true)
+    public List<String> publicSitemapProductIds() {
+        List<String> ids = new ArrayList<>();
+        int page = 0;
+        Page<String> result;
+        do {
+            result = products.findPublicProductIds(PageRequest.of(page++, 500, Sort.by("createdAt").descending()));
+            ids.addAll(result.getContent());
+        } while (result.hasNext());
+        return ids;
+    }
+    @Transactional(readOnly = true)
     public ProductResponse publicProduct(String id, String franchiseId) {
         Product value = products.findByIdAndStatusAndDeletedAtIsNull(id, "PUBLISHED")
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "PRODUCT_NOT_FOUND", "Product was not found."));

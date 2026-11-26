@@ -20,10 +20,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.http.MediaType;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.hamcrest.Matchers.containsString;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import java.util.List;
@@ -48,6 +51,9 @@ class Phase2CatalogIntegrationTest {
         mockMvc.perform(get("/api/v1/categories")).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/products")).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/offers")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/sitemap.xml"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_XML));
     }
 
     @Test
@@ -72,6 +78,16 @@ class Phase2CatalogIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].id").value(published.getId()));
+        mockMvc.perform(get("/api/v1/sitemap.xml"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString(
+                        "https://www.dreamspex.in/products/" + published.getId())))
+                .andExpect(content().string(containsString(
+                        "https://www.dreamspex.in/shop?category=eyeglasses-published")))
+                .andExpect(content().string(containsString(
+                        "https://www.dreamspex.in/shop?brand=Dream%20Spex")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString(draft.getId()))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString(inactive.getId()))));
     }
 
     @Test

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, ChevronLeft, ChevronRight, Glasses, Heart, Minus, Plus, ShieldCheck, Star, Truck, X, ZoomIn } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import SEO from '../components/SEO';
 import Button from '../components/ui/Button';
 import { useShop } from '../context/ShopContext';
 import { catalogService, toProduct, type CatalogProduct } from '../services/catalogService';
@@ -143,7 +144,7 @@ export default function ProductDetailPage() {
     })();
   }, [addToCart, cart, cartReady, catalogProduct, navigate, role, sharedCartLoading]);
   const product = catalogProduct ? toProduct(catalogProduct) : null;
-  if (catalogError) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-red-600" role="alert">{catalogError}</p><Link to="/shop" className="mt-6 inline-flex rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold">Back to shop</Link></main><Footer /></div>;
+  if (catalogError) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><SEO title="Product unavailable | DreamSpex" description="This product could not be found in the DreamSpex catalogue." canonicalPath="/shop" robots="noindex,follow" /><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-red-600" role="alert">{catalogError}</p><Link to="/shop" className="mt-6 inline-flex rounded-full border border-[var(--border-subtle)] px-5 py-3 text-sm font-semibold">Back to shop</Link></main><Footer /></div>;
   if (!product || !catalogProduct) return <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"><Navbar /><main className="mx-auto max-w-7xl px-4 py-24 text-center"><p className="text-sm text-[var(--text-secondary)]">Loading product...</p></main><Footer /></div>;
 
   const ratingSummary = reviewFeed?.summary ?? catalogProduct.ratingSummary;
@@ -201,6 +202,46 @@ export default function ProductDetailPage() {
   const selectedVariantOldPrice = product.oldPrice == null
     ? undefined
     : product.oldPrice + (selectedVariant?.additionalPrice ?? 0);
+  const actualProductCategory = catalogProduct.categories[0]?.name;
+  const productAttributes = [
+    actualProductCategory,
+    product.gender,
+    product.frameShape,
+    product.frameType,
+    product.material,
+    selectedVariant?.color ?? undefined,
+    selectedVariant?.size ?? undefined,
+    selectedVariant?.lensType ?? undefined,
+  ].filter((value): value is string => Boolean(value?.trim()));
+  const productSeoDescription = [
+    `Shop ${product.brand} ${product.name} at DreamSpex.`,
+    productAttributes.length ? `Features include ${productAttributes.join(', ')}.` : '',
+    catalogProduct.description?.trim() ?? '',
+  ].filter(Boolean).join(' ').slice(0, 157);
+  const productCanonicalPath = `/products/${encodeURIComponent(catalogProduct.id)}`;
+  const productImages = galleryImages.map((image) => image.imageUrl).filter(Boolean);
+  const productSchema: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: catalogProduct.description?.trim() || productSeoDescription,
+    brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+    image: productImages.length ? productImages : undefined,
+    sku: selectedVariant?.sku || catalogProduct.sku || undefined,
+    category: actualProductCategory || undefined,
+    url: `https://www.dreamspex.in${productCanonicalPath}`,
+    offers: selectedVariant && Number.isFinite(selectedVariantPrice) && selectedVariantPrice >= 0
+      ? {
+        '@type': 'Offer',
+        url: `https://www.dreamspex.in${productCanonicalPath}`,
+        priceCurrency: 'INR',
+        price: selectedVariantPrice.toFixed(2),
+        availability: unavailable
+          ? 'https://schema.org/OutOfStock'
+          : 'https://schema.org/InStock',
+      }
+      : undefined,
+  };
 
   const productForCart = { ...product, variantId: selectedVariant?.id };
   const requireCustomer = (action: 'ADD_TO_CART' | 'BUY_NOW') => {
@@ -272,6 +313,13 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      <SEO
+        title={`${product.brand} ${product.name}${actualProductCategory ? ` | ${actualProductCategory}` : ''} | DreamSpex`}
+        description={productSeoDescription}
+        canonicalPath={productCanonicalPath}
+        image={selectedImage?.imageUrl || product.image || undefined}
+        structuredData={productSchema}
+      />
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
         <Link to="/shop" className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)] transition hover:text-[var(--brand-green-dark)]">

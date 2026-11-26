@@ -4,9 +4,17 @@
     {
       "src": "package.json",
       "use": "@vercel/static-build"
+    },
+    {
+      "src": "api/sitemap.js",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
+    {
+      "src": "^/sitemap\\.xml$",
+      "dest": "/api/sitemap"
+    },
     {
       "src": "/(?!.*\\..*$)(.*)",
       "dest": "/index.html"

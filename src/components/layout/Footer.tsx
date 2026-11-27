@@ -1,38 +1,15 @@
-import { useEffect, useState } from 'react';
 import { ArrowRight, MessageCircle, Send, Globe2, MapPin, CreditCard, Truck, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { fetchHomepage } from '../../services/homepageService';
 
 export default function Footer() {
-  const [homepageSubtitle, setHomepageSubtitle] = useState<string | null>(null);
-
-  useEffect(() => {
-    let activeRequest: AbortController | null = null;
-    const loadSubtitle = () => {
-      activeRequest?.abort();
-      const request = new AbortController();
-      activeRequest = request;
-      void fetchHomepage(request.signal).then((homepage) => {
-        const subtitle = homepage.banners.find((banner) => banner.subtitle?.trim())?.subtitle?.trim() ?? null;
-        setHomepageSubtitle(subtitle);
-      }).catch((error: unknown) => {
-        if (!request.signal.aborted) console.error('[Footer] Homepage subtitle could not be loaded.', error);
-      });
-    };
-
-    loadSubtitle();
-    window.addEventListener('focus', loadSubtitle);
-    return () => {
-      window.removeEventListener('focus', loadSubtitle);
-      activeRequest?.abort();
-    };
-  }, []);
-
   return (
     <footer className="border-t border-[#16416f] bg-gradient-to-br from-[#061B3A] to-[#0B3470] text-[#B9CCE5]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-5 lg:gap-y-12 lg:px-8 lg:py-14">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:gap-y-12 lg:px-8 lg:py-14">
         <div className="min-w-0">
-          <p className="font-serif text-3xl italic leading-tight tracking-tight text-[#F2F7FF]">{homepageSubtitle || 'Your Vision Our Passion.'}</p>
+          <p className="font-serif text-[32px] font-bold italic leading-[1.08] tracking-tight text-[#F2F7FF] sm:text-[36px] lg:text-[40px] xl:text-[46px]">
+            <span className="block whitespace-nowrap">Your Vision</span>
+            <span className="block whitespace-nowrap">Our Passion.</span>
+          </p>
         </div>
         <div className="min-w-0">
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-white">Customer Care</h3>

@@ -4,6 +4,7 @@ import {
   isDisplayableMembershipCopy,
   membershipDiscountLabel,
   membershipPlanDescription,
+  membershipPlanTheme,
   membershipValidityLabel,
 } from './membershipPlanDisplay';
 
@@ -20,6 +21,18 @@ const plan: MembershipPlan = {
 };
 
 describe('membership plan preview display', () => {
+  it.each([
+    ['Silver', '#A7B0BA'],
+    ['Gold', '#D2A94E'],
+    ['Diamond', '#63B7E8'],
+  ])('uses the %s tier theme', (name, color) => {
+    expect(membershipPlanTheme(name).color).toBe(color);
+  });
+
+  it('uses the neutral theme for unrecognized plan names', () => {
+    expect(membershipPlanTheme('Platinum')).toEqual(membershipPlanTheme('unconfigured plan'));
+  });
+
   it('uses the configured name, discount, and validity without inventing values', () => {
     expect(plan.name).toBe('Silver');
     expect(membershipDiscountLabel(plan)).toBe('2% OFF');

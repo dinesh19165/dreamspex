@@ -22,6 +22,7 @@ import {
   isDisplayableMembershipCopy,
   membershipDiscountLabel,
   membershipPlanDescription,
+  membershipPlanThemeStyle,
   membershipValidityLabel,
 } from '../utils/membershipPlanDisplay';
 
@@ -1180,32 +1181,32 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                   {membershipPlans.length ? <div className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 2xl:grid-cols-3">{membershipPlans.map((plan) => {
                     const perks = plan.perks.filter(isDisplayableMembershipCopy);
                     const PlanIcon = plan.recommended ? Star : ShieldCheck;
-                    return <article key={plan.id} className={`relative isolate flex h-full flex-col overflow-hidden rounded-[22px] border p-5 text-[#182116] shadow-[0_12px_30px_-25px_rgba(24,34,24,0.45)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_36px_-25px_rgba(24,34,24,0.4)] ${plan.recommended ? 'border-[#91bb5c] bg-[#f5f9ef] ring-1 ring-[#78be20]/20' : 'border-[#e0e7dc] bg-white'}`}>
-                      <span aria-hidden="true" className={`absolute -right-10 -top-10 -z-10 h-28 w-28 rounded-full ${plan.recommended ? 'bg-[#e6f1d8]' : 'bg-[#f4f6f1]'}`} />
+                    return <article key={plan.id} style={membershipPlanThemeStyle(plan.name, '#ffffff')} className="membership-plan-card relative isolate flex h-full flex-col overflow-hidden rounded-[22px] border p-5 text-[#182116]">
+                      <span aria-hidden="true" className="membership-plan-glow absolute -right-10 -top-10 -z-10 h-28 w-28 rounded-full" />
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${plan.recommended ? 'bg-[#e5f0d7] text-[#4b781a]' : 'bg-[#f1f4ed] text-[#64814a]'}`}>
+                          <span className="membership-plan-icon grid h-11 w-11 shrink-0 place-items-center rounded-2xl">
                             <PlanIcon className="h-5 w-5" strokeWidth={1.8} />
                           </span>
                           <div>
-                            <h3 className="font-serif text-xl font-semibold leading-tight">{plan.name}</h3>
+                            <h3 className="membership-plan-accent font-serif text-xl font-semibold leading-tight">{plan.name}</h3>
                             <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#71806a]">Membership plan</p>
                           </div>
                         </div>
-                        {plan.recommended ? <span className="rounded-full bg-[#e6f1d8] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#4b781a]">Recommended</span> : null}
+                        {plan.recommended ? <span className="membership-plan-badge rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide">Recommended</span> : null}
                       </div>
-                      <p className="mt-5 text-3xl font-semibold tracking-tight text-[#23351c]">{membershipDiscountLabel(plan)}</p>
+                      <p className="membership-plan-accent mt-5 text-3xl font-semibold tracking-tight">{membershipDiscountLabel(plan)}</p>
                       <p className="mt-1 text-xs text-[#687468]">{membershipValidityLabel(plan)} from activation</p>
                       <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <p className="text-2xl font-semibold tracking-tight">{formatINR(plan.price)}</p>
+                        <p className="membership-plan-accent text-2xl font-semibold tracking-tight">{formatINR(plan.price)}</p>
                         <span className="text-xs text-[#687468]">membership price</span>
                       </div>
                       <p className="mt-3 text-sm leading-6 text-[#5f6c5b]">{membershipPlanDescription(plan)}</p>
                       {plan.discountPercentage != null && plan.discountPercentage > 0
                         ? <p className="mt-3 text-xs leading-5 text-[#5f6c5b]">Discount applies to the eligible product subtotal while active. Coupon discounts take precedence at checkout.</p>
                         : null}
-                      {perks.length ? <ul className="mt-4 flex-1 space-y-2 border-t border-[#e5ebdf] pt-4 text-xs leading-5 text-[#5f6c5b]">{perks.slice(0, 3).map((perk) => <li key={perk} className="flex gap-2"><span className="font-bold text-[#5d9417]" aria-hidden="true">✓</span><span>{perk}</span></li>)}</ul> : <div className="flex-1" />}
-                      <Link to={`/membership/checkout?plan=${encodeURIComponent(plan.id)}`} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#78be20] px-4 py-3 text-sm font-semibold text-[#172015] transition hover:bg-[#91cb43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b781a]">
+                      {perks.length ? <ul className="membership-plan-perks mt-4 flex-1 space-y-2 border-t pt-4 text-xs leading-5 text-[#5f6c5b]">{perks.slice(0, 3).map((perk) => <li key={perk} className="flex gap-2"><span className="membership-plan-accent font-bold" aria-hidden="true">✓</span><span>{perk}</span></li>)}</ul> : <div className="flex-1" />}
+                      <Link to={`/membership/checkout?plan=${encodeURIComponent(plan.id)}`} className="membership-plan-button mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
                         Join now <ArrowRight className="h-4 w-4" />
                       </Link>
                     </article>;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Gem } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SectionTitle from '../components/ui/SectionTitle';
@@ -12,6 +13,7 @@ import {
   type MembershipPlan,
 } from '../services/membershipService';
 import { formatINR } from '../utils/currency';
+import { membershipPlanThemeStyle } from '../utils/membershipPlanDisplay';
 
 const requiredPlanNames = ['Silver', 'Gold', 'Platinum'];
 
@@ -83,17 +85,22 @@ export default function MembershipPage() {
         {missingPlanNames.length ? <p className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-[var(--text-secondary)]">Plan configuration is missing for: {missingPlanNames.join(', ')}. Add the configured price, validity and benefits in Admin Membership Management; no prices or benefits are supplied as defaults.</p> : null}
         <div className="mt-10 grid gap-6 lg:grid-cols-3">
           {plans.map((plan) => (
-            <article key={plan.id} className={`relative flex flex-col rounded-[24px] border bg-[var(--bg-card)] p-7 backdrop-blur-xl ${plan.recommended ? 'border-cyan-300 shadow-[0_0_32px_rgba(34,211,238,0.12)]' : 'border-[var(--border-subtle)]'}`}>
-              {plan.recommended ? <span className="absolute right-5 top-5 rounded-full bg-cyan-300/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-cyan-200">Recommended</span> : null}
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">{plan.name}</p>
-              <p className="mt-4 text-4xl font-semibold text-[var(--text-primary)]">{formatINR(plan.price)}<span className="text-base font-normal text-[var(--text-secondary)]"> / {plan.durationDays} days</span></p>
+            <article key={plan.id} style={membershipPlanThemeStyle(plan.name, 'var(--bg-card)')} className="membership-plan-card relative flex flex-col rounded-[24px] border p-7 backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="membership-plan-icon grid h-11 w-11 shrink-0 place-items-center rounded-2xl"><Gem className="h-5 w-5" strokeWidth={1.8} /></span>
+                  <p className="membership-plan-accent text-sm font-semibold uppercase tracking-[0.3em]">{plan.name}</p>
+                </div>
+                {plan.recommended ? <span className="membership-plan-badge rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.15em]">Recommended</span> : null}
+              </div>
+              <p className="membership-plan-accent mt-4 text-4xl font-semibold">{formatINR(plan.price)}<span className="text-base font-normal text-[var(--text-secondary)]"> / {plan.durationDays} days</span></p>
               <p className="mt-4 min-h-12 text-sm leading-7 text-[var(--text-secondary)]">{plan.description}</p>
-              <p className="mt-4 text-sm font-semibold text-[var(--text-primary)]">{plan.discountPercentage == null ? 'Discount not configured' : `${plan.discountPercentage}% membership discount`}</p>
+              <p className="membership-plan-accent mt-4 text-sm font-semibold">{plan.discountPercentage == null ? 'Discount not configured' : `${plan.discountPercentage}% membership discount`}</p>
               <ul className="mt-6 flex-1 space-y-3 text-sm text-[var(--text-secondary)]">
-                {plan.perks.map((perk) => <li key={perk} className="flex gap-2"><span className="text-cyan-300" aria-hidden="true">✓</span><span>{perk}</span></li>)}
+                {plan.perks.map((perk) => <li key={perk} className="flex gap-2"><span className="membership-plan-accent" aria-hidden="true">✓</span><span>{perk}</span></li>)}
                 {!plan.perks.length ? <li>No benefits are configured for this plan.</li> : null}
               </ul>
-              <Button fullWidth className="mt-8" onClick={() => navigate(`/membership/checkout?plan=${encodeURIComponent(plan.id)}`)}>
+              <Button fullWidth className="membership-plan-button mt-8" onClick={() => navigate(`/membership/checkout?plan=${encodeURIComponent(plan.id)}`)}>
                 {membership?.planId === plan.id && membership.status === 'ACTIVE' ? 'Renew this plan' : `Subscribe to ${plan.name}`}
               </Button>
             </article>

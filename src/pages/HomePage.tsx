@@ -885,11 +885,11 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {visibleWearerCards.map((card, index) => {
                 const image = wearerLifestyleImage(card.destinationValue);
-                return <Link key={card.id} to={homepageCardHref(card)} style={{ transitionDelay: `${index * 100}ms` }} className={`home-wearer-card group relative isolate aspect-[4/3] overflow-hidden rounded-3xl bg-[var(--bg-secondary)] shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none sm:aspect-[4/5]${wearerCardsVisible ? ' is-visible' : ''}`}>
+                return <Link key={card.id} to={homepageCardHref(card)} style={{ transitionDelay: `${index * 100}ms` }} className={`home-wearer-card group relative isolate aspect-[4/5] overflow-hidden rounded-3xl bg-[var(--bg-secondary)] shadow-sm transition duration-500 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none${wearerCardsVisible ? ' is-visible' : ''}`}>
                   <img src={image} alt="" loading="lazy" onError={(event) => {
                     event.currentTarget.onerror = null;
                     event.currentTarget.src = WEARER_IMAGE_FALLBACK;
-                  }} className="home-wearer-card__image absolute inset-0 h-full w-full object-cover object-center transition duration-700 group-hover:scale-105 motion-reduce:transition-none" style={{ transitionDelay: `${index * 100}ms` }} />
+                  }} className="home-wearer-card__image absolute inset-0 h-full w-full object-cover object-top transition duration-700 motion-reduce:transition-none" style={{ transitionDelay: `${index * 100}ms` }} />
                   <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
                   <span className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
                     <span className="block text-2xl font-bold tracking-tight drop-shadow sm:text-3xl">{formatWearerTitle(card.title)}</span>

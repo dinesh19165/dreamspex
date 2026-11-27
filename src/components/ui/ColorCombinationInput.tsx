@@ -14,20 +14,25 @@ type ColorCombinationInputProps = {
   id?: string;
   inputRef?: Ref<HTMLInputElement>;
   error?: string;
+  required?: boolean;
   optional?: boolean;
 };
 
-export default function ColorCombinationInput({ value, onChange, id = 'color-combination', inputRef, error, optional = false }: ColorCombinationInputProps) {
+export default function ColorCombinationInput({ value, onChange, id = 'color-combination', inputRef, error, required = false, optional = false }: ColorCombinationInputProps) {
   const selected = new Set(parseColorComponents(value).map((component) => component.toLowerCase()));
   const preview = canonicalizeColorCombination(value);
 
   return (
     <div className="block text-sm text-[var(--text-secondary)]">
       <label className="block" htmlFor={id}>
-        <span>Color combination{optional ? <span className="ml-1 text-xs text-[#68756b]">(optional)</span> : null}</span>
+        <span>Color combination{required
+          ? <span className="ml-1 font-semibold text-red-600" aria-label="required">*</span>
+          : optional ? <span className="ml-1 text-xs text-[#68756b]">(optional)</span> : null}</span>
         <input
           id={id}
           ref={inputRef}
+          required={required}
+          aria-required={required}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
           className={`mt-2 w-full rounded-2xl border bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none ${error ? '!border-red-500' : 'border-[var(--border-subtle)]'}`}

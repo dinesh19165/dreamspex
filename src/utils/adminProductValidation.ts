@@ -6,6 +6,8 @@ type ProductImageDraftValidation = {
   hasFile: boolean;
   imageUrl: string;
   altText: string | null;
+  primaryImage: boolean;
+  variantId: string | null;
 };
 
 type ProductValidationInput = {
@@ -39,12 +41,25 @@ export function validateAdminProductDraft({
     else if (maxLength && value.length > maxLength) errors[field] = `Must be ${maxLength} characters or fewer.`;
   });
 
+  if (isCreate) {
+    const createRequiredTextFields = [
+      ['material', form.material ?? '', 'Material is required.', 80],
+      ['gender', form.gender ?? '', 'Gender is required.', 40],
+      ['frameShape', form.frameShape ?? '', 'Frame shape is required.', 80],
+      ['frameType', form.frameType ?? '', 'Frame type is required.', 80],
+    ] as const;
+    createRequiredTextFields.forEach(([field, value, requiredMessage, maxLength]) => {
+      if (!value.trim()) errors[field] = requiredMessage;
+      else if (value.length > maxLength) errors[field] = `Must be ${maxLength} characters or fewer.`;
+    });
+  }
+
   const optionalTextFields = [
-    ['material', form.material, 80],
-    ['gender', form.gender, 40],
-    ['frameShape', form.frameShape, 80],
-    ['frameType', form.frameType, 80],
-    ['badge', form.badge, 80],
+    ['material', form.material ?? '', 80],
+    ['gender', form.gender ?? '', 40],
+    ['frameShape', form.frameShape ?? '', 80],
+    ['frameType', form.frameType ?? '', 80],
+    ['badge', form.badge ?? '', 80],
   ] as const;
   optionalTextFields.forEach(([field, value, maxLength]) => {
     if (value && value.length > maxLength) errors[field] = `Must be ${maxLength} characters or fewer.`;
@@ -52,20 +67,31 @@ export function validateAdminProductDraft({
 
   if (!Number.isFinite(form.basePrice)) errors.basePrice = 'Regular price is required.';
   else if (form.basePrice < 0) errors.basePrice = 'Regular price cannot be negative.';
-  if (form.compareAtPrice != null && (!Number.isFinite(form.compareAtPrice) || form.compareAtPrice < 0)) {
+  if (form.compareAtPrice == null) {
+    if (isCreate) errors.compareAtPrice = 'Sale / compare-at price is required.';
+  } else if (!Number.isFinite(form.compareAtPrice)) {
+    errors.compareAtPrice = 'Sale / compare-at price must be a non-negative number.';
+  } else if (form.compareAtPrice < 0) {
     errors.compareAtPrice = 'Sale / compare-at price must be a non-negative number.';
   }
-  if (form.categoryIds.some((categoryId) => !categoryId.trim())) {
-    errors.categories = 'Select a category or remove the empty category row.';
+  if (form.categoryIds.some((categoryId) => !categoryId.trim()) || (isCreate && form.categoryIds.length === 0)) {
+    errors.categories = isCreate && form.categoryIds.length === 0
+      ? 'Select at least one category.'
+      : isCreate ? 'Select a category.' : 'Select a category or remove the empty category row.';
   }
+  if (isCreate && !form.status.trim()) errors.status = 'Product status is required.';
 
   form.variants.forEach((variant, index) => {
     const prefix = `variant.${index}`;
     if (!variant.sku.trim()) errors[`${prefix}.sku`] = 'Variant SKU is required.';
     else if (variant.sku.length > 80) errors[`${prefix}.sku`] = 'Variant SKU must be 80 characters or fewer.';
-    if (variant.color && variant.color.length > 80) errors[`${prefix}.color`] = 'Color combination must be 80 characters or fewer.';
-    if (variant.size && variant.size.length > 32) errors[`${prefix}.size`] = 'Size must be 32 characters or fewer.';
-    if (variant.lensType && variant.lensType.length > 80) errors[`${prefix}.lensType`] = 'Lens type must be 80 characters or fewer.';
+    if (isCreate && !variant.color?.trim()) errors[`${prefix}.color`] = 'Color combination is required.';
+    else if (variant.color && variant.color.length > 80) errors[`${prefix}.color`] = 'Color combination must be 80 characters or fewer.';
+    if (isCreate && !variant.size?.trim()) errors[`${prefix}.size`] = 'Size is required.';
+    else if (variant.size && variant.size.length > 32) errors[`${prefix}.size`] = 'Size must be 32 characters or fewer.';
+    if (isCreate && !variant.lensType?.trim()) errors[`${prefix}.lensType`] = 'Lens type is required.';
+    else if (variant.lensType && variant.lensType.length > 80) errors[`${prefix}.lensType`] = 'Lens type must be 80 characters or fewer.';
+    if (isCreate && !variant.status.trim()) errors[`${prefix}.status`] = 'Variant status is required.';
     if (!Number.isFinite(variant.additionalPrice) || variant.additionalPrice < 0) {
       errors[`${prefix}.additionalPrice`] = 'Adjustment must be a non-negative number.';
     }
@@ -82,12 +108,28 @@ export function validateAdminProductDraft({
     errors.images = 'Every product image must have a valid upload.';
   }
   images.forEach((image, index) => {
-    if (image.altText && image.altText.length > 255) {
+    if (isCreate && !image.altText?.trim()) {
+      errors[`image.${index}.altText`] = 'Alt text is required.';
+    } else if (image.altText && image.altText.length > 255) {
       errors[`image.${index}.altText`] = 'Alt text must be 255 characters or fewer.';
     }
   });
+  const imageGroups = new Map<string, { firstIndex: number; hasPrimary: boolean }>();
+  images.forEach((image, index) => {
+    const group = image.variantId ?? 'shared';
+    const existing = imageGroups.get(group);
+    if (existing) existing.hasPrimary ||= image.primaryImage;
+    else imageGroups.set(group, { firstIndex: index, hasPrimary: image.primaryImage });
+  });
+  if (isCreate) {
+    imageGroups.forEach(({ firstIndex, hasPrimary }) => {
+      if (!hasPrimary) errors[`image.${firstIndex}.primaryImage`] = 'Choose a primary image for this image group.';
+    });
+  }
 
-  if (hsnCode.trim() && !/^(?:\d{4}|\d{6}|\d{8})$/.test(hsnCode.trim())) {
+  if (!hsnCode.trim()) {
+    if (isCreate) errors.hsnCode = 'HSN code is required.';
+  } else if (!/^(?:\d{4}|\d{6}|\d{8})$/.test(hsnCode.trim())) {
     errors.hsnCode = 'HSN code must contain 4, 6, or 8 digits.';
   }
   const parsedGstRate = gstRate.trim() ? Number(gstRate) : Number.NaN;
@@ -105,17 +147,19 @@ export function mapAdminProductFieldErrors(fieldErrors: readonly AdminProductFie
   fieldErrors.forEach(({ field, message }) => {
     const normalized = field.trim().replace(/^(?:product|request)\./, '').replace(/\[(\d+)\]/g, '.$1');
     let key: string | null = null;
-    if (['name', 'sku', 'slug', 'brand', 'description', 'basePrice', 'compareAtPrice', 'hsnCode', 'gstRate', 'gstEnabled', 'useGlobalRate', 'returnable', 'status'].includes(normalized)) {
+    if (['name', 'sku', 'slug', 'brand', 'material', 'gender', 'frameShape', 'frameType', 'badge', 'description', 'basePrice', 'compareAtPrice', 'hsnCode', 'gstRate', 'gstEnabled', 'useGlobalRate', 'returnable', 'status'].includes(normalized)) {
       key = normalized;
     } else if (normalized === 'categoryIds' || normalized.startsWith('categoryIds.')) {
       key = 'categories';
-    } else if (normalized === 'images' || /^images\.\d+\.(?:imageUrl|storageKey|sortOrder|primaryImage)$/.test(normalized)) {
+    } else if (normalized === 'images' || /^images\.\d+\.(?:imageUrl|storageKey|sortOrder)$/.test(normalized)) {
       key = 'images';
     } else {
       const variantMatch = normalized.match(/^variants\.(\d+)\.(sku|color|size|lensType|additionalPrice|quantity|reservedQuantity|status)$/);
       if (variantMatch) key = `variant.${variantMatch[1]}.${variantMatch[2]}`;
       const imageAltTextMatch = normalized.match(/^images\.(\d+)\.altText$/);
       if (imageAltTextMatch) key = `image.${imageAltTextMatch[1]}.altText`;
+      const imagePrimaryMatch = normalized.match(/^images\.(\d+)\.primaryImage$/);
+      if (imagePrimaryMatch) key = `image.${imagePrimaryMatch[1]}.primaryImage`;
       const imageVariantMatch = normalized.match(/^images\.(\d+)\.variantId$/);
       if (imageVariantMatch) key = `image.${imageVariantMatch[1]}.variantId`;
       if (normalized === 'tryOnImageUrl') key = 'tryOnImage';

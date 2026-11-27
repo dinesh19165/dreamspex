@@ -2270,6 +2270,12 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
     ));
   };
 
+  const clearPrimaryImageErrors = () => {
+    setFieldErrors((current) => Object.fromEntries(
+      Object.entries(current).filter(([field]) => !/^image\.\d+\.primaryImage$/.test(field)),
+    ));
+  };
+
   const focusFirstError = (errors: Record<string, string>) => {
     const firstError = Object.keys(errors)[0];
     const element = firstError ? fieldRefs.current[firstError] : null;
@@ -2491,7 +2497,13 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
       ...validateAdminProductDraft({
         form,
         isCreate: !product,
-        images: productImages.map(({ file, imageUrl, altText }) => ({ hasFile: Boolean(file), imageUrl, altText })),
+        images: productImages.map(({ file, imageUrl, altText, primaryImage, variantId }) => ({
+          hasFile: Boolean(file),
+          imageUrl,
+          altText,
+          primaryImage,
+          variantId,
+        })),
         hsnCode,
         useGlobalRate,
         gstRate,
@@ -2616,10 +2628,10 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
           <ProductInput id="product-sku" inputRef={registerField('sku')} error={fieldErrors.sku} label="SKU" value={form.sku} onChange={(value) => update('sku', value)} required />
           <ProductInput id="product-slug" inputRef={registerField('slug')} error={fieldErrors.slug} label="Slug" value={form.slug} onChange={(value) => update('slug', value)} required />
           <ProductInput id="product-brand" inputRef={registerField('brand')} error={fieldErrors.brand} label="Brand" value={form.brand} onChange={(value) => update('brand', value)} required />
-          <ProductInput id="product-material" inputRef={registerField('material')} error={fieldErrors.material} label="Material" value={form.material ?? ''} onChange={(value) => update('material', value || null)} />
-          <ProductInput id="product-gender" inputRef={registerField('gender')} error={fieldErrors.gender} label="Gender" value={form.gender ?? ''} onChange={(value) => update('gender', value || null)} />
-          <ProductInput id="product-frame-shape" inputRef={registerField('frameShape')} error={fieldErrors.frameShape} label="Frame shape" value={form.frameShape ?? ''} onChange={(value) => update('frameShape', value || null)} />
-          <ProductInput id="product-frame-type" inputRef={registerField('frameType')} error={fieldErrors.frameType} label="Frame type" value={form.frameType ?? ''} onChange={(value) => update('frameType', value || null)} />
+          <ProductInput id="product-material" inputRef={registerField('material')} error={fieldErrors.material} label="Material" value={form.material ?? ''} onChange={(value) => update('material', value || null)} required={!product} />
+          <ProductInput id="product-gender" inputRef={registerField('gender')} error={fieldErrors.gender} label="Gender" value={form.gender ?? ''} onChange={(value) => update('gender', value || null)} required={!product} />
+          <ProductInput id="product-frame-shape" inputRef={registerField('frameShape')} error={fieldErrors.frameShape} label="Frame shape" value={form.frameShape ?? ''} onChange={(value) => update('frameShape', value || null)} required={!product} />
+          <ProductInput id="product-frame-type" inputRef={registerField('frameType')} error={fieldErrors.frameType} label="Frame type" value={form.frameType ?? ''} onChange={(value) => update('frameType', value || null)} required={!product} />
           <ProductInput id="product-badge" inputRef={registerField('badge')} error={fieldErrors.badge} label="Badge" value={form.badge ?? ''} onChange={(value) => update('badge', value || null)} />
         </div>
         <label className="mt-4 block text-sm text-[var(--text-secondary)]">
@@ -2639,7 +2651,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
         </label>
         <div className="mt-5 border-t border-[#edf1ed] pt-5">
           <div ref={registerField('categories')} tabIndex={-1}>
-            <EditorHeading title="Categories" required={form.categoryIds.length > 0} action={<Button type="button" variant="ghost" onClick={() => update('categoryIds', [...form.categoryIds, ''])}><Plus className="mr-1 h-4 w-4" />Add category</Button>} />
+            <EditorHeading title="Categories" required={!product || form.categoryIds.length > 0} action={<Button type="button" variant="ghost" onClick={() => update('categoryIds', [...form.categoryIds, ''])}><Plus className="mr-1 h-4 w-4" />Add category</Button>} />
           </div>
           <div className="space-y-2">
             {form.categoryIds.map((categoryId, index) => (
@@ -2648,7 +2660,8 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                   id={`product-category-${index}`}
                   ref={index === 0 ? registerField('categories') : undefined}
                   aria-label={`Category ${index + 1}`}
-                  required
+                  required={!product}
+                  aria-required={!product}
                   aria-invalid={Boolean(fieldErrors.categories)}
                   aria-describedby={fieldErrors.categories ? 'product-categories-error' : undefined}
                   className={`${inputClass} ${fieldErrors.categories ? '!border-red-500' : ''}`}
@@ -2662,11 +2675,11 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                   <option value="">Select category</option>
                   {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                 </select>
-                <Button type="button" variant="ghost" onClick={() => {
+                {product || form.categoryIds.length > 1 ? <Button type="button" variant="ghost" onClick={() => {
                   const nextCategoryIds = form.categoryIds.filter((_, itemIndex) => itemIndex !== index);
                   update('categoryIds', nextCategoryIds);
-                  if (nextCategoryIds.every((id) => id.trim())) clearFieldError('categories');
-                }}>Remove</Button>
+                  if (nextCategoryIds.every((id) => id.trim()) && (nextCategoryIds.length > 0 || product)) clearFieldError('categories');
+                }}>Remove</Button> : null}
               </div>
             ))}
           </div>
@@ -2702,6 +2715,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
             step="0.01"
             value={form.compareAtPrice == null ? '' : String(form.compareAtPrice)}
             onChange={(value) => update('compareAtPrice', value === '' ? null : Number(value))}
+            required={!product}
           />
         </div>
       </section>
@@ -2715,10 +2729,12 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
         <h4 className="font-semibold text-[var(--text-primary)]">GST classification</h4>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <label className="text-sm text-[var(--text-secondary)]">
-            <span>HSN code<FieldRequirement /></span>
+            <span>HSN code<FieldRequirement required={!product} /></span>
             <input
               id="product-hsn-code"
               ref={registerField('hsnCode')}
+              required={!product}
+              aria-required={!product}
               aria-invalid={Boolean(fieldErrors.hsnCode)}
               aria-describedby={fieldErrors.hsnCode ? 'product-hsn-code-error' : undefined}
               inputMode="numeric"
@@ -2736,12 +2752,13 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                 type="checkbox"
                 ref={registerField('gstEnabled')}
                 checked={gstEnabled}
+                aria-required={!product}
                 aria-invalid={Boolean(fieldErrors.gstEnabled)}
                 aria-describedby={fieldErrors.gstEnabled ? 'product-gst-enabled-error' : undefined}
                 onChange={(event) => { setGstEnabled(event.target.checked); clearFieldError('gstEnabled'); setValidationError(''); }}
                 className={`h-4 w-4 accent-[#7CBF00] ${fieldErrors.gstEnabled ? 'outline outline-1 outline-red-500' : ''}`}
               />
-              GST applies to this product <FieldRequirement />
+              GST applies to this product <FieldRequirement required={!product} />
             </label>
             {fieldErrors.gstEnabled ? <p id="product-gst-enabled-error" role="alert" className="mt-1 text-xs text-red-700">{fieldErrors.gstEnabled}</p> : null}
           </div>
@@ -2756,6 +2773,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                   else fieldRefs.current.gstRate = null;
                 }}
                 checked={useGlobalRate}
+                aria-required={!product}
                 aria-invalid={Boolean(fieldErrors.useGlobalRate || (useGlobalRate && fieldErrors.gstRate))}
                 aria-describedby={fieldErrors.useGlobalRate ? 'product-use-global-gst-error' : useGlobalRate && fieldErrors.gstRate ? 'product-gst-rate-error' : undefined}
                 onChange={(event) => {
@@ -2766,7 +2784,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                 }}
                 className={`h-4 w-4 accent-[#7CBF00] ${fieldErrors.useGlobalRate || (useGlobalRate && fieldErrors.gstRate) ? 'outline outline-1 outline-red-500' : ''}`}
               />
-              Use global GST rate <FieldRequirement />
+              Use global GST rate <FieldRequirement required={!product} />
             </label>
             {fieldErrors.useGlobalRate ? <p id="product-use-global-gst-error" role="alert" className="mt-1 text-xs text-red-700">{fieldErrors.useGlobalRate}</p> : null}
             {useGlobalRate && fieldErrors.gstRate ? <p id="product-gst-rate-error" role="alert" className="mt-1 text-xs text-red-700">{fieldErrors.gstRate}</p> : null}
@@ -2792,13 +2810,14 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
               id="product-returnable"
               type="checkbox"
               ref={registerField('returnable')}
+              aria-required={!product}
               checked={returnable}
               aria-invalid={Boolean(fieldErrors.returnable)}
               aria-describedby={fieldErrors.returnable ? 'product-returnable-error' : undefined}
               onChange={(event) => { setReturnable(event.target.checked); clearFieldError('returnable'); setValidationError(''); }}
               className="mt-0.5 h-4 w-4 accent-[#7CBF00]"
             />
-            <span><span className="block font-semibold text-[var(--text-primary)]">{returnable ? 'Returnable' : 'Non-returnable'} <FieldRequirement /></span><span className="mt-1 block text-xs text-[var(--text-secondary)]">Customers can request a return or replacement for this product only when enabled and when the order meets the configured return policy.</span></span>
+            <span><span className="block font-semibold text-[var(--text-primary)]">{returnable ? 'Returnable' : 'Non-returnable'} <FieldRequirement required={!product} /></span><span className="mt-1 block text-xs text-[var(--text-secondary)]">Customers can request a return or replacement for this product only when enabled and when the order meets the configured return policy.</span></span>
           </label>
           {fieldErrors.returnable ? <p id="product-returnable-error" role="alert" className="mt-1 text-xs text-red-700">{fieldErrors.returnable}</p> : null}
         </div>
@@ -2820,6 +2839,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-[#24352a]">Variant {index + 1}{variant.sku ? ` · ${variant.sku}` : ''}</p>
               <div ref={registerField(`variant.${index}.status`)} tabIndex={-1} className="flex flex-col items-end">
+                <span className="text-xs text-[var(--text-secondary)]">Variant status<FieldRequirement required={!product} /></span>
                 <Button type="button" variant="ghost" aria-label={`${variant.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'} ${variant.sku || `variant ${index + 1}`}`} onClick={() => {
                   update('variants', form.variants.map((item, itemIndex) => itemIndex === index ? { ...item, status: item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' } : item));
                   clearFieldError(`variant.${index}.status`);
@@ -2829,13 +2849,13 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
               </div>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <ProductInput id={`product-variant-${index}-sku`} inputRef={registerField(`variant.${index}.sku`)} error={fieldErrors[`variant.${index}.sku`]} label="Variant SKU" value={variant.sku} onChange={(value) => updateVariant(index, 'sku', value)} required />
-                <ColorCombinationInput id={`product-variant-${index}-color`} inputRef={registerField(`variant.${index}.color`)} error={fieldErrors[`variant.${index}.color`]} optional value={variant.color ?? ''} onChange={(value) => updateVariant(index, 'color', value || null)} />
-                <ProductInput id={`product-variant-${index}-size`} inputRef={registerField(`variant.${index}.size`)} error={fieldErrors[`variant.${index}.size`]} label="Size" value={variant.size ?? ''} onChange={(value) => updateVariant(index, 'size', value || null)} />
-                <ProductInput id={`product-variant-${index}-lens-type`} inputRef={registerField(`variant.${index}.lensType`)} error={fieldErrors[`variant.${index}.lensType`]} label="Lens type" value={variant.lensType ?? ''} onChange={(value) => updateVariant(index, 'lensType', value || null)} />
-                <ProductInput id={`product-variant-${index}-additional-price`} inputRef={registerField(`variant.${index}.additionalPrice`)} error={fieldErrors[`variant.${index}.additionalPrice`]} label="Adjustment" type="number" min="0" step="0.01" value={String(variant.additionalPrice)} onChange={(value) => updateVariant(index, 'additionalPrice', Number(value))} required />
-                <ProductInput id={`product-variant-${index}-quantity`} inputRef={registerField(`variant.${index}.quantity`)} error={fieldErrors[`variant.${index}.quantity`]} label="Quantity" type="number" min="0" value={String(variant.quantity)} onChange={(value) => updateVariant(index, 'quantity', Number(value))} required />
-                <ProductInput id={`product-variant-${index}-reserved-quantity`} inputRef={registerField(`variant.${index}.reservedQuantity`)} error={fieldErrors[`variant.${index}.reservedQuantity`]} label="Reserved quantity" type="number" min="0" max={String(variant.quantity)} value={String(variant.reservedQuantity)} onChange={(value) => updateVariant(index, 'reservedQuantity', Number(value))} required />
-                <p className="self-end pb-2 text-xs text-[#68756b]">Available: {Math.max(0, variant.quantity - variant.reservedQuantity)}</p>
+                <ColorCombinationInput id={`product-variant-${index}-color`} inputRef={registerField(`variant.${index}.color`)} error={fieldErrors[`variant.${index}.color`]} required={!product} optional={Boolean(product)} value={variant.color ?? ''} onChange={(value) => updateVariant(index, 'color', value || null)} />
+                <ProductInput id={`product-variant-${index}-size`} inputRef={registerField(`variant.${index}.size`)} error={fieldErrors[`variant.${index}.size`]} label="Size" value={variant.size ?? ''} onChange={(value) => updateVariant(index, 'size', value || null)} required={!product} />
+                <ProductInput id={`product-variant-${index}-lens-type`} inputRef={registerField(`variant.${index}.lensType`)} error={fieldErrors[`variant.${index}.lensType`]} label="Lens type" value={variant.lensType ?? ''} onChange={(value) => updateVariant(index, 'lensType', value || null)} required={!product} />
+                <ProductInput id={`product-variant-${index}-additional-price`} inputRef={registerField(`variant.${index}.additionalPrice`)} error={fieldErrors[`variant.${index}.additionalPrice`]} label="Adjustment" type="number" min="0" step="0.01" value={Number.isFinite(variant.additionalPrice) ? String(variant.additionalPrice) : ''} onChange={(value) => updateVariant(index, 'additionalPrice', value === '' ? Number.NaN : Number(value))} required />
+                <ProductInput id={`product-variant-${index}-quantity`} inputRef={registerField(`variant.${index}.quantity`)} error={fieldErrors[`variant.${index}.quantity`]} label="Quantity" type="number" min="0" value={Number.isFinite(variant.quantity) ? String(variant.quantity) : ''} onChange={(value) => updateVariant(index, 'quantity', value === '' ? Number.NaN : Number(value))} required />
+                <ProductInput id={`product-variant-${index}-reserved-quantity`} inputRef={registerField(`variant.${index}.reservedQuantity`)} error={fieldErrors[`variant.${index}.reservedQuantity`]} label="Reserved quantity" type="number" min="0" max={Number.isFinite(variant.quantity) ? String(variant.quantity) : undefined} value={Number.isFinite(variant.reservedQuantity) ? String(variant.reservedQuantity) : ''} onChange={(value) => updateVariant(index, 'reservedQuantity', value === '' ? Number.NaN : Number(value))} required />
+                <p className="self-end pb-2 text-xs text-[#68756b]">Available: {Number.isFinite(variant.quantity - variant.reservedQuantity) ? Math.max(0, variant.quantity - variant.reservedQuantity) : '—'}</p>
               </div>
             </div>
           ))}
@@ -2895,6 +2915,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                     error={fieldErrors[`image.${index}.altText`]}
                     label="Alt text"
                     value={image.altText ?? ''}
+                    required={!product}
                     onChange={(value) => {
                       setProductImages((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, altText: value || null } : item));
                       clearFieldError(`image.${index}.altText`);
@@ -2902,10 +2923,12 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                     }}
                   />
                   <label className="block text-sm text-[var(--text-secondary)]">
-                    <span>Assigned variant<FieldRequirement /></span>
+                    <span>Assigned variant<FieldRequirement required={!product} /></span>
                     <select
                       id={`product-image-${index}-variant`}
                       ref={registerField(`image.${index}.variantId`)}
+                      required={!product}
+                      aria-required={!product}
                       aria-invalid={Boolean(fieldErrors[`image.${index}.variantId`])}
                       aria-describedby={fieldErrors[`image.${index}.variantId`] ? `product-image-${index}-variant-error` : undefined}
                       className={`${inputClass} ${fieldErrors[`image.${index}.variantId`] ? '!border-red-500' : ''}`}
@@ -2913,6 +2936,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                       onChange={(event) => {
                         assignProductImageVariant(index, event.target.value);
                         clearFieldError(`image.${index}.variantId`);
+                        clearPrimaryImageErrors();
                         setValidationError('');
                       }}
                     >
@@ -2927,15 +2951,25 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
                   </label>
                   <label className="flex items-center gap-2 pb-3 text-xs text-[var(--text-secondary)]">
                     <input
+                      id={`product-image-${index}-primary`}
                       type="radio"
                       name={`primary-product-image-${image.variantId ?? 'shared'}`}
+                      ref={registerField(`image.${index}.primaryImage`)}
+                      required={!product}
+                      aria-required={!product}
+                      aria-invalid={Boolean(fieldErrors[`image.${index}.primaryImage`])}
+                      aria-describedby={fieldErrors[`image.${index}.primaryImage`] ? `product-image-${index}-primary-error` : undefined}
                       checked={image.primaryImage}
-                      onChange={() => setProductImages((current) => current.map((item, itemIndex) =>
-                        item.variantId === image.variantId
-                          ? { ...item, primaryImage: itemIndex === index }
-                          : item))}
+                      onChange={() => {
+                        setProductImages((current) => current.map((item, itemIndex) =>
+                          item.variantId === image.variantId
+                            ? { ...item, primaryImage: itemIndex === index }
+                            : item));
+                        clearPrimaryImageErrors();
+                      }}
                     />
-                    Primary image <FieldRequirement />
+                    Primary image <FieldRequirement required={!product} />
+                    {fieldErrors[`image.${index}.primaryImage`] ? <span id={`product-image-${index}-primary-error`} role="alert" className="text-xs text-red-700">{fieldErrors[`image.${index}.primaryImage`]}</span> : null}
                   </label>
                 </div>
               </div>
@@ -3000,10 +3034,11 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
           <h2 className="mt-1 text-lg font-semibold text-[#1d2b22]">Product visibility</h2>
         </div>
         <label className="block max-w-sm text-sm text-[var(--text-secondary)]">
-          <span>Status<FieldRequirement /></span>
+          <span>Status<FieldRequirement required={!product} /></span>
           <select
             id="product-status"
             ref={registerField('status')}
+            required={!product}
             aria-invalid={Boolean(fieldErrors.status)}
             aria-describedby={fieldErrors.status ? 'product-status-error' : undefined}
             className={`${inputClass} ${fieldErrors.status ? '!border-red-500' : ''}`}
@@ -3073,7 +3108,7 @@ function emptyVariant() {
 
 function productRequest(product: AdminProduct | null): AdminProductRequest {
   if (!product) {
-    return { sku: '', name: '', slug: '', brand: '', description: '', material: null, gender: null, frameShape: null, frameType: null, basePrice: 0, compareAtPrice: null, badge: null, tryOnImageUrl: null, status: 'DRAFT', categoryIds: [], variants: [emptyVariant()], images: [] };
+    return { sku: '', name: '', slug: '', brand: '', description: '', material: null, gender: null, frameShape: null, frameType: null, basePrice: 0, compareAtPrice: null, badge: null, tryOnImageUrl: null, status: 'DRAFT', categoryIds: [''], variants: [emptyVariant()], images: [] };
   }
   return {
     sku: product.sku,

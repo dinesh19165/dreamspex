@@ -48,7 +48,7 @@ export default function Footer() {
         <div className="min-w-0">
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-white">Stay Inspired</h3>
           <div className="mt-5 flex items-center gap-3" aria-label="Dream Spex social links">
-            {[['https://wa.me/8885681789', MessageCircle], ['mailto:dreamspex2025@gmail.com', Send], ['/about', Globe2]].map(([href, Icon]) => (
+            {[['https://wa.me/+918885681789', MessageCircle], ['mailto:dreamspex2025@gmail.com', Send], ['/about', Globe2]].map(([href, Icon]) => (
               (href as string).startsWith('/') ? (
                 <Link key={href as string} to={href as string} aria-label="Visit Dream Spex" className="flex h-11 w-11 items-center justify-center rounded-full border border-[#2F78B8] bg-[#0D3F72]/60 text-[#93C5FD] transition duration-300 hover:-translate-y-1 hover:border-[#93C5FD] hover:bg-[#17558C]">
                   <Icon className="h-4 w-4" />

@@ -29,7 +29,7 @@ export default function MaintenancePage() {
             </p>
           ) : null}
           <p className="mt-6 text-xs text-[var(--text-secondary)]">
-            Need help? Contact <a className="font-semibold text-[var(--brand-green-dark)] underline" href="/contact">9949735181</a>.
+            Need help? Contact <a className="font-semibold text-[var(--brand-green-dark)] underline" href="/contact">8885681789</a>.
           </p>
           <Button type="button" className="mt-7" disabled={loading} onClick={() => void refresh()}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />

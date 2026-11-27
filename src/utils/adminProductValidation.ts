@@ -65,14 +65,14 @@ export function validateAdminProductDraft({
     if (value && value.length > maxLength) errors[field] = `Must be ${maxLength} characters or fewer.`;
   });
 
-  if (!Number.isFinite(form.basePrice)) errors.basePrice = 'Regular price is required.';
-  else if (form.basePrice < 0) errors.basePrice = 'Regular price cannot be negative.';
+  if (!Number.isFinite(form.basePrice)) errors.basePrice = 'DreamSpex price is required.';
+  else if (form.basePrice < 0) errors.basePrice = 'DreamSpex price cannot be negative.';
   if (form.compareAtPrice == null) {
-    if (isCreate) errors.compareAtPrice = 'Sale / compare-at price is required.';
+    if (isCreate) errors.compareAtPrice = 'Regular price is required.';
   } else if (!Number.isFinite(form.compareAtPrice)) {
-    errors.compareAtPrice = 'Sale / compare-at price must be a non-negative number.';
+    errors.compareAtPrice = 'Regular price must be a non-negative number.';
   } else if (form.compareAtPrice < 0) {
-    errors.compareAtPrice = 'Sale / compare-at price must be a non-negative number.';
+    errors.compareAtPrice = 'Regular price must be a non-negative number.';
   }
   if (form.categoryIds.some((categoryId) => !categoryId.trim()) || (isCreate && form.categoryIds.length === 0)) {
     errors.categories = isCreate && form.categoryIds.length === 0

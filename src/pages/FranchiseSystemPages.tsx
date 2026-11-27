@@ -2697,7 +2697,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
             id="product-base-price"
             inputRef={registerField('basePrice')}
             error={fieldErrors.basePrice}
-            label="Regular price"
+            label="DreamSpex price"
             type="number"
             min="0"
             step="0.01"
@@ -2709,7 +2709,7 @@ function ProductEditor({ product, returnable: initialReturnable, categories, sav
             id="product-compare-at-price"
             inputRef={registerField('compareAtPrice')}
             error={fieldErrors.compareAtPrice}
-            label="Sale / compare-at price"
+            label="Regular price"
             type="number"
             min="0"
             step="0.01"

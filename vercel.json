@@ -1,26 +1,16 @@
+
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build"
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
     },
     {
-      "src": "api/sitemap.js",
-      "use": "@vercel/node"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  
-"routes": [
-  {
-    "src": "^/sitemap\\.xml$",
-    "dest": "/api/sitemap"
-  },
-  {
-    "src": "^/(?!api/)(?!.*\\..*$)(.*)$",
-    "dest": "/index.html"
-  }
-],
   "headers": [
     {
       "source": "/assets/(.*)",

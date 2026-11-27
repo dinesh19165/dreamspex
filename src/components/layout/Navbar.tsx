@@ -303,6 +303,9 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
   const logout = () => {
     clearAuthenticated();
     setProfileOpen(false);
+    setOpen(false);
+    setMobileMenuOpen(null);
+    setMegaMenuOpen(null);
     navigate('/login', { replace: true });
   };
 
@@ -561,6 +564,13 @@ export default function Navbar({ homepageOverlay = false }: { homepageOverlay?: 
         <Link to={isAuthenticated ? '/dashboard' : '/login'} onClick={() => setOpen(false)} className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 py-3 text-sm font-medium text-[var(--text-secondary)]">
           <UserRound className="h-4 w-4 text-cyan-300" /> {isAuthenticated ? 'My account' : 'Sign in or create account'}
         </Link>
+        {isAuthenticated ? <button
+          type="button"
+          onClick={logout}
+          className="mt-2 flex w-full items-center gap-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)] px-4 py-3 text-left text-sm font-medium text-rose-500 transition hover:bg-rose-500/10"
+        >
+          <LogOut className="h-4 w-4" /> Logout
+        </button> : null}
         <div className="mt-8 space-y-3">
           {navItems.filter((item) => homeActive || utilityNavItems.some((utilityItem) => utilityItem.label === item.label)).map((item) => (
             <div key={item.label} className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-card)]">

@@ -17,11 +17,7 @@
     "dest": "/api/sitemap"
   },
   {
-    "src": "^/api/sitemap$",
-    "dest": "/api/sitemap"
-  },
-  {
-    "src": "/(?!.*\\..*$)(.*)",
+    "src": "^/(?!api/)(?!.*\\..*$)(.*)$",
     "dest": "/index.html"
   }
 ],

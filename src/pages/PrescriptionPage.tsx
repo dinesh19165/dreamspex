@@ -81,9 +81,6 @@ function validatePrescription(values: PrescriptionValues): Record<string, string
   const rightPd = checkNumber('rightPd', values.rightPd ?? '', 10, 40);
   const leftPd = checkNumber('leftPd', values.leftPd ?? '', 10, 40);
   if (pd == null && (rightPd == null || leftPd == null)) errors.pd = 'Enter IPD or both right and left PD values.';
-  if (values.prescriptionDate && Number.isNaN(Date.parse(values.prescriptionDate))) errors.prescriptionDate = 'Enter a valid prescription date.';
-  if (values.expiryDate && Number.isNaN(Date.parse(values.expiryDate))) errors.expiryDate = 'Enter a valid expiry date.';
-  if (values.prescriptionDate && values.expiryDate && values.expiryDate < values.prescriptionDate) errors.expiryDate = 'Expiry date cannot be before prescription date.';
   return errors;
 }
 
@@ -384,7 +381,7 @@ export default function PrescriptionPage() {
                 <div><PrescriptionUpload onFile={(file) => void handleFile(file)} />{fileError ? <p role="alert" className="mt-3 text-sm text-red-300">{fileError}</p> : null}</div>
                 <button type="button" disabled={busy} onClick={() => void startManual()} className="flex min-h-56 flex-col items-center justify-center rounded-[24px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-8 text-center transition hover:border-cyan-400/60 disabled:opacity-50"><FileHeart className="h-10 w-10 text-cyan-300" /><span className="mt-4 text-lg font-semibold text-[var(--text-primary)]">Enter Prescription Manually</span><span className="mt-2 text-sm text-[var(--text-secondary)]">Enter OD, OS, and PD values</span></button>
               </div>
-              {savedPrescriptions.length ? <div className="mt-8 border-t border-[var(--border-subtle)] pt-6"><h2 className="font-semibold">Resume a saved prescription</h2><div className="mt-3 space-y-2">{savedPrescriptions.map((saved) => <button key={saved.id} type="button" disabled={busy} onClick={() => void resume(saved)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 text-left"><span><span className="block font-medium">{saved.source === 'UPLOAD' ? 'Uploaded document' : 'Manual entry'}</span><span className="mt-1 block text-xs text-[var(--text-secondary)]">{saved.status} · {saved.prescriptionDate ?? 'No prescription date'}</span></span><span className="text-sm text-cyan-200">Resume</span></button>)}</div></div> : null}
+              {savedPrescriptions.length ? <div className="mt-8 border-t border-[var(--border-subtle)] pt-6"><h2 className="font-semibold">Resume a saved prescription</h2><div className="mt-3 space-y-2">{savedPrescriptions.map((saved) => <button key={saved.id} type="button" disabled={busy} onClick={() => void resume(saved)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-4 text-left"><span><span className="block font-medium">{saved.source === 'UPLOAD' ? 'Uploaded document' : 'Manual entry'}</span><span className="mt-1 block text-xs text-[var(--text-secondary)]">{saved.status}</span></span><span className="text-sm text-cyan-200">Resume</span></button>)}</div></div> : null}
             </> : null}
 
             {mode === 'details' && step === 'details' ? <div className="mt-8">

@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom';
 export default function Footer() {
   return (
     <footer className="border-t border-[#16416f] bg-gradient-to-br from-[#061B3A] to-[#0B3470] text-[#B9CCE5]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr] lg:gap-y-12 lg:px-8 lg:py-14">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-10 px-4 py-12 sm:px-6 md:grid-cols-2 xl:grid-cols-[minmax(280px,1.4fr)_repeat(4,minmax(0,1fr))] xl:gap-y-12 xl:px-8 xl:py-14">
         <div className="min-w-0">
-          <p className="font-serif text-[32px] font-bold italic leading-[1.08] tracking-tight text-[#F2F7FF] sm:text-[36px] lg:text-[40px] xl:text-[46px]">
+          <p className="font-serif text-[32px] font-bold italic leading-[1.08] tracking-tight text-[#F2F7FF] sm:text-[36px] lg:text-[40px] xl:text-[42px]">
             <span className="block whitespace-nowrap">Your Vision</span>
             <span className="block whitespace-nowrap">Our Passion.</span>
           </p>

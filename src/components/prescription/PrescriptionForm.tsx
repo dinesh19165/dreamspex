@@ -52,10 +52,6 @@ export default function PrescriptionForm({ value, errors, onChange }: Prescripti
           maxLength={160} className={`w-full rounded-xl border bg-[var(--bg-card)] px-3 py-3 text-[var(--text-primary)] outline-none focus:border-cyan-400 ${errors.patientName ? 'border-red-400' : 'border-[var(--border-subtle)]'}`} />
         {errors.patientName ? <span className="block text-xs text-red-300">{errors.patientName}</span> : null}
       </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-2 text-sm text-[var(--text-secondary)]"><span>Prescription date</span><input type="date" value={value.prescriptionDate ?? ''} onChange={(event) => onChange({ ...value, prescriptionDate: event.target.value })} className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-[var(--text-primary)]" /></label>
-        <label className="space-y-2 text-sm text-[var(--text-secondary)]"><span>Expiry date</span><input type="date" value={value.expiryDate ?? ''} onChange={(event) => onChange({ ...value, expiryDate: event.target.value })} className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] px-3 py-3 text-[var(--text-primary)]" /></label>
-      </div>
       <div className="grid gap-5 lg:grid-cols-2">
         {(['rightEye', 'leftEye'] as const).map((eye) => (
           <section key={eye} className="rounded-[20px] border border-[var(--border-subtle)] bg-[var(--bg-secondary)] p-5">

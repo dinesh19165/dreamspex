@@ -518,7 +518,8 @@ function CmsHero({
   };
 
   return (
-    <section
+    <>
+      <section
       aria-label="Featured eyewear"
       className="premium-hero"
       onMouseEnter={() => setPaused(true)}
@@ -686,26 +687,6 @@ function CmsHero({
         </AnimatePresence>
       </div>
 
-      {/* Sound button: visitor must click to enable audio */}
-      {isVideo ? (
-        <button
-          type="button"
-          onClick={() => void toggleSound()}
-          aria-label={
-            soundEnabled ? 'Mute video' : 'Enable video sound'
-          }
-          className="absolute right-6 top-24 z-20 flex items-center gap-2 rounded-full border border-white/30 bg-black/50 px-4 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-black/70 sm:right-10 sm:top-28"
-        >
-          {soundEnabled ? (
-            <Volume2 className="h-5 w-5" />
-          ) : (
-            <VolumeX className="h-5 w-5" />
-          )}
-
-          {soundEnabled ? 'Sound On' : 'Enable Sound'}
-        </button>
-      ) : null}
-
       {bannerCount > 1 ? (
         <>
           <div className="absolute inset-x-7 bottom-5 z-10 flex items-center justify-between sm:inset-x-10 sm:bottom-7">
@@ -754,7 +735,28 @@ function CmsHero({
           </div>
         </>
       ) : null}
-    </section>
+      </section>
+      {isVideo ? (
+        <div className="flex justify-end px-4 py-3 sm:px-10">
+          <button
+            type="button"
+            onClick={() => void toggleSound()}
+            aria-label={
+              soundEnabled ? 'Mute video' : 'Enable video sound'
+            }
+            aria-pressed={soundEnabled}
+            className="flex items-center gap-2 rounded-full border border-emerald-950/15 bg-[#182A20] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#263d2e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#78BE20]"
+          >
+            {soundEnabled ? (
+              <Volume2 className="h-5 w-5" />
+            ) : (
+              <VolumeX className="h-5 w-5" />
+            )}
+            {soundEnabled ? 'Sound On' : 'Sound Off'}
+          </button>
+        </div>
+      ) : null}
+    </>
   );
 }
 type HomePageProps = {

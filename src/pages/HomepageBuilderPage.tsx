@@ -370,7 +370,14 @@ export default function HomepageBuilderPage() {
           </label> : <label className="rounded-xl border border-dashed border-[var(--border-subtle)] p-4 text-sm font-medium">
             Desktop video (MP4 or WebM, max 100 MB)
             <input className="mt-2 block w-full text-xs" type="file" accept="video/mp4,video/webm,.mp4,.webm" onChange={(event) => void upload('video', event.target.files?.[0])} />
-            {uploading === 'video' ? <span className="text-xs text-[var(--text-secondary)]">Uploading...</span> : banner.desktopVideoUrl ? <video key={banner.desktopVideoUrl} src={resolveCmsMediaUrl(banner.desktopVideoUrl) ?? banner.desktopVideoUrl} muted loop autoPlay playsInline controls className="mt-3 aspect-video w-full rounded-lg bg-black object-cover" /> : <span className="mt-2 block text-xs text-red-600">No desktop video selected</span>}
+            {uploading === 'video' ? <span className="text-xs text-[var(--text-secondary)]">Uploading...</span> : banner.desktopVideoUrl ? <video
+  key={banner.desktopVideoUrl}
+  src={resolveCmsMediaUrl(banner.desktopVideoUrl) ?? banner.desktopVideoUrl}
+  loop
+  playsInline
+  controls
+  className="mt-3 aspect-video w-full rounded-lg bg-black object-cover"
+/> : <span className="mt-2 block text-xs text-red-600">No desktop video selected</span>}
           </label>}
           <label className="rounded-xl border border-dashed border-[var(--border-subtle)] p-4 text-sm font-medium">
             {banner.desktopMediaType === 'VIDEO' ? 'Mobile banner image (required for video)' : 'Mobile banner image (optional)'}

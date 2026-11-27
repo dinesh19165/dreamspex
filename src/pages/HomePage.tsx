@@ -1136,21 +1136,15 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
 
           {/* <section hidden={cmsHidden(homepageSectionSlugs.tryOn, sections)} className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8"><div className="grid overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[#e9eee4] lg:grid-cols-[1fr_1.1fr]"><div className="p-8 sm:p-12"><p className="text-xs font-bold uppercase tracking-[0.25em] text-[#5d9417]">Try before you choose</p><h2 className="mt-4 font-serif text-4xl leading-tight text-[#182116]">Your next pair is closer than you think.</h2><p className="mt-5 max-w-md leading-7 text-[#5f6c5b]">Upload a photo or use your camera to preview selected frames. Switch styles until the right one feels obvious.</p><Link to="/virtual-try-on" className="mt-8 inline-flex"><Button><Camera className="mr-2 h-4 w-4" /> Start virtual try-on</Button></Link></div><div className="relative min-h-[300px]"><img src="https://images.unsplash.com/photo-1508296695146-257a814070b4?auto=format&fit=crop&w=1200&q=90" alt="Person wearing stylish spectacles" loading="lazy" className="absolute inset-0 h-full w-full object-cover" /></div></div></section> */}
 
-          <section hidden={cmsHidden(homepageSectionSlugs.why, sections)} className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+          <section id="why-dream-spex" hidden={cmsHidden(homepageSectionSlugs.why, sections)} className="mx-auto max-w-7xl scroll-mt-36 px-4 pt-10 pb-16 sm:px-6 sm:pt-12 lg:px-8">
             <div className="text-center">
               <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Why Dream Spex</p>
               <h2 className="mt-3 font-serif text-3xl text-[var(--text-primary)] sm:text-4xl">A clearer way to choose eyewear</h2>
             </div>
             <div className="mx-auto mt-7 grid max-w-5xl items-stretch gap-5 md:grid-cols-2">
-              <Link to="/categories" className="group flex min-h-[400px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
-                <span aria-hidden="true" className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#f4f7ef] to-[#e8f0e1]">
-                  <span className="absolute h-32 w-32 rounded-full border border-[#78be20]/20 transition duration-500 group-hover:scale-110" />
-                  <span className="absolute h-24 w-24 rounded-full bg-white/75 shadow-inner" />
-                  <span className="relative flex h-[72px] w-[72px] items-center justify-center rounded-[22px] border border-white/90 bg-white/90 text-[#355e17] shadow-[0_12px_28px_-16px_rgba(23,35,28,0.42)] transition duration-300 group-hover:scale-105">
-                    <Glasses className="h-12 w-12 stroke-[1.6]" />
-                  </span>
-                  <Sparkles className="absolute right-[27%] top-8 h-5 w-5 text-[#78be20]" />
-                  <span className="absolute bottom-7 left-[27%] h-2 w-2 rounded-full bg-[#78be20]/65" />
+              <Link to="/categories" className="group flex min-h-[420px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
+                <span aria-hidden="true" className="relative h-52 shrink-0 overflow-hidden bg-[#e8efe3] sm:h-56">
+                  <img src="/assets/images/why-dreamspex/browse-products.png" alt="" loading="lazy" decoding="async" className="h-full w-full object-cover object-center" />
                 </span>
                 <span className="flex flex-1 flex-col p-6 sm:p-7">
                   <h3 className="font-serif text-2xl font-semibold text-[#17231c]">Browse Products</h3>
@@ -1161,15 +1155,9 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                   </span>
                 </span>
               </Link>
-              <Link to="/stores" className="group flex min-h-[400px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
-                <span aria-hidden="true" className="relative flex h-44 shrink-0 items-center justify-center overflow-hidden bg-gradient-to-br from-[#eff6ed] to-[#e5efe3]">
-                  <span className="absolute h-32 w-32 rounded-full border border-[#78be20]/20 transition duration-500 group-hover:scale-110" />
-                  <span className="absolute h-24 w-24 rounded-full bg-white/75 shadow-inner" />
-                  <span className="relative flex h-[72px] w-[72px] items-center justify-center rounded-[22px] border border-white/90 bg-white/90 text-[#355e17] shadow-[0_12px_28px_-16px_rgba(23,35,28,0.42)] transition duration-300 group-hover:scale-105">
-                    <MapPin className="h-12 w-12 stroke-[1.6]" />
-                  </span>
-                  <span className="absolute right-[27%] top-8 h-2 w-2 rounded-full bg-[#78be20]" />
-                  <span className="absolute bottom-7 left-[27%] h-2 w-2 rounded-full bg-[#78be20]/65" />
+              <Link to="/stores" className="group flex min-h-[420px] flex-col overflow-hidden rounded-[26px] border border-[#dce5d8] bg-white shadow-[0_10px_28px_-24px_rgba(23,35,28,0.32)] transition duration-300 hover:-translate-y-1 hover:border-[#9cc66e] hover:shadow-[0_20px_40px_-24px_rgba(23,35,28,0.3)]">
+                <span aria-hidden="true" className="relative h-52 shrink-0 overflow-hidden bg-[#e8efe3] sm:h-56">
+                  <img src="/assets/images/why-dreamspex/find-store.png" alt="" loading="lazy" decoding="async" className="h-full w-full object-cover object-center" />
                 </span>
                 <span className="flex flex-1 flex-col p-6 sm:p-7">
                   <h3 className="font-serif text-2xl font-semibold text-[#17231c]">Find a Store</h3>

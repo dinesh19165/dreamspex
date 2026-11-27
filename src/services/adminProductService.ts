@@ -157,7 +157,19 @@ export type ProductBulkHistory = Omit<ProductBulkSummary, 'errors' | 'missingIma
     completedAt: string | null;
   };
 
-type ProblemResponse = { message?: string; fieldErrors?: Array<{ field: string; message: string }> };
+export type AdminProductFieldError = { field: string; message: string };
+
+export class AdminProductRequestError extends Error {
+  readonly fieldErrors: AdminProductFieldError[];
+
+  constructor(message: string, fieldErrors: AdminProductFieldError[] = []) {
+    super(message);
+    this.name = 'AdminProductRequestError';
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+type ProblemResponse = { message?: string; fieldErrors?: AdminProductFieldError[] };
 
 function token() {
   try {
@@ -180,8 +192,11 @@ async function request<T>(path: string, init: RequestInit = {}) {
   });
   if (!response.ok) {
     const problem = (await response.json().catch(() => ({}))) as ProblemResponse;
-    const fieldMessage = problem.fieldErrors?.map((error) => `${error.field}: ${error.message}`).join(', ');
-    throw new Error(fieldMessage || problem.message || `Request failed (${response.status})`);
+    const fieldErrors = Array.isArray(problem.fieldErrors) ? problem.fieldErrors : [];
+    throw new AdminProductRequestError(
+      problem.message || (fieldErrors.length ? 'One or more product fields are invalid.' : `Request failed (${response.status})`),
+      fieldErrors,
+    );
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;

@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { canonicalizeColorCombination, formatColorLabel, parseColorComponents, toggleColorComponent } from '../../utils/colorSwatches';
 import ColorSwatch from './ColorSwatch';
 
@@ -10,18 +11,26 @@ const palette = [
 type ColorCombinationInputProps = {
   value: string;
   onChange: (value: string) => void;
+  id?: string;
+  inputRef?: Ref<HTMLInputElement>;
+  error?: string;
+  optional?: boolean;
 };
 
-export default function ColorCombinationInput({ value, onChange }: ColorCombinationInputProps) {
+export default function ColorCombinationInput({ value, onChange, id = 'color-combination', inputRef, error, optional = false }: ColorCombinationInputProps) {
   const selected = new Set(parseColorComponents(value).map((component) => component.toLowerCase()));
   const preview = canonicalizeColorCombination(value);
 
   return (
     <div className="block text-sm text-[var(--text-secondary)]">
-      <label className="block">
-        <span>Color combination</span>
+      <label className="block" htmlFor={id}>
+        <span>Color combination{optional ? <span className="ml-1 text-xs text-[#68756b]">(optional)</span> : null}</span>
         <input
-          className="mt-2 w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none"
+          id={id}
+          ref={inputRef}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={`mt-2 w-full rounded-2xl border bg-[var(--bg-primary)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none ${error ? '!border-red-500' : 'border-[var(--border-subtle)]'}`}
           value={value}
           placeholder="e.g. RED/BLACK"
           onChange={(event) => onChange(event.target.value)}
@@ -31,6 +40,7 @@ export default function ColorCombinationInput({ value, onChange }: ColorCombinat
           }}
         />
       </label>
+      {error ? <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-red-700">{error}</p> : null}
       <details className="mt-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-primary)]">
         <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-[var(--text-primary)]">
           Select colour components

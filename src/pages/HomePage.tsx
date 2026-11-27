@@ -453,7 +453,7 @@ function CmsHero({
 
     if (!video || !isVideo) return;
 
-    if (paused || reducedMotion) {
+    if (reducedMotion) {
       video.pause();
       return;
     }
@@ -471,7 +471,6 @@ function CmsHero({
   }, [
     activeBanner.id,
     isVideo,
-    paused,
     reducedMotion,
     soundEnabled,
   ]);
@@ -518,8 +517,7 @@ function CmsHero({
   };
 
   return (
-    <>
-      <section
+    <><section
       aria-label="Featured eyewear"
       className="premium-hero"
       onMouseEnter={() => setPaused(true)}
@@ -593,7 +591,7 @@ function CmsHero({
                     muted={!soundEnabled}
                     loop
                     playsInline
-                    autoPlay={!paused && !reducedMotion}
+                    autoPlay={!reducedMotion}
                     preload="auto"
                     onError={() => {
                       setFailedVideoId(banner.id);
@@ -735,7 +733,7 @@ function CmsHero({
           </div>
         </>
       ) : null}
-      </section>
+    </section>
       {isVideo ? (
         <div className="flex justify-end px-4 py-3 sm:px-10">
           <button

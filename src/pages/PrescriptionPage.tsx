@@ -71,8 +71,8 @@ function validatePrescription(values: PrescriptionValues): Record<string, string
   if (!values.leftCyl.trim()) errors['leftEye.cyl'] = 'Enter the left-eye CYL value (use 0 if none).';
   checkNumber('rightEye.sph', values.rightSph, -30, 30);
   checkNumber('leftEye.sph', values.leftSph, -30, 30);
-  checkNumber('rightEye.add', values.rightAdd, -10, 10);
-  checkNumber('leftEye.add', values.leftAdd, -10, 10);
+  checkNumber('rightEye.add', values.rightAdd, 1, 3.50);
+  checkNumber('leftEye.add', values.leftAdd, 1, 3.50);
   const rightAxis = checkNumber('rightEye.axis', values.rightAxis, 0, 180, true);
   const leftAxis = checkNumber('leftEye.axis', values.leftAxis, 0, 180, true);
   if (rightCyl != null && rightCyl !== 0 && rightAxis == null && !errors['rightEye.axis']) errors['rightEye.axis'] = 'Enter an AXIS when CYL is non-zero.';

@@ -1112,7 +1112,7 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
             <div className="grid items-stretch gap-7 rounded-[30px] border border-[#e2e9dd] bg-[#fbfcf8] p-5 shadow-[0_20px_50px_-38px_rgba(24,34,24,0.32)] sm:gap-9 sm:p-8 lg:grid-cols-[minmax(0,0.68fr)_minmax(0,1.32fr)] lg:gap-10 lg:p-10">
               <div className="flex flex-col justify-center py-1 sm:py-3">
                 <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]"><span aria-hidden="true" className="h-px w-7 bg-[#9ac86a]" />Find your fit</p>
-                <h2 className="mt-4 max-w-md font-serif text-4xl leading-[1.08] text-[var(--text-primary)] sm:text-5xl">Frames for your face</h2>
+                <h2 className="mt-4 max-w-md font-serif text-4xl leading-[1.08] text-[var(--text-primary)] sm:text-4xl">Frames for your face</h2>
                 <p className="mt-5 max-w-md text-base leading-7 text-[var(--text-secondary)] sm:text-lg sm:leading-8">Explore common face shapes, then preview frames with virtual try-on. The current catalogue does not yet map individual frames to face shapes.</p>
                 <Link to="/virtual-try-on" className="mt-7 inline-flex w-fit items-center gap-3 rounded-full bg-[#78be20] py-1.5 pl-5 pr-1.5 text-sm font-semibold text-[#172015] shadow-[0_10px_22px_-14px_rgba(47,81,22,0.55)] transition hover:bg-[#91cb43] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b781a]">
                   Try frames virtually
@@ -1177,7 +1177,7 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
               <div className="grid lg:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.8fr)]">
                 <div className="flex flex-col justify-center p-5 sm:p-8 lg:p-9">
                   <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#4b781a]">Dream Spex membership</p>
-                  <h2 className="mt-2 max-w-lg font-serif text-3xl text-[#182116] sm:text-4xl">Membership benefits, made clear.</h2>
+                  <h2 className="mt-2 max-w-lg font-serif text-2xl text-[#182116] sm:text-3xl">Membership benefits,made clear.</h2>
                   {membershipPlans.length ? <div className="mt-6 grid auto-rows-fr gap-4 sm:grid-cols-2 2xl:grid-cols-3">{membershipPlans.map((plan) => {
                     const perks = plan.perks.filter(isDisplayableMembershipCopy);
                     const PlanIcon = plan.recommended ? Star : ShieldCheck;
@@ -1218,7 +1218,7 @@ export default function HomePage({ onInitialDataReady, onTaglineChange }: HomePa
                     <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-[#638c35] shadow-sm"><Gift className="h-5 w-5" /></span>
                     <p className="text-xs font-bold uppercase tracking-[0.25em] text-[#689f24]">Offers</p>
                   </div>
-                  <h2 className="mt-3 font-serif text-3xl text-[#182116]">A little more clarity for less.</h2>
+                  <h2 className="mt-3 font-serif text-2xl text-[#182116]">A little more clarity for less.</h2>
                   {offersError ? <p className="mt-5 rounded-xl border border-red-200 bg-white/80 p-3 text-sm text-red-700" role="alert">{offersError}</p> : null}
                   {activeHomepageOffers.length ? <div className="mt-6 space-y-3">{activeHomepageOffers.slice(0, 4).map((offer) => <article key={offer.id} className="rounded-2xl border border-[#e0e7dc] bg-white p-4 shadow-[0_8px_24px_-22px_rgba(24,34,24,0.4)]">
                     <div className="flex items-start justify-between gap-3">

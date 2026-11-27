@@ -10,16 +10,21 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
-    {
-      "src": "^/sitemap\\.xml$",
-      "dest": "/api/sitemap"
-    },
-    {
-      "src": "/(?!.*\\..*$)(.*)",
-      "dest": "/index.html"
-    }
-  ],
+  
+"routes": [
+  {
+    "src": "^/sitemap\\.xml$",
+    "dest": "/api/sitemap"
+  },
+  {
+    "src": "^/api/sitemap$",
+    "dest": "/api/sitemap"
+  },
+  {
+    "src": "/(?!.*\\..*$)(.*)",
+    "dest": "/index.html"
+  }
+],
   "headers": [
     {
       "source": "/assets/(.*)",

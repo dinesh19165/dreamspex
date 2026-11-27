@@ -262,6 +262,13 @@ export default function ShopPage() {
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
+  useEffect(() => {
+    if (!selectedCategory) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById('shop-products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedCategory]);
   const suggestions = ['Aurelia', 'Nocturne', 'Lumen', 'Solstice'];
   const { cart, updateQuantity } = useShop();
   const cartQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -448,7 +455,7 @@ export default function ShopPage() {
               </div>
             </div>
 
-            <div className={`grid auto-rows-fr gap-4 md:gap-5 ${viewMode === 'grid' ? (cartQuantity > 0 ? 'grid-cols-2 2xl:grid-cols-3' : 'grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4') : 'grid-cols-1'}`}>
+            <div id="shop-products" className={`scroll-mt-28 grid auto-rows-fr gap-4 md:gap-5 ${viewMode === 'grid' ? (cartQuantity > 0 ? 'grid-cols-2 2xl:grid-cols-3' : 'grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4') : 'grid-cols-1'}`}>
               {pagedProducts.map((product, index) => (
                 <motion.div key={product.id} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.04 }} className="h-full">
                   <ProductCard product={product} layout={viewMode} />

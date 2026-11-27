@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent, type TouchEvent 
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, ChevronRight, Feather, Gift, Glasses, House, MapPin, ScanFace, ShieldCheck, Sparkles, Star } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { Volume2, VolumeX } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SEO from '../components/SEO';
@@ -264,133 +265,498 @@ function homepageCardHref(card: Pick<HomepageCard, 'destinationType' | 'destinat
   }
 }
 
-function CmsHero({ banners, isMobile, reducedMotion, onImageError }: { banners: HomepageResponse['banners']; isMobile: boolean; reducedMotion: boolean; onImageError: () => void }) {
+// function CmsHero({ banners, isMobile, reducedMotion, onImageError }: { banners: HomepageResponse['banners']; isMobile: boolean; reducedMotion: boolean; onImageError: () => void }) {
+//   const [activeIndex, setActiveIndex] = useState(0);
+//   const [paused, setPaused] = useState(false);
+//   const [direction, setDirection] = useState(1);
+//   const touchStartX = useRef<number | null>(null);
+//   const videoRef = useRef<HTMLVideoElement | null>(null);
+//   const bannerCount = banners.length;
+//   const activeBanner = banners[activeIndex % bannerCount];
+//   const [failedVideoId, setFailedVideoId] = useState<string | null>(null);
+//   const isPlayingVideo = !isMobile && activeBanner.desktopMediaType === 'VIDEO' && Boolean(activeBanner.desktopVideoUrl) && failedVideoId !== activeBanner.id;
+
+//   const moveTo = (nextIndex: number, nextDirection = nextIndex >= activeIndex ? 1 : -1) => {
+//     setDirection(nextDirection);
+//     setActiveIndex((nextIndex + bannerCount) % bannerCount);
+//   };
+
+//   useEffect(() => {
+//     if (reducedMotion || paused || bannerCount < 2) return undefined;
+//     const timer = window.setInterval(() => {
+//       setDirection(1);
+//       setActiveIndex((index) => (index + 1) % bannerCount);
+//     }, 5000);
+//     return () => window.clearInterval(timer);
+//   }, [activeBanner.id, bannerCount, paused, reducedMotion]);
+
+//   useEffect(() => {
+//     const video = videoRef.current;
+//     if (!video) return;
+//     if (paused || reducedMotion) {
+//       video.pause();
+//       return;
+//     }
+//     void video.play().catch(() => setFailedVideoId(activeBanner.id));
+//   }, [activeBanner.id, isPlayingVideo, paused, reducedMotion]);
+
+//   const handleTouchStart = (event: React.TouchEvent<HTMLElement>) => {
+//     touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+//   };
+//   const handleTouchEnd = (event: React.TouchEvent<HTMLElement>) => {
+//     if (touchStartX.current === null) return;
+//     const distance = event.changedTouches[0].clientX - touchStartX.current;
+//     touchStartX.current = null;
+//     if (Math.abs(distance) < 50 || bannerCount < 2) return;
+//     moveTo(activeIndex + (distance < 0 ? 1 : -1));
+//   };
+
+//   return <section
+//     aria-label="Featured eyewear"
+//     className="premium-hero"
+//     onMouseEnter={() => setPaused(true)}
+//     onMouseLeave={() => setPaused(false)}
+//     onFocusCapture={() => setPaused(true)}
+//     onBlurCapture={(event) => {
+//       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
+//     }}
+//     onTouchStart={handleTouchStart}
+//     onTouchEnd={handleTouchEnd}
+//   >
+//     <div className="premium-hero__media" aria-live="polite">
+//       <AnimatePresence initial={false} custom={direction}>
+//         {banners.map((banner, index) => {
+//           if (index !== activeIndex % bannerCount) return null;
+//           const videoFailed = failedVideoId === banner.id;
+//           const imageUrl = isMobile
+//             ? banner.mobileImageUrl ?? ''
+//             : videoFailed
+//               ? banner.desktopImageUrl || banner.mobileImageUrl || ''
+//               : banner.desktopImageUrl;
+//           return <motion.div
+//             key={banner.id}
+//             custom={direction}
+//             initial={{ x: reducedMotion ? 0 : direction > 0 ? '100%' : '-100%' }}
+//             animate={{ x: 0 }}
+//             exit={{ x: reducedMotion ? 0 : direction > 0 ? '-100%' : '100%' }}
+//             transition={{ duration: reducedMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
+//             className="premium-hero__slide absolute inset-0"
+//           >
+//             {isMobile || banner.desktopMediaType === 'IMAGE' || videoFailed ? <img src={imageUrl} alt={banner.title} loading="eager" fetchPriority="high" decoding="async" onError={onImageError} className="premium-hero__video premium-hero__fallback" style={{ objectPosition: banner.positioning ?? 'center' }} /> : <video
+//               ref={videoRef}
+//               src={banner.desktopVideoUrl ?? undefined}
+//               muted
+//               loop
+//               playsInline
+//               autoPlay={!paused && !reducedMotion}
+//               preload="metadata"
+//               onError={() => setFailedVideoId(banner.id)}
+//               className="premium-hero__video premium-hero__fallback"
+//               style={{ objectPosition: banner.positioning ?? 'center' }}
+//             />}
+//             <div className="premium-hero__overlay" aria-hidden="true" />
+//             <div className="premium-hero__content">
+//               <div className="premium-hero__eyebrow"><Sparkles className="h-4 w-4" /><span>Dream Spex</span><span className="premium-hero__divider" aria-hidden="true">|</span><span>Eyewear</span></div>
+//               <h1 className={banner.title.trim().toUpperCase() === 'DREAM SPEX' ? 'premium-hero__title--brand' : undefined}>{banner.title}</h1>
+//               {banner.subtitle ? <p>{banner.subtitle}</p> : null}
+//               {banner.description ? <p className="max-w-xl text-sm">{banner.description}</p> : null}
+//               <div className="premium-hero__actions">
+//                 {banner.linkUrl && banner.buttonText ? <Link to={banner.linkUrl} className="premium-hero__primary">{banner.buttonText}<ArrowRight className="h-4 w-4" /></Link> : null}
+//                 {banner.secondaryLinkUrl && banner.secondaryButtonText ? <Link to={banner.secondaryLinkUrl} className="premium-hero__secondary">{banner.secondaryButtonText}</Link> : null}
+//               </div>
+//             </div>
+//           </motion.div>;
+//         })}
+//       </AnimatePresence>
+//     </div>
+//     {bannerCount > 1 ? <>
+//       <div className="absolute inset-x-7 bottom-5 z-10 flex items-center justify-between sm:inset-x-10 sm:bottom-7">
+//         <button type="button" aria-label="Previous banner"         onClick={() => moveTo(activeIndex - 1, -1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/40 bg-black/25 text-white backdrop-blur transition hover:bg-black/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+//           <ArrowLeft className="h-5 w-5" />
+//         </button>
+//         <button type="button" aria-label="Next banner"         onClick={() => moveTo(activeIndex + 1, 1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/40 bg-black/25 text-white backdrop-blur transition hover:bg-black/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+//           <ArrowRight className="h-5 w-5" />
+//         </button>
+//       </div>
+//       <div className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2" role="group" aria-label="Choose homepage banner">
+//         {banners.map((banner, index) => <button
+//           key={banner.id}
+//           type="button"
+//           aria-label={`Show banner ${index + 1}: ${banner.title}`}
+//           aria-current={index === activeIndex % bannerCount ? 'true' : undefined}
+//           onClick={() => moveTo(index)}
+//           className={`h-2.5 rounded-full transition-all ${index === activeIndex % bannerCount ? 'w-6 bg-white' : 'w-2.5 bg-white/55 hover:bg-white/80'}`}
+//         />)}
+//       </div>
+//     </> : null}
+//   </section>;
+// }
+function CmsHero({
+  banners,
+  isMobile,
+  reducedMotion,
+  onImageError,
+}: {
+  banners: HomepageResponse['banners'];
+  isMobile: boolean;
+  reducedMotion: boolean;
+  onImageError: () => void;
+}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [direction, setDirection] = useState(1);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [failedVideoId, setFailedVideoId] = useState<string | null>(null);
+
   const touchStartX = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const bannerCount = banners.length;
-  const activeBanner = banners[activeIndex % bannerCount];
-  const [failedVideoId, setFailedVideoId] = useState<string | null>(null);
-  const isPlayingVideo = !isMobile && activeBanner.desktopMediaType === 'VIDEO' && Boolean(activeBanner.desktopVideoUrl) && failedVideoId !== activeBanner.id;
 
-  const moveTo = (nextIndex: number, nextDirection = nextIndex >= activeIndex ? 1 : -1) => {
+  const bannerCount = banners.length;
+
+  if (!bannerCount) return null;
+
+  const activeBanner = banners[activeIndex % bannerCount];
+
+  const isVideo =
+    !isMobile &&
+    activeBanner.desktopMediaType === 'VIDEO' &&
+    Boolean(activeBanner.desktopVideoUrl) &&
+    failedVideoId !== activeBanner.id;
+
+  const moveTo = (
+    nextIndex: number,
+    nextDirection = nextIndex >= activeIndex ? 1 : -1,
+  ) => {
     setDirection(nextDirection);
+    setSoundEnabled(false);
     setActiveIndex((nextIndex + bannerCount) % bannerCount);
   };
 
+  // Automatically move to the next banner.
   useEffect(() => {
-    if (reducedMotion || paused || bannerCount < 2) return undefined;
+    if (reducedMotion || paused || bannerCount < 2) {
+      return undefined;
+    }
+
     const timer = window.setInterval(() => {
       setDirection(1);
+      setSoundEnabled(false);
       setActiveIndex((index) => (index + 1) % bannerCount);
     }, 5000);
+
     return () => window.clearInterval(timer);
   }, [activeBanner.id, bannerCount, paused, reducedMotion]);
 
+  // Play/pause the active video.
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+
+    if (!video || !isVideo) return;
+
     if (paused || reducedMotion) {
       video.pause();
       return;
     }
-    void video.play().catch(() => setFailedVideoId(activeBanner.id));
-  }, [activeBanner.id, isPlayingVideo, paused, reducedMotion]);
+
+    video.muted = !soundEnabled;
+
+    void video.play().catch(() => {
+      // If browser blocks playback with sound, keep video muted.
+      video.muted = true;
+      setSoundEnabled(false);
+      void video.play().catch(() => {
+        setFailedVideoId(activeBanner.id);
+      });
+    });
+  }, [
+    activeBanner.id,
+    isVideo,
+    paused,
+    reducedMotion,
+    soundEnabled,
+  ]);
+
+  // Enable or disable sound after the visitor clicks.
+  const toggleSound = async () => {
+    const video = videoRef.current;
+
+    if (!video) return;
+
+    if (soundEnabled) {
+      video.muted = true;
+      setSoundEnabled(false);
+      return;
+    }
+
+    try {
+      video.muted = false;
+      video.volume = 1;
+      await video.play();
+      setSoundEnabled(true);
+    } catch {
+      video.muted = true;
+      setSoundEnabled(false);
+    }
+  };
 
   const handleTouchStart = (event: React.TouchEvent<HTMLElement>) => {
-    touchStartX.current = event.changedTouches[0]?.clientX ?? null;
+    touchStartX.current =
+      event.changedTouches[0]?.clientX ?? null;
   };
+
   const handleTouchEnd = (event: React.TouchEvent<HTMLElement>) => {
     if (touchStartX.current === null) return;
-    const distance = event.changedTouches[0].clientX - touchStartX.current;
+
+    const distance =
+      event.changedTouches[0].clientX - touchStartX.current;
+
     touchStartX.current = null;
+
     if (Math.abs(distance) < 50 || bannerCount < 2) return;
+
     moveTo(activeIndex + (distance < 0 ? 1 : -1));
   };
 
-  return <section
-    aria-label="Featured eyewear"
-    className="premium-hero"
-    onMouseEnter={() => setPaused(true)}
-    onMouseLeave={() => setPaused(false)}
-    onFocusCapture={() => setPaused(true)}
-    onBlurCapture={(event) => {
-      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false);
-    }}
-    onTouchStart={handleTouchStart}
-    onTouchEnd={handleTouchEnd}
-  >
-    <div className="premium-hero__media" aria-live="polite">
-      <AnimatePresence initial={false} custom={direction}>
-        {banners.map((banner, index) => {
-          if (index !== activeIndex % bannerCount) return null;
-          const videoFailed = failedVideoId === banner.id;
-          const imageUrl = isMobile
-            ? banner.mobileImageUrl ?? ''
-            : videoFailed
-              ? banner.desktopImageUrl || banner.mobileImageUrl || ''
-              : banner.desktopImageUrl;
-          return <motion.div
-            key={banner.id}
-            custom={direction}
-            initial={{ x: reducedMotion ? 0 : direction > 0 ? '100%' : '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: reducedMotion ? 0 : direction > 0 ? '-100%' : '100%' }}
-            transition={{ duration: reducedMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="premium-hero__slide absolute inset-0"
-          >
-            {isMobile || banner.desktopMediaType === 'IMAGE' || videoFailed ? <img src={imageUrl} alt={banner.title} loading="eager" fetchPriority="high" decoding="async" onError={onImageError} className="premium-hero__video premium-hero__fallback" style={{ objectPosition: banner.positioning ?? 'center' }} /> : <video
-              ref={videoRef}
-              src={banner.desktopVideoUrl ?? undefined}
-              muted
-              loop
-              playsInline
-              autoPlay={!paused && !reducedMotion}
-              preload="metadata"
-              onError={() => setFailedVideoId(banner.id)}
-              className="premium-hero__video premium-hero__fallback"
-              style={{ objectPosition: banner.positioning ?? 'center' }}
-            />}
-            <div className="premium-hero__overlay" aria-hidden="true" />
-            <div className="premium-hero__content">
-              <div className="premium-hero__eyebrow"><Sparkles className="h-4 w-4" /><span>Dream Spex</span><span className="premium-hero__divider" aria-hidden="true">|</span><span>Eyewear</span></div>
-              <h1 className={banner.title.trim().toUpperCase() === 'DREAM SPEX' ? 'premium-hero__title--brand' : undefined}>{banner.title}</h1>
-              {banner.subtitle ? <p>{banner.subtitle}</p> : null}
-              {banner.description ? <p className="max-w-xl text-sm">{banner.description}</p> : null}
-              <div className="premium-hero__actions">
-                {banner.linkUrl && banner.buttonText ? <Link to={banner.linkUrl} className="premium-hero__primary">{banner.buttonText}<ArrowRight className="h-4 w-4" /></Link> : null}
-                {banner.secondaryLinkUrl && banner.secondaryButtonText ? <Link to={banner.secondaryLinkUrl} className="premium-hero__secondary">{banner.secondaryButtonText}</Link> : null}
-              </div>
-            </div>
-          </motion.div>;
-        })}
-      </AnimatePresence>
-    </div>
-    {bannerCount > 1 ? <>
-      <div className="absolute inset-x-7 bottom-5 z-10 flex items-center justify-between sm:inset-x-10 sm:bottom-7">
-        <button type="button" aria-label="Previous banner"         onClick={() => moveTo(activeIndex - 1, -1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/40 bg-black/25 text-white backdrop-blur transition hover:bg-black/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <button type="button" aria-label="Next banner"         onClick={() => moveTo(activeIndex + 1, 1)} className="grid h-10 w-10 place-items-center rounded-full border border-white/40 bg-black/25 text-white backdrop-blur transition hover:bg-black/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-          <ArrowRight className="h-5 w-5" />
-        </button>
-      </div>
-      <div className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2" role="group" aria-label="Choose homepage banner">
-        {banners.map((banner, index) => <button
-          key={banner.id}
-          type="button"
-          aria-label={`Show banner ${index + 1}: ${banner.title}`}
-          aria-current={index === activeIndex % bannerCount ? 'true' : undefined}
-          onClick={() => moveTo(index)}
-          className={`h-2.5 rounded-full transition-all ${index === activeIndex % bannerCount ? 'w-6 bg-white' : 'w-2.5 bg-white/55 hover:bg-white/80'}`}
-        />)}
-      </div>
-    </> : null}
-  </section>;
-}
+  return (
+    <section
+      aria-label="Featured eyewear"
+      className="premium-hero"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(event) => {
+        if (
+          !event.currentTarget.contains(
+            event.relatedTarget as Node | null,
+          )
+        ) {
+          setPaused(false);
+        }
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="premium-hero__media" aria-live="polite">
+        <AnimatePresence initial={false} custom={direction}>
+          {banners.map((banner, index) => {
+            if (index !== activeIndex % bannerCount) {
+              return null;
+            }
 
+            const videoFailed = failedVideoId === banner.id;
+
+            const imageUrl = isMobile
+              ? banner.mobileImageUrl ?? ''
+              : videoFailed
+                ? banner.desktopImageUrl ||
+                  banner.mobileImageUrl ||
+                  ''
+                : banner.desktopImageUrl;
+
+            const bannerIsVideo =
+              !isMobile &&
+              banner.desktopMediaType === 'VIDEO' &&
+              Boolean(banner.desktopVideoUrl) &&
+              !videoFailed;
+
+            return (
+              <motion.div
+                key={banner.id}
+                custom={direction}
+                initial={{
+                  x: reducedMotion
+                    ? 0
+                    : direction > 0
+                      ? '100%'
+                      : '-100%',
+                }}
+                animate={{ x: 0 }}
+                exit={{
+                  x: reducedMotion
+                    ? 0
+                    : direction > 0
+                      ? '-100%'
+                      : '100%',
+                }}
+                transition={{
+                  duration: reducedMotion ? 0 : 0.55,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className="premium-hero__slide absolute inset-0"
+              >
+                {bannerIsVideo ? (
+                  <video
+                    ref={videoRef}
+                    key={banner.desktopVideoUrl}
+                    src={banner.desktopVideoUrl ?? undefined}
+                    muted={!soundEnabled}
+                    loop
+                    playsInline
+                    autoPlay={!paused && !reducedMotion}
+                    preload="auto"
+                    onError={() => {
+                      setFailedVideoId(banner.id);
+                    }}
+                    className="premium-hero__video premium-hero__fallback"
+                    style={{
+                      objectPosition:
+                        banner.positioning ?? 'center',
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={imageUrl}
+                    alt={banner.title}
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
+                    onError={onImageError}
+                    className="premium-hero__video premium-hero__fallback"
+                    style={{
+                      objectPosition:
+                        banner.positioning ?? 'center',
+                    }}
+                  />
+                )}
+
+                <div
+                  className="premium-hero__overlay"
+                  aria-hidden="true"
+                />
+
+                <div className="premium-hero__content">
+                  <div className="premium-hero__eyebrow">
+                    <Sparkles className="h-4 w-4" />
+                    <span>Dream Spex</span>
+                    <span
+                      className="premium-hero__divider"
+                      aria-hidden="true"
+                    >
+                      |
+                    </span>
+                    <span>Eyewear</span>
+                  </div>
+
+                  <h1
+                    className={
+                      banner.title.trim().toUpperCase() ===
+                      'DREAM SPEX'
+                        ? 'premium-hero__title--brand'
+                        : undefined
+                    }
+                  >
+                    {banner.title}
+                  </h1>
+
+                  {banner.subtitle ? (
+                    <p>{banner.subtitle}</p>
+                  ) : null}
+
+                  {banner.description ? (
+                    <p className="max-w-xl text-sm">
+                      {banner.description}
+                    </p>
+                  ) : null}
+
+                  <div className="premium-hero__actions">
+                    {banner.linkUrl && banner.buttonText ? (
+                      <Link
+                        to={banner.linkUrl}
+                        className="premium-hero__primary"
+                      >
+                        {banner.buttonText}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    ) : null}
+
+                    {banner.secondaryLinkUrl &&
+                    banner.secondaryButtonText ? (
+                      <Link
+                        to={banner.secondaryLinkUrl}
+                        className="premium-hero__secondary"
+                      >
+                        {banner.secondaryButtonText}
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+
+      {/* Sound button: visitor must click to enable audio */}
+      {isVideo ? (
+        <button
+          type="button"
+          onClick={() => void toggleSound()}
+          aria-label={
+            soundEnabled ? 'Mute video' : 'Enable video sound'
+          }
+          className="absolute right-6 top-24 z-20 flex items-center gap-2 rounded-full border border-white/30 bg-black/50 px-4 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-black/70 sm:right-10 sm:top-28"
+        >
+          {soundEnabled ? (
+            <Volume2 className="h-5 w-5" />
+          ) : (
+            <VolumeX className="h-5 w-5" />
+          )}
+
+          {soundEnabled ? 'Sound On' : 'Enable Sound'}
+        </button>
+      ) : null}
+
+      {bannerCount > 1 ? (
+        <>
+          <div className="absolute inset-x-7 bottom-5 z-10 flex items-center justify-between sm:inset-x-10 sm:bottom-7">
+            <button
+              type="button"
+              aria-label="Previous banner"
+              onClick={() => moveTo(activeIndex - 1, -1)}
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/40 bg-black/25 text-white backdrop-blur transition hover:bg-black/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+
+            <button
+              type="button"
+              aria-label="Next banner"
+              onClick={() => moveTo(activeIndex + 1, 1)}
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/40 bg-black/25 text-white backdrop-blur transition hover:bg-black/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div
+            className="absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2"
+            role="group"
+            aria-label="Choose homepage banner"
+          >
+            {banners.map((banner, index) => (
+              <button
+                key={banner.id}
+                type="button"
+                aria-label={`Show banner ${index + 1}: ${banner.title}`}
+                aria-current={
+                  index === activeIndex % bannerCount
+                    ? 'true'
+                    : undefined
+                }
+                onClick={() => moveTo(index)}
+                className={`h-2.5 rounded-full transition-all ${
+                  index === activeIndex % bannerCount
+                    ? 'w-6 bg-white'
+                    : 'w-2.5 bg-white/55 hover:bg-white/80'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}
 type HomePageProps = {
   onInitialDataReady: () => void;
   onTaglineChange: (tagline: string | null) => void;

@@ -30,12 +30,10 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-[#16416f] bg-gradient-to-br from-[#061B3A] to-[#0B3470] text-[#B9CCE5]">
-      {homepageSubtitle ? (
-        <div className="mx-auto max-w-7xl px-4 pt-10 text-center sm:px-6 lg:px-8">
-          <p className="mx-auto max-w-3xl font-serif text-2xl italic leading-tight tracking-tight text-[#F2F7FF] sm:text-3xl">{homepageSubtitle}</p>
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-6 gap-y-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-5 lg:gap-y-12 lg:px-8 lg:py-14">
+        <div className="min-w-0">
+          <p className="font-serif text-3xl italic leading-tight tracking-tight text-[#F2F7FF]">{homepageSubtitle || 'Your Vision Our Passion.'}</p>
         </div>
-      ) : null}
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-x-10 gap-y-10 px-4 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-4 lg:gap-y-12 lg:px-8 lg:py-14">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-white">Customer Care</h3>
           <ul className="mt-5 space-y-3 text-sm">

@@ -67,7 +67,7 @@ export function validateAdminProductDraft({
     if (variant.size && variant.size.length > 32) errors[`${prefix}.size`] = 'Size must be 32 characters or fewer.';
     if (variant.lensType && variant.lensType.length > 80) errors[`${prefix}.lensType`] = 'Lens type must be 80 characters or fewer.';
     if (!Number.isFinite(variant.additionalPrice) || variant.additionalPrice < 0) {
-      errors[`${prefix}.additionalPrice`] = 'Price adjustment must be a non-negative number.';
+      errors[`${prefix}.additionalPrice`] = 'Adjustment must be a non-negative number.';
     }
     if (!Number.isInteger(variant.quantity) || variant.quantity < 0) {
       errors[`${prefix}.quantity`] = 'Quantity must be a whole number greater than or equal to 0.';

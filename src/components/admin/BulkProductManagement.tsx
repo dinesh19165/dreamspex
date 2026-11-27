@@ -346,7 +346,7 @@ export default function BulkProductManagement({ products, categories, onImported
           </label>
         </div>
         <p className="mt-3 rounded-lg bg-[#f7f9f7] px-3 py-2.5 text-xs leading-5 text-[#68756b]">
-          Workbook Price Adjustment is numeric. Inventory Operation accepts SET or ADD per variant; blank cells use this default. Blank update image fields preserve existing images; omitted variants are never deleted.
+          Workbook Adjustment is numeric. Inventory Operation accepts SET or ADD per variant; blank cells use this default. Blank update image fields preserve existing images; omitted variants are never deleted.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button type="button" className="h-10 rounded-lg px-4 py-2 shadow-none" disabled={!workbook || busy !== ''} onClick={() => void previewImport()}>
